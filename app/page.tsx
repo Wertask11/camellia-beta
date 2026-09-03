@@ -18,7 +18,7 @@ export default function Page(){
  const store=useCamelliaStore(); const [tab,setTab]=useState<MainTab>('today'); const [category,setCategory]=useState<Category>(); const [chosen,setChosen]=useState<Recommendation>(); const [secondary,setSecondary]=useState<'circle'|'place'>(); const [talkMenu,setTalkMenu]=useState(false);
  const recs=useMemo(()=>recommend(store.state,new Date()),[store.state]);
  if(!store.ready)return <div className="loading">Camellia ✿</div>;
- if(!store.state.onboardingComplete)return <OnboardingScreen onFinish={p=>{store.updateProfile(p);store.completeOnboarding()}}/>;
+ if(!store.state.onboardingComplete)return <OnboardingScreen onFinish={p=>{store.updateProfile(p);store.completeOnboarding();setTab('today')}}/>;
  const openAction=(r:Recommendation)=>{if(r.action.destination){setSecondary(r.action.destination);return}setChosen(r)};
  const intent=(x:string)=>{if(x==='何もしない'){const a=ACTIONS.find(a=>a.id==='do-nothing');if(a)setChosen({action:a,score:0,reasons:['何もしないことも、今日の大切な休息だから']});return}const map:Record<string,Category>={整える:'BODY',楽しむ:'PLAY',学ぶ:'LEARN',休む:'REST'};setCategory(map[x]);setTab('discover')};
  if(secondary)return <div className="app-shell"><SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/></div>;
