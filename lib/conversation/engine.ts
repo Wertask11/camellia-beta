@@ -1,16 +1,40 @@
-import type { CamelliaState,ConversationIntent,Recommendation } from '@/types';
-export function classifyIntent(text:string):ConversationIntent{
- const t=text.toLowerCase();
- if(/誰か|人と話|つなが|circle|コミュニティ/.test(t))return'CONNECT';
- if(/何かしたい|気分.*変え|今でき|行動|やってみ/.test(t))return'ACTION';
- if(/どうしたら|どうすれば|アドバイス|おすすめ|教えて/.test(t))return'ADVICE';
- if(/整理|振り返|考えたい|なぜ|もやもや/.test(t))return'REFLECT';
- return'LISTEN';
+import type { AIMessage, CamelliaState, ConversationIntent, ConversationTopic, Recommendation } from '@/types';
+export function classifyIntent(t:string):ConversationIntent {
+  if (/アドバイス.*いらない|聞いてほしい|ただ聞/.test(t)) return 'LISTEN';
+  if (/誰か|人と話|つなが|寂し/.test(t)) return 'CONNECT';
+  if (/何かしたい|運動したい|気分.*変え|何着て|暇/.test(t)) return 'ACTION';
+  if (/どうしたら|どうすれば|どう思う|迷って|教えて/.test(t)) return 'ADVICE';
+  if (/整理|振り返|私も悪|もやもや/.test(t)) return 'REFLECT';
+  return 'LISTEN';
 }
-export function respond(state:CamelliaState,recs:Recommendation[],text:string){
- const intent=classifyIntent(text);const name=state.profile.name?`${state.profile.name}さん、`:'';
- if(intent==='LISTEN')return{intent,text:`${name}そっか。今日はそんなことがあったんだね。話したかったら、ここでゆっくり聞くよ。`,showAction:false};
- if(intent==='REFLECT')return{intent,text:`${name}いま一番引っかかっているのは、出来事そのものと、そのとき感じたことのどちらに近いかな。急いで答えを出さなくて大丈夫です。`,showAction:false};
- if(intent==='CONNECT')return{intent,text:`${name}ひとりで抱えず、誰かと話したい気持ちがあるのかもしれないね。安心できるつながり方を選べます。`,showAction:false,showCircle:true};
- const action=recs[0]?.action;return{intent,text:`${name}${intent==='ADVICE'?'どうしたらいいか一緒に考えよう。':'今できることを探しているんだね。'}入力してくれた状態を手がかりに、無理の少ない選択をひとつ置いておきます。合わなければ選ばなくて大丈夫です。`,showAction:Boolean(action),action};
+const rules:[ConversationTopic,RegExp][]=[['WORK',/仕事|会社|上司|職場|辞め/],['RELATIONSHIP',/関係|うまくいって/],['LOVE',/彼氏|彼女|恋愛|デート|好きな人/],['FAMILY',/家族|親|母|父|子ども|夫|妻/],['FRIEND',/友達|友人|喧嘩/],['BEAUTY',/肌|美容|メイク|服|何着/],['HEALTH',/体調|具合|痛|疲れ/],['SLEEP',/眠|睡眠|寝/],['FOOD',/お腹|食べ|ごはん|料理/],['EXERCISE',/運動|散歩|ストレッチ/],['STUDY',/勉強|試験|学/],['MONEY',/お金|給料|貯金|支払/],['HOBBY',/趣味|推し|音楽|映画|本/],['FUN',/暇|楽しい|遊び/],['LONELINESS',/寂し|孤独|ひとり/],['ANXIETY',/不安|心配|迷って|将来/],['HAPPINESS',/嬉しい|うれしい|最高|幸せ/],['ANGER',/怒|最悪|むかつ|イライラ/],['SADNESS',/悲しい|つらい|泣|嫌なこと/]];
+export function classifyTopics(t:string):ConversationTopic[]{const found=rules.filter(([,r])=>r.test(t)).map(([k])=>k);return found.length?found:['OTHER']}
+const previousUser=(h:AIMessage[])=>[...h].reverse().find(m=>m.role==='user');
+function listen(topics:ConversationTopic[],text:string,previous?:AIMessage){
+  if (/さっき|その話/.test(text)&&previous) return `うん、さっきの「${previous.text.slice(0,28)}」の話だね。続き、聞かせて。`;
+  if (/何もしたくない/.test(text)) return '今日は何もしたくないんだね。何もしないまま、ここにいるだけでも大丈夫。';
+  if (topics.includes('HAPPINESS')) return 'それはいい一日だったんだね。うれしさがこちらにも伝わってくるよ。';
+  if (topics.includes('ANGER')) return 'それは嫌だったね。すぐに整理しなくていいから、話したいところから聞かせて。';
+  if (topics.includes('SADNESS')) return '今日はつらいことがあったんだね。ここでは無理に元気にならなくて大丈夫。';
+  if (topics.includes('ANXIETY')) return '将来のことを考えると、不安が膨らむこともあるよね。今は答えを出さず、その不安をここに置いてもいいよ。';
+  if (topics.includes('SLEEP')) return '眠れないんだね。時計を気にするほど焦ることもあるよね。今は話していたい？';
+  if (topics.includes('BEAUTY')) return '肌の変化が気になっているんだね。いつ頃から気になり始めたのか、話したければ聞くよ。';
+  if (topics.includes('STUDY')) return 'やらなきゃと思うほど、動き出しにくくなる日もあるよね。今日はその気持ちを話すだけでも大丈夫。';
+  if (topics.includes('FRIEND')) return '友達との喧嘩って、怒りだけじゃなく寂しさも残ることがあるよね。どんなことがあったの？';
+  if (topics.includes('LOVE')) return '大切な人とうまくいかない感じがあるんだね。簡単に割り切れないよね。';
+  if (topics.includes('FOOD')) return 'お腹すいたんだね。今食べたいもの、何か浮かんでる？';
+  if (topics.includes('FUN')) return 'ぽっかり時間が空いた感じかな。何も決めずに話すだけでもいいよ。';
+  return 'うん、聞いてるよ。もう少し話したくなったら、そのまま続けて。';
+}
+export function respond(_state:CamelliaState,recs:Recommendation[],input:string,history:AIMessage[]=[]){
+  const intent=classifyIntent(input),topics=classifyTopics(input),previous=previousUser(history);let text='';
+  if(intent==='LISTEN') text=listen(topics,input,previous);
+  else if(intent==='REFLECT') text=topics.includes('WORK')||previous?.topics?.includes('WORK')?'自分にも悪いところがあったと思うことと、怒られてつらかったことは、分けて考えてもよさそう。どちらも本当でいいと思う。':'いくつかの気持ちが重なっていそうだね。まず一番大きいものだけ、言葉にしてみてもいいかも。';
+  else if(intent==='CONNECT') text='誰かと話したいんだね。ここで私と話し続けることも、同じ関心の人が集まる場所を見ることもできます。';
+  else if(topics.includes('LOVE')&&topics.includes('BEAUTY')) text='明日のデート、楽しみと少し迷う気持ちがありそうだね。相手にどう見えるかより、自分が落ち着ける服を軸に選んでみるのはどうかな。';
+  else if(topics.includes('WORK')&&topics.includes('ANXIETY')) text='辞めるかどうかは大きな決断だね。今日は結論を急がず、「続けてつらいこと」と「変われば続けられそうなこと」を分けてみると考えやすくなります。';
+  else if(topics.includes('EXERCISE')&&topics.includes('HEALTH')) text='動きたい気持ちと、今日は疲れている感覚の両方を大事にしてよさそう。負担の小さい選択をひとつ置いておきます。';
+  else text=intent==='ADVICE'?'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。必要なら小さな選択肢も置いておきます。':'今の気分に合いそうな、小さな選択をひとつだけ置いておきます。';
+  const showAction=(intent==='ADVICE'||intent==='ACTION')&&!topics.includes('FOOD');
+  return {intent,topics,text,showAction,action:showAction?recs[0]?.action:undefined,showCircle:intent==='CONNECT'};
 }

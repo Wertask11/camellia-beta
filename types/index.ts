@@ -4,6 +4,7 @@ export type Mood = 1 | 2 | 3 | 4 | 5;
 export type ActionStatus = 'started' | 'completed' | 'skipped';
 export type FeedbackRating = 'great' | 'okay' | 'same' | 'bad';
 export type ConversationIntent = 'LISTEN' | 'REFLECT' | 'ADVICE' | 'ACTION' | 'CONNECT';
+export type ConversationTopic = 'WORK'|'RELATIONSHIP'|'LOVE'|'FAMILY'|'FRIEND'|'BEAUTY'|'HEALTH'|'SLEEP'|'FOOD'|'EXERCISE'|'STUDY'|'MONEY'|'HOBBY'|'FUN'|'LONELINESS'|'ANXIETY'|'HAPPINESS'|'ANGER'|'SADNESS'|'OTHER';
 export type DismissReason = 'no_time' | 'not_now' | 'not_needed' | 'dislike' | 'other';
 export type SaveTiming = 'later_today' | 'holiday' | 'when_free' | 'save_only';
 export interface Profile { id:string; name:string; age:string; interests:string[]; lifestyle:string; availableMinutes?:number; priority:string; periodEnabled:boolean; createdAt:string; updatedAt:string }
@@ -11,7 +12,7 @@ export interface Checkin { id:string; mood:Mood; sleep?:number; body?:'良い'|'
 export interface ActionRecord { id:string; actionId:string; title:string; category:Category; status:ActionStatus; dismissReason?:DismissReason; startedAt?:string; completedAt?:string; createdAt:string; updatedAt:string }
 export interface ActionFeedback { id:string; actionRecordId:string; actionId:string; rating:FeedbackRating; createdAt:string; updatedAt:string }
 export interface SavedAction { id:string; actionId:string; timing:SaveTiming; createdAt:string; updatedAt:string }
-export interface AIMessage { id:string; role:'user'|'assistant'; text:string; intent?:ConversationIntent; createdAt:string }
+export interface AIMessage { id:string; role:'user'|'assistant'; text:string; intent?:ConversationIntent; topics?:ConversationTopic[]; createdAt:string }
 export interface AIConversation { id:string; messages:AIMessage[]; createdAt:string; updatedAt:string }
 export interface ActionContext { mood?:Mood; sleep?:number; body?:Checkin['body']; stress?:Checkin['stress']; periodDays?:number; timeBand:TimeBand; weekday:number; lifestyle:string; availableMinutes?:number }
 export interface ContextualActionMemory { id:string; actionId:string; event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback'; context:ActionContext; feedback?:FeedbackRating; dismissReason?:DismissReason; saveTiming?:SaveTiming; createdAt:string }
