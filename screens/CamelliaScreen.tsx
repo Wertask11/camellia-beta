@@ -1,0 +1,9 @@
+import { useState } from 'react';
+import { MapPin, MessageCircle, Send, Sparkles } from 'lucide-react';
+import { createCamelliaReply } from '@/lib/camelliaReply';
+import type { CamelliaState, Recommendation } from '@/types';
+export function CamelliaScreen({state,recommendations,onSaveConversation,onOpenAction,onNavigate}:{state:CamelliaState;recommendations:Recommendation[];onSaveConversation:(u:string,a:string)=>void;onOpenAction:(r:Recommendation)=>void;onNavigate:(where:'discover'|'circle'|'place')=>void}) {
+ const [input,setInput]=useState(''); const initial=state.aiConversations[0]?.messages??[]; const [messages,setMessages]=useState(initial);
+ const send=()=>{if(!input.trim())return;const answer=createCamelliaReply(state,recommendations,input);const now=new Date().toISOString();setMessages(v=>[...v,{id:now,role:'user',text:input,createdAt:now},{id:now+'a',role:'assistant',text:answer,createdAt:now}]);onSaveConversation(input,answer);setInput('')};
+ return <main className="screen camellia"><header><div><p className="eyebrow">あなたを理解するパートナー</p><h1>AI Camellia</h1></div><span className="avatar-flower">✿</span></header><section className="ai-context"><Sparkles size={18}/><p>{createCamelliaReply(state,recommendations,'今の私に合う過ごし方')}</p></section><div className="chat">{messages.map(m=><div className={`bubble ${m.role}`} key={m.id}>{m.text}</div>)}</div><div className="action-links"><button onClick={()=>recommendations[0]&&onOpenAction(recommendations[0])}>✿ おすすめ行動</button><button onClick={()=>onNavigate('discover')}><Sparkles/> Discover</button><button onClick={()=>onNavigate('circle')}><MessageCircle/> Circle</button><button onClick={()=>onNavigate('place')}><MapPin/> Place</button></div><div className="composer"><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="今の気持ちを話してね…"/><button onClick={send} aria-label="送信"><Send size={18}/></button></div></main>
+}

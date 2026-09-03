@@ -1,0 +1,17 @@
+import { createServer } from 'vite';
+import { fileURLToPath } from 'node:url';
+const root=fileURLToPath(new URL('..',import.meta.url));
+const server = await createServer({ configFile:false,root,resolve:{alias:{'@':root}},server: { middlewareMode: true }, appType: 'custom' });
+const { calculateCategoryScores, recommend } = await server.ssrLoadModule('/lib/recommendation/engine.ts');
+const now = new Date().toISOString();
+const base = (profile={}, check={}) => ({ version:2, profile:{id:'p',name:'',age:'30代',interests:[],lifestyle:'仕事',priority:'',periodEnabled:false,createdAt:now,updatedAt:now,...profile},checkins:Object.keys(check).length?[{id:'c',mood:3,createdAt:now,updatedAt:now,...check}]:[],actions:[],actionFeedback:[],savedActions:[],aiConversations:[],onboardingComplete:true,createdAt:now,updatedAt:now });
+const results=[];
+const A=base({}, {sleep:5,stress:'高い',body:'疲れ気味'}); results.push(['A',calculateCategoryScores(A).REST>=7,calculateCategoryScores(A)]);
+const B=base({}, {sleep:8,mood:5,stress:'低い'}); const bs=calculateCategoryScores(B); results.push(['B',bs.PLAY>=1&&bs.LEARN>=1,bs]);
+const plain=base(); const beauty=base({interests:['美容']}); results.push(['C',calculateCategoryScores(beauty).BEAUTY>calculateCategoryScores(plain).BEAUTY,calculateCategoryScores(beauty)]);
+const D=base({}, {stress:'高い'}); D.actionFeedback=[0,1,2].map(i=>({id:`f${i}`,actionRecordId:`r${i}`,actionId:'walk',rating:'great',createdAt:now,updatedAt:now})); results.push(['D',recommend(D,new Date(),undefined,20).findIndex(x=>x.action.id==='walk')<recommend(base({}, {stress:'高い'}),new Date(),undefined,20).findIndex(x=>x.action.id==='walk'),recommend(D)[0].action.id]);
+const E=base(); E.actionFeedback=[0,1,2].map(i=>({id:`b${i}`,actionRecordId:`r${i}`,actionId:'breathing',rating:'bad',createdAt:now,updatedAt:now})); results.push(['E',recommend(E,new Date(),undefined,20).findIndex(x=>x.action.id==='breathing')>recommend(base(),new Date(),undefined,20).findIndex(x=>x.action.id==='breathing'),recommend(E, new Date(), undefined,20).at(-1).action.id]);
+const F=base(); results.push(['F',F.checkins.length===0&&F.actions.length===0,'no records']);
+for(const [name,ok,detail] of results) console.log(`${name}: ${ok?'PASS':'FAIL'}`,JSON.stringify(detail));
+await server.close();
+if(results.some(x=>!x[1])) process.exitCode=1;
