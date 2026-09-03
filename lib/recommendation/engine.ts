@@ -1,4 +1,5 @@
 import { ACTIONS, CATEGORY_LABELS } from '@/data/actions';
+import { behaviorAdjustments } from '@/lib/memory/engine';
 import type { CamelliaState, Category, Checkin, Recommendation, TimeBand } from '@/types';
 
 export type CategoryScores = Record<Category, number>;
@@ -52,18 +53,11 @@ export function calculateCategoryScores(state: CamelliaState, date = new Date())
   return scores;
 }
 
-function actionHistoryScore(state: CamelliaState, actionId: string) {
-  const ratings = state.actionFeedback.filter((item) => item.actionId === actionId);
-  const ratingScore = ratings.reduce((sum, item) => sum + ({ great: 2, okay: 0.5, same: -0.25, bad: -2 }[item.rating]), 0);
-  const skips = state.actions.filter((item) => item.actionId === actionId && item.status === 'skipped').length;
-  return ratingScore - Math.min(skips * 1.5, 4);
-}
-
 function reasonsFor(state: CamelliaState, actionId: string, category: Category, check?: Checkin): string[] {
   const reasons: string[] = [];
-  if (check?.sleep !== undefined && check.sleep < 6 && category === 'REST') reasons.push(`睡眠が${check.sleep}時間と短めだから`);
-  if ((check?.stress === '高い' || check?.stress === 'やや高い') && ['REST', 'CONNECT', 'BODY'].includes(category)) reasons.push('ストレスが高めだから');
-  if ((check?.body === '疲れ気味' || check?.body === '悪い') && ['REST', 'BODY'].includes(category)) reasons.push('身体に疲れが出ているから');
+  if (check?.sleep !== undefined && check.sleep < 6 && category === 'REST') reasons.push(`入力では睡眠が${check.sleep}時間と短めだったから`);
+  if ((check?.stress === '高い' || check?.stress === 'やや高い') && ['REST', 'CONNECT', 'BODY'].includes(category)) reasons.push('入力を見るとストレスを感じているのかもしれないから');
+  if ((check?.body === '疲れ気味' || check?.body === '悪い') && ['REST', 'BODY'].includes(category)) reasons.push('入力では身体に疲れを感じているようだから');
   if (check?.periodDays !== undefined && check.periodDays <= 3 && ['REST', 'BODY'].includes(category)) reasons.push(`生理予定まで${check.periodDays}日だから`);
   if (state.profile.interests.some((x) => x.includes('美容')) && category === 'BEAUTY') reasons.push('美容への興味に合っているから');
   const good = state.actionFeedback.filter((x) => x.actionId === actionId && x.rating === 'great').length;
@@ -79,14 +73,22 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
   return ACTIONS
     .filter((action) => !category || action.category === category)
     .map((action) => {
-      let score = scores[action.category] + actionHistoryScore(state, action.id);
+      const memory=behaviorAdjustments(state,action.id,date);
+      let score = scores[action.category] + memory.history + memory.saveBoost - memory.proposalPenalty - memory.recentExecutionPenalty - memory.dislikePenalty;
       if (action.tags.includes(band === '朝' ? 'morning' : 'night') && (band === '朝' || band === '夜')) score += 0.5;
       if (check?.stress === '高い' && action.tags.includes('stress')) score += 1;
       if (check?.body === '疲れ気味' && action.tags.includes('body')) score += 1;
+      if (state.profile.availableMinutes && action.minutes > state.profile.availableMinutes) score -= 2;
+      if(check?.body==='悪い'&&action.id==='walk')score-=5;
       return { action, score, reasons: reasonsFor(state, action.id, action.category, check) };
     })
     .sort((a, b) => b.score - a.score || a.action.minutes - b.action.minutes)
-    .slice(0, limit);
+    .reduce<Recommendation[]>((picked,item)=>{
+      if(picked.length>=limit)return picked;
+      const same=picked.filter(x=>x.action.category===item.action.category).length;
+      if(!category&&same>=2)return picked;
+      picked.push(item);return picked;
+    },[]);
 }
 
 export function buildTodaySummary(state: CamelliaState, date = new Date()): string {
@@ -94,16 +96,16 @@ export function buildTodaySummary(state: CamelliaState, date = new Date()): stri
   const name = state.profile.name ? `${state.profile.name}さん、` : '';
   if (!check) return `${name}はじめまして。まず、今日のあなたを少しだけ教えてください。`;
   const parts: string[] = [];
-  if (check.mood <= 2) parts.push('今日は心が少し疲れているみたい');
-  else if (check.mood >= 4) parts.push('今日は気持ちに少し余裕がありそう');
-  else parts.push('今日は穏やかな状態のようです');
+  if (check.mood <= 2) parts.push('入力を見ると、心に少し負担を感じているのかもしれません');
+  else if (check.mood >= 4) parts.push('入力を見ると、今日は気持ちに少し余裕があるのかもしれません');
+  else parts.push('入力では、今日は比較的穏やかな状態のようです');
   const previous = [...state.checkins].filter((x) => x.id !== check.id && x.sleep !== undefined).sort((a,b) => b.createdAt.localeCompare(a.createdAt))[0];
   if (check.sleep !== undefined && previous?.sleep !== undefined) {
     if (check.sleep < previous.sleep) parts.push(`睡眠は前回より${(previous.sleep-check.sleep).toFixed(1)}時間短めです`);
     else if (check.sleep > previous.sleep) parts.push(`睡眠は前回より${(check.sleep-previous.sleep).toFixed(1)}時間とれています`);
   } else if (check.sleep !== undefined) parts.push(`睡眠は${check.sleep}時間でした`);
   if (check.periodDays !== undefined && check.periodDays <= 3) parts.push(`生理予定まで${check.periodDays}日です`);
-  if (check.stress === '高い' || check.body === '疲れ気味' || check.body === '悪い') parts.push('今日は頑張ることより、自分を少し休ませてもよさそう');
+  if (check.stress === '高い' || check.body === '疲れ気味' || check.body === '悪い') parts.push('もし負担を感じているなら、今日は頑張ることより自分を少し休ませてもよさそうです');
   else if (getTimeBand(date) === '夜') parts.push('今日できたことを認めて、ゆっくり終える時間にしましょう');
   else parts.push('今の調子に合う、小さな一歩から選んでみましょう');
   return `${name}${parts.join('。')}。`;

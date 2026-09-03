@@ -1,95 +1,23 @@
-/* oxlint-disable react/EffectSetState -- hydration must load browser-local persisted state after mount */
+/* oxlint-disable react/EffectSetState -- hydrate device-local prototype state after mount */
 'use client';
-
-import { useCallback, useEffect, useState } from 'react';
-import type { ActionDefinition, CamelliaState, Checkin, FeedbackRating, Mood, Profile } from '@/types';
-
-export const STORAGE_KEY = 'camellia-prototype-v2';
-const LEGACY_KEY = 'camellia-prototype-v1';
-const stamp = () => new Date().toISOString();
-const uid = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-
-export function emptyState(): CamelliaState {
-  const now = stamp();
-  return {
-    version: 2,
-    profile: { id: uid(), name: '', age: '', interests: [], lifestyle: '', priority: '', periodEnabled: false, createdAt: now, updatedAt: now },
-    checkins: [], actions: [], actionFeedback: [], savedActions: [], aiConversations: [], onboardingComplete: false, createdAt: now, updatedAt: now,
-  };
-}
-
-function migrateLegacy(raw: unknown): CamelliaState {
-  const state = emptyState();
-  if (!raw || typeof raw !== 'object') return state;
-  const old = raw as Record<string, unknown>;
-  const legacyProfile = (old.profile && typeof old.profile === 'object') ? old.profile as Record<string, unknown> : {};
-  state.profile = {
-    ...state.profile,
-    name: typeof legacyProfile.name === 'string' ? legacyProfile.name : '',
-    age: typeof legacyProfile.age === 'string' ? legacyProfile.age : '',
-    interests: Array.isArray(legacyProfile.interests) ? legacyProfile.interests.filter((x): x is string => typeof x === 'string') : [],
-    lifestyle: typeof legacyProfile.lifestyle === 'string' ? legacyProfile.lifestyle : '',
-    priority: typeof legacyProfile.priority === 'string' ? legacyProfile.priority : '',
-    periodEnabled: Boolean(legacyProfile.periodEnabled),
-    updatedAt: stamp(),
-  };
-  state.onboardingComplete = Boolean(old.onboarded || old.onboardingComplete);
-  return state;
-}
-
-function loadInitial(): CamelliaState {
-  if (typeof window === 'undefined') return emptyState();
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved) as CamelliaState;
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if (legacy) return migrateLegacy(JSON.parse(legacy));
-  } catch { /* damaged demo data starts cleanly */ }
-  return emptyState();
-}
-
-export function useCamelliaStore() {
-  const [state, setState] = useState<CamelliaState>(() => emptyState());
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    // oxlint-disable-next-line react/react-compiler -- initialize from the browser-only persistence boundary
-    setState(loadInitial()); setReady(true);
-  }, []);
-  useEffect(() => { if (ready) localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, updatedAt: stamp() })); }, [state, ready]);
-
-  const updateProfile = useCallback((values: Partial<Profile>) => setState((s) => ({ ...s, profile: { ...s.profile, ...values, updatedAt: stamp() } })), []);
-  const completeOnboarding = useCallback(() => setState((s) => ({ ...s, onboardingComplete: true })), []);
-  const addCheckin = useCallback((values: { mood: Mood } & Partial<Omit<Checkin, 'id'|'mood'|'createdAt'|'updatedAt'>>) => {
-    const now = stamp();
-    setState((s) => ({ ...s, checkins: [...s.checkins, { id: uid(), ...values, createdAt: now, updatedAt: now }] }));
-  }, []);
-  const startAction = useCallback((action: ActionDefinition) => {
-    const now = stamp();
-    setState((s) => ({ ...s, actions: [...s.actions, { id: uid(), actionId: action.id, title: action.title, category: action.category, status: 'started', startedAt: now, createdAt: now, updatedAt: now }] }));
-  }, []);
-  const completeAction = useCallback((recordId: string) => setState((s) => ({ ...s, actions: s.actions.map((a) => a.id === recordId ? { ...a, status: 'completed', completedAt: stamp(), updatedAt: stamp() } : a) })), []);
-  const skipAction = useCallback((action: ActionDefinition) => {
-    const now = stamp();
-    setState((s) => ({ ...s, actions: [...s.actions, { id: uid(), actionId: action.id, title: action.title, category: action.category, status: 'skipped', createdAt: now, updatedAt: now }] }));
-  }, []);
-  const saveAction = useCallback((action: ActionDefinition) => setState((s) => {
-    if (s.savedActions.some((x) => x.actionId === action.id)) return s;
-    const now = stamp();
-    return { ...s, savedActions: [...s.savedActions, { id: uid(), actionId: action.id, createdAt: now, updatedAt: now }] };
-  }), []);
-  const addFeedback = useCallback((actionRecordId: string, actionId: string, rating: FeedbackRating) => {
-    const now = stamp();
-    setState((s) => ({ ...s, actionFeedback: [...s.actionFeedback, { id: uid(), actionRecordId, actionId, rating, createdAt: now, updatedAt: now }] }));
-  }, []);
-  const addConversation = useCallback((userText: string, assistantText: string) => {
-    const now = stamp();
-    setState((s) => {
-      const current = s.aiConversations[0] ?? { id: uid(), messages: [], createdAt: now, updatedAt: now };
-      const messages = [...current.messages, { id: uid(), role: 'user' as const, text: userText, createdAt: now }, { id: uid(), role: 'assistant' as const, text: assistantText, createdAt: now }];
-      return { ...s, aiConversations: [{ ...current, messages, updatedAt: now }, ...s.aiConversations.slice(1)] };
-    });
-  }, []);
-  const reset = useCallback(() => setState(emptyState()), []);
-
-  return { state, ready, updateProfile, completeOnboarding, addCheckin, startAction, completeAction, skipAction, saveAction, addFeedback, addConversation, reset };
-}
+import { useCallback,useEffect,useState } from 'react';
+import { captureContext } from '@/lib/memory/engine';
+import type { ActionDefinition,CamelliaState,Checkin,ConversationIntent,DismissReason,FeedbackRating,Insight,InsightFeedback,Mood,Profile,SaveTiming } from '@/types';
+export const STORAGE_KEY='camellia-prototype-v3'; const V2_KEY='camellia-prototype-v2'; const V1_KEY='camellia-prototype-v1';
+const stamp=()=>new Date().toISOString(); const uid=()=>globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random()}`;
+export function emptyState():CamelliaState{const now=stamp();return{version:3,profile:{id:uid(),name:'',age:'',interests:[],lifestyle:'',priority:'',periodEnabled:false,createdAt:now,updatedAt:now},checkins:[],actions:[],actionFeedback:[],savedActions:[],aiConversations:[],contextualMemory:[],insights:[],insightFeedback:[],onboardingComplete:false,createdAt:now,updatedAt:now}}
+function migrate(raw:unknown):CamelliaState{const base=emptyState();if(!raw||typeof raw!=='object')return base;const old=raw as Partial<CamelliaState>&{version?:number};if(old.profile)base.profile={...base.profile,...old.profile};base.checkins=old.checkins??[];base.actions=old.actions??[];base.actionFeedback=old.actionFeedback??[];base.savedActions=(old.savedActions??[]).map(s=>({...s,timing:s.timing??'save_only'}));base.aiConversations=old.aiConversations??[];base.onboardingComplete=Boolean(old.onboardingComplete);return base}
+function load():CamelliaState{if(typeof window==='undefined')return emptyState();try{const v3=localStorage.getItem(STORAGE_KEY);if(v3)return JSON.parse(v3);const v2=localStorage.getItem(V2_KEY);if(v2)return migrate(JSON.parse(v2));const v1=localStorage.getItem(V1_KEY);if(v1)return migrate(JSON.parse(v1))}catch{}return emptyState()}
+export function useCamelliaStore(){const[state,setState]=useState<CamelliaState>(()=>emptyState());const[ready,setReady]=useState(false);useEffect(()=>{setState(load());setReady(true)},[]);useEffect(()=>{if(ready)localStorage.setItem(STORAGE_KEY,JSON.stringify({...state,updatedAt:stamp()}))},[state,ready]);
+ const memory=(s:CamelliaState,actionId:string,event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback',extra:Record<string,unknown>={})=>({id:uid(),actionId,event,context:captureContext(s),createdAt:stamp(),...extra});
+ const updateProfile=useCallback((p:Partial<Profile>)=>setState(s=>({...s,profile:{...s.profile,...p,updatedAt:stamp()}})),[]);const completeOnboarding=useCallback(()=>setState(s=>({...s,onboardingComplete:true})),[]);
+ const addCheckin=useCallback((v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>{const now=stamp();setState(s=>({...s,checkins:[...s.checkins,{id:uid(),...v,createdAt:now,updatedAt:now}]}))},[]);
+ const recordProposals=useCallback((ids:string[])=>setState(s=>{const today=new Date().toDateString();const add=ids.filter(id=>!s.contextualMemory.some(m=>m.actionId===id&&m.event==='proposed'&&new Date(m.createdAt).toDateString()===today)).map(id=>memory(s,id,'proposed'));return add.length?{...s,contextualMemory:[...s.contextualMemory,...add]}:s}),[]);
+ const startAction=useCallback((a:ActionDefinition)=>{const now=stamp();setState(s=>({...s,actions:[...s.actions,{id:uid(),actionId:a.id,title:a.title,category:a.category,status:'started',startedAt:now,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,a.id,'started')]}))},[]);
+ const completeAction=useCallback((id:string)=>setState(s=>{const a=s.actions.find(x=>x.id===id);return{...s,actions:s.actions.map(x=>x.id===id?{...x,status:'completed',completedAt:stamp(),updatedAt:stamp()}:x),contextualMemory:a?[...s.contextualMemory,memory(s,a.actionId,'completed')]:s.contextualMemory}}),[]);
+ const skipAction=useCallback((a:ActionDefinition,reason:DismissReason)=>{const now=stamp();setState(s=>({...s,actions:[...s.actions,{id:uid(),actionId:a.id,title:a.title,category:a.category,status:'skipped',dismissReason:reason,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,a.id,'dismissed',{dismissReason:reason})]}))},[]);
+ const saveAction=useCallback((a:ActionDefinition,timing:SaveTiming)=>setState(s=>{const now=stamp();return{...s,savedActions:[...s.savedActions,{id:uid(),actionId:a.id,timing,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,a.id,'saved',{saveTiming:timing})]}}),[]);
+ const addFeedback=useCallback((recordId:string,actionId:string,rating:FeedbackRating)=>{const now=stamp();setState(s=>({...s,actionFeedback:[...s.actionFeedback,{id:uid(),actionRecordId:recordId,actionId,rating,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,actionId,'feedback',{feedback:rating})]}))},[]);
+ const addConversation=useCallback((u:string,a:string,intent:ConversationIntent)=>{const now=stamp();setState(s=>{const current=s.aiConversations[0]??{id:uid(),messages:[],createdAt:now,updatedAt:now};return{...s,aiConversations:[{...current,messages:[...current.messages,{id:uid(),role:'user',text:u,intent,createdAt:now},{id:uid(),role:'assistant',text:a,intent,createdAt:now}],updatedAt:now},...s.aiConversations.slice(1)]}})},[]);
+ const syncInsights=useCallback((items:Insight[])=>setState(s=>({...s,insights:items})),[]);const feedbackInsight=useCallback((key:string,verdict:InsightFeedback['verdict'])=>{const now=stamp();setState(s=>({...s,insightFeedback:[...s.insightFeedback,{id:uid(),insightKey:key,verdict,createdAt:now,updatedAt:now}],insights:s.insights.map(i=>i.key===key?{...i,confidence:verdict==='incorrect'?Math.max(0,i.confidence-.5):Math.min(1,i.confidence+.15),updatedAt:now}:i)}))},[]);
+ const reset=useCallback(()=>setState(emptyState()),[]);return{state,ready,updateProfile,completeOnboarding,addCheckin,recordProposals,startAction,completeAction,skipAction,saveAction,addFeedback,addConversation,syncInsights,feedbackInsight,reset}}

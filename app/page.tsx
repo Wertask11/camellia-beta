@@ -23,11 +23,11 @@ export default function Page(){
  const intent=(x:string)=>{if(x==='何もしない'){const a=ACTIONS.find(a=>a.id==='do-nothing');if(a)setChosen({action:a,score:0,reasons:['何もしないことも、今日の大切な休息だから']});return}const map:Record<string,Category>={整える:'BODY',楽しむ:'PLAY',学ぶ:'LEARN',休む:'REST'};setCategory(map[x]);setTab('discover')};
  if(secondary)return <div className="app-shell"><SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/></div>;
  return <div className="app-shell">
-  {tab==='today'&&<TodayScreen state={store.state} recommendations={recs} onCheckin={store.addCheckin} onOpenAction={openAction} onIntent={intent} onTalk={()=>setTalkMenu(true)} onComplete={store.completeAction} onFeedback={store.addFeedback}/>} 
+  {tab==='today'&&<TodayScreen state={store.state} recommendations={recs} onCheckin={store.addCheckin} onOpenAction={openAction} onIntent={intent} onTalk={()=>setTalkMenu(true)} onComplete={store.completeAction} onFeedback={store.addFeedback} onProposals={store.recordProposals}/>} 
   {tab==='camellia'&&<CamelliaScreen state={store.state} recommendations={recs} onSaveConversation={store.addConversation} onOpenAction={openAction} onNavigate={x=>{if(x==='discover')setTab('discover');else setSecondary(x)}}/>}
   {tab==='discover'&&<DiscoverScreen state={store.state} category={category} onCategory={setCategory} onOpenAction={openAction} onOpenSecondary={setSecondary}/>} 
-  {tab==='my'&&<MyScreen state={store.state} onProfile={store.updateProfile} onReset={store.reset}/>}<BottomNav active={tab} onChange={setTab}/>
-  {chosen&&<ActionSheet action={chosen.action} onClose={()=>setChosen(undefined)} onStart={()=>{store.startAction(chosen.action);setChosen(undefined)}} onSave={()=>{store.saveAction(chosen.action);setChosen(undefined)}} onSkip={()=>{store.skipAction(chosen.action);setChosen(undefined)}}/>}
+  {tab==='my'&&<MyScreen state={store.state} onProfile={store.updateProfile} onReset={store.reset} onInsight={store.feedbackInsight} onSync={store.syncInsights}/>}<BottomNav active={tab} onChange={setTab}/>
+  {chosen&&<ActionSheet action={chosen.action} onClose={()=>setChosen(undefined)} onStart={()=>{store.startAction(chosen.action);setChosen(undefined)}} onSave={timing=>{store.saveAction(chosen.action,timing);setChosen(undefined)}} onSkip={reason=>{store.skipAction(chosen.action,reason);setChosen(undefined)}}/>}
   {talkMenu&&<div className="modal-backdrop" onClick={()=>setTalkMenu(false)}><section className="sheet compact" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setTalkMenu(false)}>×</button><p className="eyebrow">話す</p><h2>誰と話しますか？</h2><button className="primary" onClick={()=>{setTab('camellia');setTalkMenu(false)}}>AI Camelliaと話す</button><button className="secondary-button" onClick={()=>{setSecondary('circle');setTalkMenu(false)}}>Circleを見る</button></section></div>}
  </div>
 }
