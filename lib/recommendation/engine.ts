@@ -5,6 +5,10 @@ import type { CamelliaState, Category, Checkin, Recommendation, TimeBand } from 
 export type CategoryScores = Record<Category, number>;
 
 const blankScores = (): CategoryScores => ({ REST: 0, BODY: 0, BEAUTY: 0, PLAY: 0, LEARN: 0, CONNECT: 0 });
+const isGoodCheck = (check?: Checkin) => check?.mood !== undefined && check.mood >= 4
+  && (check.sleep === undefined || check.sleep >= 7)
+  && (check.stress === undefined || check.stress === '低い')
+  && (check.body === undefined || check.body === '良い');
 
 export function getTimeBand(date = new Date()): TimeBand {
   const hour = date.getHours();
@@ -33,7 +37,8 @@ export function calculateCategoryScores(state: CamelliaState, date = new Date())
   if (check?.body === '疲れ気味' || check?.body === '悪い') { scores.REST += 2; scores.BODY += 1; }
   if (check?.periodDays !== undefined && check.periodDays <= 3) { scores.REST += 2; scores.BODY += 1; }
   if (check && check.mood <= 2) { scores.REST += 1; scores.CONNECT += 2; }
-  if (check && check.mood >= 4 && (check.sleep ?? 0) >= 7) { scores.PLAY += 1; scores.LEARN += 1; }
+  const isGoodState = isGoodCheck(check);
+  if (isGoodState) { scores.PLAY += 2; scores.LEARN += 1.5; scores.BODY += 1; scores.REST -= 1.5; }
 
   for (const interest of profile.interests) {
     if (interest.includes('美容')) scores.BEAUTY += 1;
@@ -69,6 +74,7 @@ function reasonsFor(state: CamelliaState, actionId: string, category: Category, 
 export function recommend(state: CamelliaState, date = new Date(), category?: Category, limit = 3): Recommendation[] {
   const scores = calculateCategoryScores(state, date);
   const check = latestCheckin(state.checkins, date);
+  const isGoodState = isGoodCheck(check);
   const band = getTimeBand(date);
   return ACTIONS
     .filter((action) => !category || action.category === category)
@@ -80,6 +86,7 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
       if (check?.body === '疲れ気味' && action.tags.includes('body')) score += 1;
       if (state.profile.availableMinutes && action.minutes > state.profile.availableMinutes) score -= 2;
       if(check?.body==='悪い'&&action.id==='walk')score-=5;
+      if (isGoodState && action.id === 'do-nothing') score -= 1.5;
       return { action, score, reasons: reasonsFor(state, action.id, action.category, check) };
     })
     .sort((a, b) => b.score - a.score || a.action.minutes - b.action.minutes)

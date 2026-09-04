@@ -1,0 +1,3 @@
+export function PrivacyScreen({onBack}:{onBack:()=>void}) {
+  return <main className="screen privacy"><button className="back" onClick={onBack}>← Myへ戻る</button><header><div><p className="eyebrow">プライバシー</p><h1>保存される情報について</h1></div></header><section className="panel"><h2>この端末に保存される情報</h2><p>プロフィール、日々のCheck、選んだ行動と振り返り、あとで見る、見送り理由、Camelliaとの会話、Insightへの回答を、このブラウザのlocalStorageに保存します。</p><p>現在のβ版では、これらの情報を外部サーバーへ送信していません。ブラウザや端末を変えるとデータは引き継がれません。</p></section><section className="panel"><h2>健康情報について</h2><p>入力内容は、今日の提案や振り返りを調整するために使います。生理情報はプロフィールで利用をオフにできます。</p><p><strong>Camelliaは医療診断を行うサービスではありません。</strong>体調について不安がある場合は、医療機関など専門家へ相談してください。</p></section><section className="panel"><h2>データの削除</h2><p>Myの「保存データを削除する」から、このブラウザに保存されたCamelliaのデータを削除できます。</p></section></main>
+}

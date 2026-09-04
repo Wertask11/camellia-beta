@@ -1,4 +1,4 @@
-/* oxlint-disable react/EffectSetState -- hydrate device-local prototype state after mount */
+/* oxlint-disable react-compiler -- localStorage hydration and state transitions are intentionally centralized in this prototype store */
 'use client';
 import { useCallback,useEffect,useState } from 'react';
 import { captureContext } from '@/lib/memory/engine';
@@ -20,4 +20,4 @@ export function useCamelliaStore(){const[state,setState]=useState<CamelliaState>
  const addFeedback=useCallback((recordId:string,actionId:string,rating:FeedbackRating)=>{const now=stamp();setState(s=>({...s,actionFeedback:[...s.actionFeedback,{id:uid(),actionRecordId:recordId,actionId,rating,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,actionId,'feedback',{feedback:rating})]}))},[]);
  const addConversation=useCallback((u:string,a:string,intent:ConversationIntent,topics:ConversationTopic[])=>{const now=stamp();setState(s=>{const current=s.aiConversations[0]??{id:uid(),messages:[],createdAt:now,updatedAt:now};return{...s,aiConversations:[{...current,messages:[...current.messages,{id:uid(),role:'user',text:u,intent,topics,createdAt:now},{id:uid(),role:'assistant',text:a,intent,topics,createdAt:now}],updatedAt:now},...s.aiConversations.slice(1)]}})},[]);
  const syncInsights=useCallback((items:Insight[])=>setState(s=>({...s,insights:items})),[]);const feedbackInsight=useCallback((key:string,verdict:InsightFeedback['verdict'])=>{const now=stamp();setState(s=>({...s,insightFeedback:[...s.insightFeedback,{id:uid(),insightKey:key,verdict,createdAt:now,updatedAt:now}],insights:s.insights.map(i=>i.key===key?{...i,confidence:verdict==='incorrect'?Math.max(0,i.confidence-.5):Math.min(1,i.confidence+.15),updatedAt:now}:i)}))},[]);
- const reset=useCallback(()=>setState(emptyState()),[]);return{state,ready,updateProfile,completeOnboarding,addCheckin,recordProposals,startAction,completeAction,skipAction,saveAction,addFeedback,addConversation,syncInsights,feedbackInsight,reset}}
+ const reset=useCallback(()=>{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(V2_KEY);localStorage.removeItem(V1_KEY);setState(emptyState())},[]);return{state,ready,updateProfile,completeOnboarding,addCheckin,recordProposals,startAction,completeAction,skipAction,saveAction,addFeedback,addConversation,syncInsights,feedbackInsight,reset}}
