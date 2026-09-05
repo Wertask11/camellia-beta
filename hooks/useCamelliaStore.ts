@@ -2,6 +2,7 @@
 'use client';
 import { useCallback,useEffect,useState } from 'react';
 import { captureContext } from '@/lib/memory/engine';
+import { forwardEvent } from '@/lib/analytics/posthog';
 import type { ActionDefinition,AnalyticsEventName,CamelliaState,Checkin,ConversationIntent,ConversationTopic,DailyFortune,DismissReason,FeedbackRating,Insight,InsightFeedback,Mood,Profile,SaveTiming,TreeLeaf } from '@/types';
 export const STORAGE_KEY='camellia-prototype-v3'; const V2_KEY='camellia-prototype-v2'; const V1_KEY='camellia-prototype-v1';
 const stamp=()=>new Date().toISOString(); const uid=()=>globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random()}`;
@@ -9,6 +10,7 @@ export function emptyState():CamelliaState{const now=stamp();return{version:3,pr
 function migrate(raw:unknown):CamelliaState{const base=emptyState();if(!raw||typeof raw!=='object')return base;const old=raw as Partial<CamelliaState>&{version?:number};if(old.profile)base.profile={...base.profile,...old.profile};base.checkins=old.checkins??[];base.actions=old.actions??[];base.actionFeedback=old.actionFeedback??[];base.savedActions=(old.savedActions??[]).map(s=>({...s,timing:s.timing??'save_only'}));base.aiConversations=old.aiConversations??[];base.onboardingComplete=Boolean(old.onboardingComplete);return base}
 function load():CamelliaState{if(typeof window==='undefined')return emptyState();try{const v3=localStorage.getItem(STORAGE_KEY);if(v3){const saved=JSON.parse(v3);return{...emptyState(),...saved,fortunes:saved.fortunes??[],treeLeaves:saved.treeLeaves??[],analyticsEvents:saved.analyticsEvents??[]}}const v2=localStorage.getItem(V2_KEY);if(v2)return migrate(JSON.parse(v2));const v1=localStorage.getItem(V1_KEY);if(v1)return migrate(JSON.parse(v1))}catch{}return emptyState()}
 export function useCamelliaStore(){const[state,setState]=useState<CamelliaState>(()=>emptyState());const[ready,setReady]=useState(false);useEffect(()=>{setState(load());setReady(true)},[]);useEffect(()=>{if(ready)localStorage.setItem(STORAGE_KEY,JSON.stringify({...state,updatedAt:stamp()}))},[state,ready]);
+ useEffect(()=>{if(!ready)return;const pending=state.analyticsEvents.filter(e=>!e.forwardedAt);if(!pending.length)return;const sent=pending.filter(e=>forwardEvent(e,state)).map(e=>e.id);if(sent.length)setState(s=>({...s,analyticsEvents:s.analyticsEvents.map(e=>sent.includes(e.id)?{...e,forwardedAt:stamp()}:e)}))},[ready,state]);
  const track=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>setState(s=>({...s,analyticsEvents:[...s.analyticsEvents,{id:uid(),name,properties,createdAt:stamp()}]})),[]);
  useEffect(()=>{if(ready&&sessionStorage.getItem('camellia-session')!=='1'){sessionStorage.setItem('camellia-session','1');track('session_start')}},[ready,track]);
  const memory=(s:CamelliaState,actionId:string,event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback',extra:Record<string,unknown>={})=>({id:uid(),actionId,event,context:captureContext(s),createdAt:stamp(),...extra});
