@@ -18,6 +18,13 @@ export interface ActionContext { mood?:Mood; sleep?:number; body?:Checkin['body'
 export interface ContextualActionMemory { id:string; actionId:string; event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback'; context:ActionContext; feedback?:FeedbackRating; dismissReason?:DismissReason; saveTiming?:SaveTiming; createdAt:string }
 export interface Insight { id:string; key:string; text:string; confidence:number; sampleSize:number; createdAt:string; updatedAt:string }
 export interface InsightFeedback { id:string; insightKey:string; verdict:'correct'|'incorrect'; createdAt:string; updatedAt:string }
-export interface CamelliaState { version:3; profile:Profile; checkins:Checkin[]; actions:ActionRecord[]; actionFeedback:ActionFeedback[]; savedActions:SavedAction[]; aiConversations:AIConversation[]; contextualMemory:ContextualActionMemory[]; insights:Insight[]; insightFeedback:InsightFeedback[]; onboardingComplete:boolean; createdAt:string; updatedAt:string }
+export type TreeCategory='family'|'friend'|'love'|'work'|'learning'|'other';
+export type TreeMeaningTag='precious'|'energizing'|'calming'|'grow_together'|'admire'|'supportive'|'curious'|'fun';
+export interface TreeReflection { id:string; text:string; createdAt:string; updatedAt:string }
+export interface TreeLeaf { id:string; name:string; category:TreeCategory; meaningTags:TreeMeaningTag[]; note:string; status:'active'|'memory'; reflections:TreeReflection[]; createdAt:string; updatedAt:string; lastOpenedAt?:string }
+export interface DailyFortune { date:string; cardId:string; orientation:'upright'|'reversed'; status:'drawn'|'skipped'; actionId?:string; createdAt:string; updatedAt:string }
+export type AnalyticsEventName='session_start'|'check_complete'|'fortune_open'|'fortune_draw'|'fortune_complete'|'fortune_action_selected'|'fortune_skip'|'tree_open'|'tree_add_start'|'tree_add_complete'|'tree_leaf_open'|'tree_leaf_edit'|'tree_reflection_add'|'tree_archive';
+export interface AnalyticsEvent { id:string; name:AnalyticsEventName; properties?:Record<string,string|number|boolean>; createdAt:string }
+export interface CamelliaState { version:3; profile:Profile; checkins:Checkin[]; actions:ActionRecord[]; actionFeedback:ActionFeedback[]; savedActions:SavedAction[]; aiConversations:AIConversation[]; contextualMemory:ContextualActionMemory[]; insights:Insight[]; insightFeedback:InsightFeedback[]; fortunes:DailyFortune[]; treeLeaves:TreeLeaf[]; analyticsEvents:AnalyticsEvent[]; onboardingComplete:boolean; createdAt:string; updatedAt:string }
 export interface ActionDefinition { id:string; title:string; category:Category; discoverCategory:string; minutes:number; image:string; description:string; tags:string[]; destination?:'circle'|'place' }
 export interface Recommendation { action:ActionDefinition; score:number; reasons:string[] }

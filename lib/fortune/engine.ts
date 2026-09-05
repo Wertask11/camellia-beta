@@ -1,0 +1,6 @@
+import { TAROT_CARDS } from '@/data/tarot';
+import type { CamelliaState,DailyFortune } from '@/types';
+export const jstDate=(date=new Date())=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+function hash(value:string){let h=2166136261;for(const c of value){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+export function drawFortune(userId:string,date=jstDate()){const seed=hash(`${userId}:${date}`);return{card:TAROT_CARDS[seed%TAROT_CARDS.length],orientation:(seed%4===0?'reversed':'upright') as DailyFortune['orientation']}}
+export function fortuneMessage(state:CamelliaState,fortune:DailyFortune){const {card}=drawFortune(state.profile.id,fortune.date);const latest=[...state.checkins].reverse().find(c=>jstDate(new Date(c.createdAt))===fortune.date);const base=card.meanings[fortune.orientation];if(!latest)return `${base}。今日は、この言葉を自分の気持ちに重ねすぎず、気になる部分だけ受け取ってみて。`;if(latest.sleep!==undefined&&latest.sleep<6)return `${base}。睡眠の記録を見ると、今日は答えを急ぐより、休める余白をつくるのもよさそうです。`;if(latest.stress==='高い'||latest.stress==='やや高い')return `${base}。ストレスを感じているという入力もあるので、自分にやさしい選択をひとつだけ考えてみて。`;if(latest.mood>=4)return `${base}。今の軽やかさを使って、気になっていた小さなことを試す日にしてもよさそうです。`;return `${base}。正解を決めるのではなく、今日の自分を眺めるきっかけにしてみて。`}
