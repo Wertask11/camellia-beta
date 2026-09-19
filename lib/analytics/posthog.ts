@@ -7,6 +7,7 @@ import type {
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   session_start: [],
+  check_view: [],
   check_start: [],
   check_complete: ['hasDetails'],
   fortune_open: [],
