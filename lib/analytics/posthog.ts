@@ -10,6 +10,8 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   check_view: [],
   check_start: [],
   check_complete: ['hasDetails'],
+  daily_reflection_view: ['reflection_stage', 'history_days'],
+  weekly_insight_view: ['history_days'],
   fortune_open: [],
   fortune_draw: ['cardId'],
   fortune_complete: ['cardId'],
@@ -42,7 +44,10 @@ export function initAnalytics(distinctId: string) {
   initialized = true;
   return true;
 }
-export function sanitizeEventProperties(event: AnalyticsEvent, state: CamelliaState) {
+export function sanitizeEventProperties(
+  event: AnalyticsEvent,
+  state: CamelliaState,
+) {
   const allowed = SAFE_PROPERTIES[event.name];
   const source = event.properties ?? {};
   const safe: Record<string, string | number | boolean> = {};
