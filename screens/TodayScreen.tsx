@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Sparkles } from 'lucide-react';
 import { ActionCard } from '@/components/ActionCard';
 import { buildTodaySummary, getTimeBand } from '@/lib/recommendation';
 import type { CamelliaState, Checkin, FeedbackRating, Mood, Recommendation } from '@/types';
 
 const moods:{value:Mood;emoji:string;label:string}[]=[{value:5,emoji:'😊',label:'とても良い'},{value:4,emoji:'🙂',label:'良い'},{value:3,emoji:'😐',label:'普通'},{value:2,emoji:'😔',label:'少しつらい'},{value:1,emoji:'😣',label:'つらい'}];
-export function TodayScreen({state,recommendations,forceNight=false,onCheckStart,onCheckin,onOpenAction,onIntent,onTalk,onFortune,onTree,onComplete,onFeedback,onProposals}:{state:CamelliaState;recommendations:Recommendation[];forceNight?:boolean;onCheckStart:()=>void;onCheckin:(v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>void;onOpenAction:(r:Recommendation)=>void;onIntent:(x:string)=>void;onTalk:()=>void;onFortune:()=>void;onTree:()=>void;onComplete:(id:string)=>void;onFeedback:(recordId:string,actionId:string,rating:FeedbackRating)=>void;onProposals:(ids:string[])=>void}) {
+export function TodayScreen({state,recommendations,forceNight=false,onCheckView,onCheckStart,onCheckin,onOpenAction,onIntent,onTalk,onFortune,onTree,onComplete,onFeedback,onProposals}:{state:CamelliaState;recommendations:Recommendation[];forceNight?:boolean;onCheckView:()=>void;onCheckStart:()=>void;onCheckin:(v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>void;onOpenAction:(r:Recommendation)=>void;onIntent:(x:string)=>void;onTalk:()=>void;onFortune:()=>void;onTree:()=>void;onComplete:(id:string)=>void;onFeedback:(recordId:string,actionId:string,rating:FeedbackRating)=>void;onProposals:(ids:string[])=>void}) {
+  const checkViewSent=useRef(false);
+  useEffect(()=>{const timer=window.setTimeout(()=>{if(!checkViewSent.current){checkViewSent.current=true;onCheckView()}},0);return()=>window.clearTimeout(timer)},[onCheckView]);
   const [mood,setMood]=useState<Mood|undefined>(); const [more,setMore]=useState(false); const [sleep,setSleep]=useState(''); const [body,setBody]=useState<Checkin['body']>(); const [stress,setStress]=useState<Checkin['stress']>(); const [period,setPeriod]=useState(''); const [saved,setSaved]=useState(false);
   const date=useMemo(()=>new Intl.DateTimeFormat('ja-JP',{month:'long',day:'numeric',weekday:'long'}).format(new Date()),[]);
   const active=state.actions.filter(a=>a.status==='started');
