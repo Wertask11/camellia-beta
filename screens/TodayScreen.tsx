@@ -156,11 +156,9 @@ export function TodayScreen({
         <span className="logo-small">Camellia ✿</span>
       </header>
       <section className="check-card">
-        <h2>
-          {state.checkins.length
-            ? '今日はどう？'
-            : 'はじめまして。まず、今日のあなたを少しだけ教えてください。'}
-        </h2>
+        <p className="eyebrow">今日のCheck · 気分をひとつ選ぶだけ</p>
+        <h2>今日の私は、どんな感じ？</h2>
+        <p className="check-intro">気分を選んで保存すると、今日のあなたへの気づきと、今日に合う過ごし方が見えてきます。記録があれば、昨日との違いも。</p>
         <div className="moods">
           {moods.map((x) => (
             <button
@@ -173,7 +171,8 @@ export function TodayScreen({
                 setSaved(false);
               }}
             >
-              {x.emoji}
+              <span aria-hidden="true">{x.emoji}</span>
+              <span className="mood-label">{x.label}</span>
             </button>
           ))}
         </div>
