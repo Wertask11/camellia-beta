@@ -3,6 +3,7 @@ import { MessageCircle, Sparkles } from 'lucide-react';
 import { ActionCard } from '@/components/ActionCard';
 import { buildTodaySummary, getTimeBand } from '@/lib/recommendation';
 import { buildDailyReflection } from '@/lib/reflection/engine';
+import { checkEntryCopy } from '@/lib/reflection/check-entry';
 import type {
   AnalyticsEventName,
   CamelliaState,
@@ -108,6 +109,10 @@ export function TodayScreen({
     () => buildDailyReflection(state, displayDate),
     [state, displayDate],
   );
+  const entryCopy = useMemo(
+    () => checkEntryCopy(state.checkins, displayDate),
+    [state.checkins, displayDate],
+  );
   const reflectionViewSent = useRef('');
   useEffect(() => {
     if (!dailyReflection) return;
@@ -156,9 +161,9 @@ export function TodayScreen({
         <span className="logo-small">Camellia ✿</span>
       </header>
       <section className="check-card">
-        <p className="eyebrow">今日のCheck · 気分をひとつ選ぶだけ</p>
-        <h2>今日の私は、どんな感じ？</h2>
-        <p className="check-intro">気分を選んで保存すると、今日のあなたへの気づきと、今日に合う過ごし方が見えてきます。記録があれば、昨日との違いも。</p>
+        <p className="eyebrow">今日のCheck</p>
+        <h2>{entryCopy.title}</h2>
+        <p className="check-intro">{entryCopy.prompt}</p>
         <div className="moods">
           {moods.map((x) => (
             <button
@@ -176,8 +181,11 @@ export function TodayScreen({
             </button>
           ))}
         </div>
+        <p className="check-preview">
+          Checkのあとに <span>今日のあなた</span>・<span>今日の過ごし方</span>・<span>今日の一枚</span>
+        </p>
         <button className="text-button" onClick={() => setMore(!more)}>
-          {more ? '閉じる' : '＋ もう少し教える'}
+          {more ? '閉じる' : '睡眠や身体のことも添える（任意）'}
         </button>
         {more && (
           <div className="more-check">
@@ -233,7 +241,7 @@ export function TodayScreen({
           </div>
         )}
         <button className="primary" disabled={!mood} onClick={save}>
-          {saved ? '保存しました' : 'この状態を保存'}
+          {saved ? '保存しました' : '今日の私を見てみる'}
         </button>
       </section>
       {dailyReflection ? (
