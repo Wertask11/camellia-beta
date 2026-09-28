@@ -465,16 +465,25 @@ select {
   cursor: pointer;
 }
 .mood-label {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.25;
   white-space: nowrap;
   color: var(--muted);
 }
 .check-intro {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.65;
-  margin: 8px 0 12px;
+  margin: 5px 0 10px;
+}
+.check-preview {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0 0 5px;
+}
+.check-preview span {
+  color: #885869;
 }
 .moods button.selected {
   border-color: #df7794;
