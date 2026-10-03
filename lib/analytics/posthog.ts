@@ -1,4 +1,5 @@
 import posthog from 'posthog-js';
+import { sanitizeAttribution } from './attribution';
 import type {
   AnalyticsEvent,
   AnalyticsEventName,
@@ -39,6 +40,7 @@ export function initAnalytics(distinctId: string) {
     person_profiles: 'never',
     respect_dnt: true,
     persistence: 'localStorage',
+    save_campaign_params: false,
   });
   posthog.identify(`camellia_${distinctId}`);
   initialized = true;
@@ -66,6 +68,12 @@ export function sanitizeEventProperties(
     tree = names.has('tree_add_complete');
   return {
     ...safe,
+    utm_source: '',
+    utm_medium: '',
+    utm_campaign: '',
+    utm_content: '',
+    ...sanitizeAttribution(source),
+    $insert_id: event.id,
     event_schema: 1,
     app_version: 'beta-v3',
     usage_cohort: check

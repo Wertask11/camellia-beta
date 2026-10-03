@@ -449,6 +449,19 @@ select {
   gap: 4px;
   margin: 14px 0;
 }
+.mood-question {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 12px 0 0;
+}
+.mood-choice { border: 0; padding: 0; margin: 0; min-width: 0; }
+.mood-question span {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.reflection-card h2 { scroll-margin-top: 24px; }
 .moods button {
   border: 1px solid transparent;
   background: #fff4ec;

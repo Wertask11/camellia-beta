@@ -81,6 +81,14 @@ export function TodayScreen({
   const [stress, setStress] = useState<Checkin['stress']>();
   const [period, setPeriod] = useState('');
   const [saved, setSaved] = useState(false);
+  const saveLocked = useRef(false);
+  const resultHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (saved) {
+      resultHeading.current?.focus({ preventScroll: true });
+      resultHeading.current?.scrollIntoView({ block: 'start' });
+    }
+  }, [saved]);
   const date = useMemo(
     () =>
       new Intl.DateTimeFormat('ja-JP', {
@@ -136,7 +144,8 @@ export function TodayScreen({
     夜: 'こんばんは',
   }[timeBand];
   const save = () => {
-    if (!mood) return;
+    if (!mood || saveLocked.current) return;
+    saveLocked.current = true;
     onCheckin({
       mood,
       sleep: sleep ? Number(sleep) : undefined,
@@ -164,14 +173,18 @@ export function TodayScreen({
         <p className="eyebrow">今日のCheck</p>
         <h2>{entryCopy.title}</h2>
         <p className="check-intro">{entryCopy.prompt}</p>
+        <fieldset className="mood-choice">
+        <legend className="mood-question">今の気分は？ <span>近いものをひとつ</span></legend>
         <div className="moods">
           {moods.map((x) => (
             <button
               aria-label={x.label}
+              aria-pressed={mood === x.value}
               className={mood === x.value ? 'selected' : ''}
               key={x.value}
               onClick={() => {
                 onCheckStart();
+                saveLocked.current = false;
                 setMood(x.value);
                 setSaved(false);
               }}
@@ -181,9 +194,12 @@ export function TodayScreen({
             </button>
           ))}
         </div>
+        </fieldset>
         <p className="check-preview">
           Checkのあとに <span>今日のあなた</span>・<span>今日の過ごし方</span>・<span>今日の一枚</span>
         </p>
+        {!mood && <p className="check-intro">気分だけでも大丈夫。</p>}
+        {mood && <>
         <button className="text-button" onClick={() => setMore(!more)}>
           {more ? '閉じる' : '睡眠や身体のことも添える（任意）'}
         </button>
@@ -240,15 +256,16 @@ export function TodayScreen({
             )}
           </div>
         )}
-        <button className="primary" disabled={!mood} onClick={save}>
+        <button className="primary" disabled={saved} onClick={save}>
           {saved ? '保存しました' : '今日の私を見てみる'}
         </button>
+        </>}
       </section>
       {dailyReflection ? (
         <section className="summary-card reflection-card">
           <div className="section-title">
             <Sparkles size={18} />
-            <h2>{dailyReflection.title}</h2>
+            <h2 ref={resultHeading} tabIndex={-1}>{dailyReflection.title}</h2>
           </div>
           {dailyReflection.messages.map((message, index) => (
             <p key={index}>{message}</p>
