@@ -8,7 +8,7 @@ type Consent = { version: string; acceptedAt: string };
 type Session = { userId: string; token: string; profileId: string };
 
 const apiBase = () =>
-  (import.meta.env.VITE_CAMELLIA_API_BASE || 'https://emu-realtime.onrender.com/api/camellia-official').replace(/\/$/, '');
+  (import.meta.env.VITE_CAMELLIA_API_BASE || 'https://emu-realtime.onrender.com/api/camellia').replace(/\/$/, '');
 
 export function readServerConsent(): Consent | null {
   if (typeof window === 'undefined') return null;
