@@ -46,6 +46,17 @@ async function readPassport(uid: string) {
   if (passportCache?.uid === uid) return passportCache.value;
   let value: string | undefined;
   try {
+    const claims = await schoolParkAuth.currentUser?.getIdTokenResult();
+    if (typeof claims?.claims.schoolParkId === 'string' && claims.claims.schoolParkId)
+      value = claims.claims.schoolParkId;
+  } catch {
+    // Fall back to the existing SchoolPark account document.
+  }
+  try {
+    if (value) {
+      passportCache = { uid, value };
+      return value;
+    }
     const snapshot = await getDoc(doc(schoolParkDb, 'ches_accounts', uid));
     const data = snapshot.data();
     const candidate = data?.chesAddress || data?.walletAddress;
@@ -68,8 +79,20 @@ async function performSync() {
   const user = await currentSchoolParkUser();
   if (!user) return;
   const uid = user.uid;
-  const documents = mapCamelliaState(latestState, await readPassport(uid));
   const sent = readSent(uid);
+  if (Object.keys(sent).length === 0) {
+    const remote = await getDoc(reference(uid, ''));
+    if (remote.exists()) {
+      const hasLocalData = latestState.checkins.length > 0 || latestState.fortunes.length > 0 ||
+        latestState.treeLeaves.length > 0 || latestState.aiConversations.length > 0;
+      if (hasLocalData) {
+        localStorage.setItem(`camellia-sync-conflict:${uid}`, new Date().toISOString());
+        throw new Error('MIGRATION_CONFLICT');
+      }
+      return;
+    }
+  }
+  const documents = mapCamelliaState(latestState, await readPassport(uid));
   const changed = documents
     .map((entry) => {
       const serialized = JSON.stringify(entry.data);
