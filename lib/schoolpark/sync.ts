@@ -80,6 +80,7 @@ async function performSync() {
   if (!user) return;
   const uid = user.uid;
   const sent = readSent(uid);
+  let preserveRemote = false;
   if (Object.keys(sent).length === 0) {
     const remote = await getDoc(reference(uid, ''));
     if (remote.exists()) {
@@ -87,9 +88,10 @@ async function performSync() {
         latestState.treeLeaves.length > 0 || latestState.aiConversations.length > 0;
       if (hasLocalData) {
         localStorage.setItem(`camellia-sync-conflict:${uid}`, new Date().toISOString());
-        throw new Error('MIGRATION_CONFLICT');
+        preserveRemote = true;
+      } else {
+        return;
       }
-      return;
     }
   }
   const documents = mapCamelliaState(latestState, await readPassport(uid));
@@ -98,7 +100,8 @@ async function performSync() {
       const serialized = JSON.stringify(entry.data);
       return { ...entry, mark: fingerprint(serialized) };
     })
-    .filter((entry) => sent[entry.path] !== entry.mark);
+    .filter((entry) => sent[entry.path] !== entry.mark)
+    .filter((entry) => !preserveRemote || entry.path.startsWith('imports/'));
   for (let offset = 0; offset < changed.length; offset += 400) {
     const part = changed.slice(offset, offset + 400);
     const batch = writeBatch(schoolParkDb);
