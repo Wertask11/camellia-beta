@@ -1,6 +1,7 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { ActionSheet } from '@/components/ActionSheet';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { ACTIONS } from '@/data/actions';
@@ -27,6 +28,7 @@ export default function Page() {
   const store = useCamelliaStore();
   const [entry, setEntry] = useState<'welcome' | 'account'>('welcome');
   const [authReady, setAuthReady] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const [profileSettings, setProfileSettings] = useState(false);
   const [tab, setTab] = useState<MainTab>('today');
   const [category, setCategory] = useState<Category>();
@@ -56,13 +58,14 @@ export default function Page() {
       store.track('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) });
     }
   }, [entry, store.ready, store.state.onboardingComplete, store.track]);
-  useEffect(() => {
-    void schoolParkAuth.authStateReady().finally(() => setAuthReady(true));
-  }, []);
+  useEffect(() => onAuthStateChanged(schoolParkAuth, (user) => {
+    setSignedIn(Boolean(user && !user.isAnonymous));
+    setAuthReady(true);
+  }), []);
   useEffect(() => {
     const user = schoolParkAuth.currentUser;
     if (user && !user.isAnonymous) void identifyCamelliaUser(user.uid);
-  }, [authReady]);
+  }, [authReady, signedIn]);
   useEffect(() => {
     void finishAuthCallback().then((result) => {
       if (!result) return;
@@ -75,8 +78,6 @@ export default function Page() {
     }).catch(() => setEntry('account'));
   }, [store.track, store.completeOnboarding]);
   if (!store.ready || !authReady) return <div className="loading">Camellia ✿</div>;
-  const user = schoolParkAuth.currentUser;
-  const signedIn = Boolean(user && !user.isAnonymous);
   if (!signedIn && entry === 'welcome') return <WelcomeScreen onContinue={() => {
     store.track('welcome_continue', { period: welcomeTheme().period });
     setEntry('account');
