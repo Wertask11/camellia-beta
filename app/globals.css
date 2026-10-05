@@ -975,6 +975,11 @@ details {
 .account-coming p { margin:0 0 3px; font-size:11px; color:#8b7a80; }.account-coming span { font-size:12px; color:#76686d; }
 .account-coming span::before { content:'○'; margin-right:8px; color:#d77a90; }
 .account-note { margin:16px 0 0; font-size:10px; line-height:1.6; color:#877980; }
+.account-policy { margin:14px 4px 0; font-size:12px; line-height:1.75; color:#6e5860; }
+.account-policy a { color:#9b3c59; text-underline-offset:3px; font-weight:600; }
+.welcome--night .account-policy { color:#eee3ea; }
+.welcome--night .account-policy a { color:#ffd2df; }
+
 @keyframes bloom-in { from { opacity:0; transform:scale(.72) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0) } }
 @keyframes petal-float { 0%,100%{translate:0 0;rotate:0deg} 50%{translate:8px 16px;rotate:10deg} }
 @keyframes welcome-light { from{transform:scale(.9)} to{transform:scale(1.08)} }
