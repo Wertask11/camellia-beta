@@ -86,6 +86,58 @@ function mapChat(state: CamelliaState) {
   return { messages, total: messages.length };
 }
 
+
+function safeImportId(value: string) {
+  return value.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 180);
+}
+
+function importDocument(kind: string, id: string, value: unknown, importedAt: string): SchoolParkDocument {
+  const content = JSON.stringify(value);
+  return {
+    path: `imports/${kind}-${safeImportId(id)}`,
+    data: {
+      name: `Camellia β ${kind}`,
+      source: 'camellia-beta-localStorage',
+      kind,
+      characters: content.length,
+      importedAt,
+      content,
+      truncated: false,
+    },
+  };
+}
+
+function mapLocalStorageArchive(state: CamelliaState): SchoolParkDocument[] {
+  const documents: SchoolParkDocument[] = [
+    importDocument('meta', 'state', {
+      version: state.version,
+      onboardingComplete: state.onboardingComplete,
+      createdAt: state.createdAt,
+      updatedAt: state.updatedAt,
+    }, state.updatedAt),
+    importDocument('profile', 'current', state.profile, state.profile.updatedAt),
+  ];
+  const groups: Array<[string, Array<{ id?: string; date?: string; createdAt?: string; updatedAt?: string }>]> = [
+    ['checkin', state.checkins],
+    ['action', state.actions],
+    ['action-feedback', state.actionFeedback],
+    ['saved-action', state.savedActions],
+    ['conversation', state.aiConversations],
+    ['context-memory', state.contextualMemory],
+    ['insight', state.insights],
+    ['insight-feedback', state.insightFeedback],
+    ['fortune', state.fortunes],
+    ['tree-leaf', state.treeLeaves],
+    ['analytics', state.analyticsEvents],
+  ];
+  groups.forEach(([kind, items]) => items.forEach((item, index) => {
+    const id = item.id || item.date || String(index);
+    const at = item.updatedAt || item.createdAt || state.updatedAt;
+    documents.push(importDocument(kind, id, item, at));
+  }));
+  return documents;
+}
+
 export function mapCamelliaState(
   state: CamelliaState,
   passport?: string,
@@ -141,5 +193,6 @@ export function mapCamelliaState(
       const mapped = mapCheckin(checkin);
       return { path: `daily/${mapped.date}`, data: mapped.data };
     }),
+    ...mapLocalStorageArchive(state),
   ];
 }
