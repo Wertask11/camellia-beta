@@ -35,6 +35,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   tree_archive: [],
 };
 let initialized = false;
+let activeDistinctId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
 export function initAnalytics(distinctId: string) {
   if (initialized || typeof window === 'undefined') return initialized;
@@ -50,10 +51,23 @@ export function initAnalytics(distinctId: string) {
     persistence: 'localStorage',
     save_campaign_params: false,
   });
-  posthog.identify(`camellia_${distinctId}`);
+  activeDistinctId = `camellia_${distinctId}`;
+  posthog.identify(activeDistinctId);
   initialized = true;
   return true;
 }
+export async function identifyCamelliaUser(firebaseUid: string) {
+  if (!firebaseUid || typeof window === 'undefined' || !globalThis.crypto?.subtle) return false;
+  const bytes = new TextEncoder().encode(`camellia-posthog-v1:${firebaseUid}`);
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  const stableId = `camellia_${[...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+  if (!initialized) return false;
+  if (activeDistinctId && activeDistinctId !== stableId) posthog.alias(stableId, activeDistinctId);
+  posthog.identify(stableId);
+  activeDistinctId = stableId;
+  return true;
+}
+
 export function sanitizeEventProperties(
   event: AnalyticsEvent,
   state: CamelliaState,
