@@ -232,7 +232,6 @@ export default function Page() {
         <MyScreen
           state={store.state}
           devNight={devNight}
-          onProfile={store.updateProfile}
           onReset={store.reset}
           onInsight={store.feedbackInsight}
           onPrivacy={() => setPrivacy(true)}
