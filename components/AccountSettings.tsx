@@ -8,6 +8,7 @@ export function AccountSettings() {
   const [user, setUser] = useState<User | null>(schoolParkAuth.currentUser);
   const [provider, setProvider] = useState('');
   const [linked, setLinked] = useState({ line: false, schoolpark: false });
+  const [linkStatusKnown, setLinkStatusKnown] = useState(false);
   const [loading, setLoading] = useState(Boolean(schoolParkAuth.currentUser));
   const [error, setError] = useState('');
   useEffect(() => onAuthStateChanged(schoolParkAuth, async (next) => {
@@ -15,14 +16,17 @@ export function AccountSettings() {
     if (!next) {
       setProvider('');
       setLinked({ line: false, schoolpark: false });
+      setLinkStatusKnown(false);
       setLoading(false);
       return;
     }
     setLoading(true);
+    setLinkStatusKnown(false);
     const result = await next.getIdTokenResult().catch(() => null);
     setProvider(typeof result?.claims.provider === 'string' ? result.claims.provider : '');
     try {
       setLinked(await getLinkedCamelliaMethods());
+      setLinkStatusKnown(true);
       setError('');
     } catch {
       setError('連携状態を確認できませんでした。通信できる状態で再読み込みしてください。');
@@ -51,10 +55,10 @@ export function AccountSettings() {
     : provider === 'line' ? 'LINE' : user ? 'Camelliaアカウント' : '';
   return <section className="panel"><h2>アカウント</h2>
     {user ? <p>✓ {user.isAnonymous ? 'この端末で利用中' : label + 'で利用中'}</p> : <p className="empty">ログアウト中です。</p>}
-    <p>LINE：{loading ? '確認中…' : linked.line ? '✓ 連携済み' : '未連携'}</p>
-    <p>SchoolPark Passport：{loading ? '確認中…' : linked.schoolpark ? '✓ 連携済み' : '未連携'}</p>
-    {!linked.schoolpark && <button className="settings-link" onClick={() => connect('schoolpark')}>SchoolPark Passportをつなぐ</button>}
-    {!linked.line && <button className="settings-link" onClick={() => connect('line')}>LINEをつなぐ</button>}
+    <p>LINE：{loading ? '確認中…' : !linkStatusKnown ? '確認できません' : linked.line ? '✓ 連携済み' : '未連携'}</p>
+    <p>SchoolPark Passport：{loading ? '確認中…' : !linkStatusKnown ? '確認できません' : linked.schoolpark ? '✓ 連携済み' : '未連携'}</p>
+    {linkStatusKnown && !linked.schoolpark && <button className="settings-link" onClick={() => connect('schoolpark')}>SchoolPark Passportをつなぐ</button>}
+    {linkStatusKnown && !linked.line && <button className="settings-link" onClick={() => connect('line')}>LINEをつなぐ</button>}
     {user && <button className="settings-link" onClick={() => void leave()}>ログアウト</button>}
     {error && <p className="auth-error" role="alert">{error}</p>}
     <small>ログアウトしても、Camelliaアカウントに保存されたデータは削除されません。</small>
