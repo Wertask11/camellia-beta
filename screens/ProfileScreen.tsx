@@ -48,14 +48,15 @@ export function ProfileScreen({
     if (!womenConfirmed) return setError('Camelliaが女性向けサービスであることを確認してください。');
     if (!policyConfirmed) return setError('保存と利用に関する説明を確認してください。');
     const now = new Date().toISOString();
+    const currentPolicyAccepted = profile.policyVersion === POLICY_VERSION;
     onSave({
       name: name.trim().slice(0, 80),
       dateOfBirth,
       age: `${age}歳`,
       womenWellbeingConfirmedAt: profile.womenWellbeingConfirmedAt ?? now,
-      policyConfirmedAt: profile.policyConfirmedAt ?? now,
-      termsAcceptedAt: profile.termsAcceptedAt ?? now,
-      privacyAcknowledgedAt: profile.privacyAcknowledgedAt ?? now,
+      policyConfirmedAt: currentPolicyAccepted ? (profile.policyConfirmedAt ?? now) : now,
+      termsAcceptedAt: currentPolicyAccepted ? (profile.termsAcceptedAt ?? now) : now,
+      privacyAcknowledgedAt: currentPolicyAccepted ? (profile.privacyAcknowledgedAt ?? now) : now,
       policyVersion: POLICY_VERSION,
       profileCompletedAt: profile.profileCompletedAt ?? now,
       residencePrefecture,
