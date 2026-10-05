@@ -5,7 +5,7 @@ import { AccountSettings } from '@/components/AccountSettings';
 import type { CamelliaState } from '@/types';
 
 function currentAge(dateOfBirth?: string) {
-  if (!dateOfBirth || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth)) return null;
+  if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) return null;
   const [year, month, day] = dateOfBirth.split('-').map(Number);
   const now = new Date();
   let age = now.getFullYear() - year;
