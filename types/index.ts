@@ -27,6 +27,9 @@ export interface Profile {
   profileCompletedAt?: string;
   womenWellbeingConfirmedAt?: string;
   policyConfirmedAt?: string;
+  termsAcceptedAt?: string;
+  privacyAcknowledgedAt?: string;
+  policyVersion?: string;
   residencePrefecture?: string;
   livingSituation?: string;
   baselineSleepHours?: number;
