@@ -67,6 +67,8 @@ export default function Page() {
     void finishAuthCallback().then((result) => {
       if (!result) return;
       store.track('login_success', { method: result.linked ? 'account_link' : 'login' });
+      const user = schoolParkAuth.currentUser;
+      if (user && !user.isAnonymous) void identifyCamelliaUser(user.uid);
       // The custom token keeps the existing anonymous Camellia UID when it is
       // being linked, so local records remain attached to the same person.
       setEntry('welcome');
