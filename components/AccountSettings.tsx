@@ -23,7 +23,7 @@ export function AccountSettings(){
     await logoutCamellia();
     await ensureGuestSession();
   };
-  const guest=provider==='guest';
+  const guest=Boolean(user?.isAnonymous)||provider==='guest';
   return <section className="panel"><h2>アカウント</h2>
     {user?<p>{guest?'✓ ゲストとして記録を保存中':'✓ Camelliaアカウントに接続中'}</p>:<p className="empty">保存の準備をしています。</p>}
     <button className="settings-link" onClick={()=>connect('schoolpark')}>SchoolPark Passportをつなぐ</button>
