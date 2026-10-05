@@ -9,7 +9,6 @@ import { recommend } from '@/lib/recommendation';
 import { CamelliaScreen } from '@/screens/CamelliaScreen';
 import { DiscoverScreen } from '@/screens/DiscoverScreen';
 import { MyScreen } from '@/screens/MyScreen';
-import { OnboardingScreen } from '@/screens/OnboardingScreen';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
@@ -17,14 +16,17 @@ import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { TodayScreen } from '@/screens/TodayScreen';
 import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
+import { ProfileScreen } from '@/screens/ProfileScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
-import { ensureGuestSession, finishAuthCallback } from '@/lib/auth/camellia';
+import { finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation } from '@/types';
 
 export default function Page() {
   const store = useCamelliaStore();
-  const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app'>('welcome');
+  const [entry, setEntry] = useState<'welcome' | 'account'>('welcome');
+  const [authReady, setAuthReady] = useState(false);
+  const [profileSettings, setProfileSettings] = useState(false);
   const [tab, setTab] = useState<MainTab>('today');
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
@@ -54,50 +56,39 @@ export default function Page() {
     }
   }, [entry, store.ready, store.state.onboardingComplete, store.track]);
   useEffect(() => {
-    if (!store.ready || !store.state.onboardingComplete) return;
-    void ensureGuestSession();
-  }, [store.ready, store.state.onboardingComplete]);
+    void schoolParkAuth.authStateReady().finally(() => setAuthReady(true));
+  }, []);
   useEffect(() => {
     void finishAuthCallback().then((result) => {
       if (!result) return;
       store.track('login_success', { method: result.linked ? 'account_link' : 'login' });
-      store.completeOnboarding();
-      setEntry('app');
+      // The custom token keeps the existing anonymous Camellia UID when it is
+      // being linked, so local records remain attached to the same person.
+      setEntry('welcome');
     }).catch(() => setEntry('account'));
   }, [store.track, store.completeOnboarding]);
-  if (!store.ready) return <div className="loading">Camellia ✿</div>;
-  if (!store.state.onboardingComplete && entry === 'welcome')
-    return <WelcomeScreen onContinue={() => {
-      store.track('welcome_continue', { period: welcomeTheme().period });
-      setEntry('account');
+  if (!store.ready || !authReady) return <div className="loading">Camellia ✿</div>;
+  const user = schoolParkAuth.currentUser;
+  const signedIn = Boolean(user && !user.isAnonymous);
+  if (!signedIn && entry === 'welcome') return <WelcomeScreen onContinue={() => {
+    store.track('welcome_continue', { period: welcomeTheme().period });
+    setEntry('account');
+  }} />;
+  if (!signedIn) return <AccountScreen
+    onBack={() => setEntry('welcome')}
+    onSelect={(method) => store.track('auth_method_selected', { auth_method: method })}
+  />;
+  if (!store.state.profile.profileCompletedAt)
+    return <ProfileScreen profile={store.state.profile} mode="initial" onSave={(profile) => {
+      store.updateProfile(profile);
+      store.completeOnboarding();
+      setTab('today');
     }} />;
-  if (!store.state.onboardingComplete && entry === 'account')
-    return <AccountScreen
-      onBack={() => setEntry('welcome')}
-      onGuest={async () => {
-        await ensureGuestSession({ explicit: true });
-        store.track('login_skip');
-        store.completeOnboarding();
-        setEntry('app');
-      }}
-      onSelect={(method) => store.track('auth_method_selected', { auth_method: method })}
-      onContinue={() => {
-        store.track('login_success', { method: 'existing_session' });
-        store.completeOnboarding();
-        setEntry('app');
-      }}
-    />;
-  if (!store.state.onboardingComplete && entry === 'onboarding')
-    return (
-      <OnboardingScreen
-        initialStep={3}
-        onFinish={(p) => {
-          store.updateProfile(p);
-          store.completeOnboarding();
-          setTab('today');
-        }}
-      />
-    );
+  if (profileSettings)
+    return <div className="app-shell"><span className="beta-badge">Camellia β</span><ProfileScreen profile={store.state.profile} mode="edit" onBack={() => setProfileSettings(false)} onSave={(profile) => {
+      store.updateProfile(profile);
+      setProfileSettings(false);
+    }} /></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.destination) {
       setSecondary(r.action.destination);
@@ -248,6 +239,7 @@ export default function Page() {
             store.track('tree_open');
             setFeature('tree');
           }}
+          onEditProfile={() => setProfileSettings(true)}
           onDevNight={setDevNight}
         />
       )}
