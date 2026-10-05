@@ -175,6 +175,9 @@ export function mapCamelliaState(
     goals: profile.goals || [],
     womenWellbeingConfirmedAt: profile.womenWellbeingConfirmedAt || null,
     policyConfirmedAt: profile.policyConfirmedAt || null,
+    termsAcceptedAt: profile.termsAcceptedAt || null,
+    privacyAcknowledgedAt: profile.privacyAcknowledgedAt || null,
+    policyVersion: profile.policyVersion || null,
   };
   if (profile.availableMinutes !== undefined)
     basic.availableMinutes = profile.availableMinutes;
