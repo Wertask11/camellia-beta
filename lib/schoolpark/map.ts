@@ -177,6 +177,7 @@ export function mapCamelliaState(
     policyConfirmedAt: profile.policyConfirmedAt || null,
     termsAcceptedAt: profile.termsAcceptedAt || null,
     privacyAcknowledgedAt: profile.privacyAcknowledgedAt || null,
+    sensitiveDataConsentAt: profile.sensitiveDataConsentAt || null,
     policyVersion: profile.policyVersion || null,
   };
   if (profile.availableMinutes !== undefined)
