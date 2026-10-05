@@ -1,6 +1,6 @@
-/* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- modal backdrop is pointer-dismissable; inner controls are buttons */
+/* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActionSheet } from '@/components/ActionSheet';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { ACTIONS } from '@/data/actions';
@@ -15,10 +15,16 @@ import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { TodayScreen } from '@/screens/TodayScreen';
+import { WelcomeScreen } from '@/screens/WelcomeScreen';
+import { AccountScreen } from '@/screens/AccountScreen';
+import { welcomeTheme } from '@/lib/welcome/time';
+import { schoolParkAuth } from '@/lib/schoolpark/firebase';
+import { finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation } from '@/types';
 
 export default function Page() {
   const store = useCamelliaStore();
+  const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app'>('welcome');
   const [tab, setTab] = useState<MainTab>('today');
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
@@ -36,10 +42,50 @@ export default function Page() {
     () => recommend(store.state, recommendationDate),
     [store.state, recommendationDate],
   );
+  useEffect(() => {
+    if (!store.ready || store.state.onboardingComplete) return;
+    if (entry === 'welcome' && sessionStorage.getItem('camellia-welcome-view') !== '1') {
+      sessionStorage.setItem('camellia-welcome-view', '1');
+      store.track('welcome_view', { period: welcomeTheme().period });
+    }
+    if (entry === 'account' && sessionStorage.getItem('camellia-login-view') !== '1') {
+      sessionStorage.setItem('camellia-login-view', '1');
+      store.track('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) });
+    }
+  }, [entry, store.ready, store.state.onboardingComplete, store.track]);
+  useEffect(() => {
+    void finishAuthCallback().then((result) => {
+      if (!result) return;
+      store.track('login_success', { method: result.linked ? 'account_link' : 'login' });
+      store.completeOnboarding();
+      setEntry('app');
+    }).catch(() => setEntry('account'));
+  }, [store.track, store.completeOnboarding]);
   if (!store.ready) return <div className="loading">Camellia ✿</div>;
-  if (!store.state.onboardingComplete)
+  if (!store.state.onboardingComplete && entry === 'welcome')
+    return <WelcomeScreen onContinue={() => {
+      store.track('welcome_continue', { period: welcomeTheme().period });
+      setEntry('account');
+    }} />;
+  if (!store.state.onboardingComplete && entry === 'account')
+    return <AccountScreen
+      onBack={() => setEntry('welcome')}
+      onGuest={() => {
+        store.track('login_skip');
+        store.completeOnboarding();
+        setEntry('app');
+      }}
+      onSelect={(method) => store.track('auth_method_selected', { auth_method: method })}
+      onContinue={() => {
+        store.track('login_success', { method: 'existing_session' });
+        store.completeOnboarding();
+        setEntry('app');
+      }}
+    />;
+  if (!store.state.onboardingComplete && entry === 'onboarding')
     return (
       <OnboardingScreen
+        initialStep={3}
         onFinish={(p) => {
           store.updateProfile(p);
           store.completeOnboarding();
