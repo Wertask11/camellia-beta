@@ -19,7 +19,6 @@ import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
-import { identifyCamelliaUser } from '@/lib/analytics/posthog';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation } from '@/types';
@@ -63,15 +62,9 @@ export default function Page() {
     setAuthReady(true);
   }), []);
   useEffect(() => {
-    const user = schoolParkAuth.currentUser;
-    if (user && !user.isAnonymous) void identifyCamelliaUser(user.uid);
-  }, [authReady, signedIn]);
-  useEffect(() => {
     void finishAuthCallback().then((result) => {
       if (!result) return;
       store.track('login_success', { method: result.linked ? 'account_link' : 'login' });
-      const user = schoolParkAuth.currentUser;
-      if (user && !user.isAnonymous) void identifyCamelliaUser(user.uid);
       // The custom token keeps the existing anonymous Camellia UID when it is
       // being linked, so local records remain attached to the same person.
       setEntry('welcome');
