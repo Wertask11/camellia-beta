@@ -29,6 +29,7 @@ export interface Profile {
   policyConfirmedAt?: string;
   termsAcceptedAt?: string;
   privacyAcknowledgedAt?: string;
+  sensitiveDataConsentAt?: string;
   policyVersion?: string;
   residencePrefecture?: string;
   livingSituation?: string;
