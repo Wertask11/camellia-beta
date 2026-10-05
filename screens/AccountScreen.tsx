@@ -45,6 +45,11 @@ export function AccountScreen({
         <span>LINEでCamelliaのアカウントを作成、またはログインします。</span>
         <strong>LINEでつづける</strong>
       </button>
+      <p className="account-policy">
+        ログインまたは登録することで、
+        <a href="/terms.html">利用規約</a>・<a href="/privacy.html">プライバシーポリシー</a>
+        に同意したものとみなします。
+      </p>
       {error && <p className="auth-error" role="alert">{error}</p>}
       <p className="account-note">アカウントをつくると、これまでのCamelliaの記録を続けて利用できます。</p>
     </section>
