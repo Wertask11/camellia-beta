@@ -90,6 +90,9 @@ export function ProfileScreen({
     <div className="policy-consent"><label className="toggle"><input type="checkbox" checked={policyConfirmed} onChange={(event) => setPolicyConfirmed(event.target.checked)} required />
       利用規約とプライバシーポリシーを確認し、同意します。
     </label><p><a href="/terms.html" target="_blank" rel="noopener noreferrer">Camellia利用規約</a> ・ <a href="/privacy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a></p></div>
+    <label className="toggle"><input type="checkbox" checked={dataConsent} onChange={(event) => setDataConsent(event.target.checked)} required />
+      気分・睡眠・身体などの記録を保存し、権限を持つ運営者が管理画面で閲覧する場合があることを確認しました。
+    </label>
     <details>
       <summary>任意で設定する</summary>
       <label>居住地域（都道府県）<input value={residencePrefecture} onChange={(event) => setResidencePrefecture(event.target.value)} placeholder="例：福岡県" /></label>
