@@ -19,7 +19,7 @@ import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
-import { finishAuthCallback } from '@/lib/auth/camellia';
+import { ensureGuestSession, finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation } from '@/types';
 
 export default function Page() {
@@ -54,6 +54,10 @@ export default function Page() {
     }
   }, [entry, store.ready, store.state.onboardingComplete, store.track]);
   useEffect(() => {
+    if (!store.ready || !store.state.onboardingComplete) return;
+    void ensureGuestSession();
+  }, [store.ready, store.state.onboardingComplete]);
+  useEffect(() => {
     void finishAuthCallback().then((result) => {
       if (!result) return;
       store.track('login_success', { method: result.linked ? 'account_link' : 'login' });
@@ -70,7 +74,8 @@ export default function Page() {
   if (!store.state.onboardingComplete && entry === 'account')
     return <AccountScreen
       onBack={() => setEntry('welcome')}
-      onGuest={() => {
+      onGuest={async () => {
+        await ensureGuestSession();
         store.track('login_skip');
         store.completeOnboarding();
         setEntry('app');
