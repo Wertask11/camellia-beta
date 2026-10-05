@@ -12,7 +12,7 @@ const band = (d: Date) =>
       : d.getHours() < 19
         ? '夕方'
         : '夜';
-const jstParts = (date: Date) => {
+export const jstParts = (date: Date) => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Tokyo',
     weekday: 'short',
