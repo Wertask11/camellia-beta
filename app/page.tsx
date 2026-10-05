@@ -18,6 +18,7 @@ import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
+import { identifyCamelliaUser } from '@/lib/analytics/posthog';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation } from '@/types';
@@ -58,6 +59,10 @@ export default function Page() {
   useEffect(() => {
     void schoolParkAuth.authStateReady().finally(() => setAuthReady(true));
   }, []);
+  useEffect(() => {
+    const user = schoolParkAuth.currentUser;
+    if (user && !user.isAnonymous) void identifyCamelliaUser(user.uid);
+  }, [authReady]);
   useEffect(() => {
     void finishAuthCallback().then((result) => {
       if (!result) return;
