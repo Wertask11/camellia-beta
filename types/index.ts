@@ -199,6 +199,14 @@ export type ReflectionStage =
   | 'weekly';
 export type AnalyticsEventName =
   | 'session_start'
+  | 'welcome_view'
+  | 'welcome_continue'
+  | 'login_view'
+  | 'login_success'
+  | 'login_skip'
+  | 'auth_method_selected'
+  | 'account_link_started'
+  | 'account_link_success'
   | 'check_view'
   | 'check_start'
   | 'check_complete'
