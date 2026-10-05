@@ -75,7 +75,7 @@ export default function Page() {
     return <AccountScreen
       onBack={() => setEntry('welcome')}
       onGuest={async () => {
-        await ensureGuestSession();
+        await ensureGuestSession({ explicit: true });
         store.track('login_skip');
         store.completeOnboarding();
         setEntry('app');
