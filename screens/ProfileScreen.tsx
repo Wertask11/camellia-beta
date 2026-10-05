@@ -30,6 +30,7 @@ export function ProfileScreen({
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth ?? '');
   const [womenConfirmed, setWomenConfirmed] = useState(Boolean(profile.womenWellbeingConfirmedAt));
   const [policyConfirmed, setPolicyConfirmed] = useState(profile.policyVersion === POLICY_VERSION);
+  const [dataConsent, setDataConsent] = useState(profile.policyVersion === POLICY_VERSION && Boolean(profile.sensitiveDataConsentAt));
   const [residencePrefecture, setResidencePrefecture] = useState(profile.residencePrefecture ?? '');
   const [lifestyle, setLifestyle] = useState(profile.lifestyle);
   const [livingSituation, setLivingSituation] = useState(profile.livingSituation ?? '');
@@ -46,7 +47,8 @@ export function ProfileScreen({
     if (!dateOfBirth || age === null) return setError('生年月日を正しく入力してください。');
     if (age < 18 || age > 45) return setError('Camelliaは18〜45歳の女性向けサービスです。');
     if (!womenConfirmed) return setError('Camelliaが女性向けサービスであることを確認してください。');
-    if (!policyConfirmed) return setError('保存と利用に関する説明を確認してください。');
+    if (!policyConfirmed) return setError('利用規約とプライバシーポリシーを確認してください。');
+    if (!dataConsent) return setError('健康や気分などの記録と運営による閲覧について確認してください。');
     const now = new Date().toISOString();
     const currentPolicyAccepted = profile.policyVersion === POLICY_VERSION;
     onSave({
@@ -57,6 +59,7 @@ export function ProfileScreen({
       policyConfirmedAt: currentPolicyAccepted ? (profile.policyConfirmedAt ?? now) : now,
       termsAcceptedAt: currentPolicyAccepted ? (profile.termsAcceptedAt ?? now) : now,
       privacyAcknowledgedAt: currentPolicyAccepted ? (profile.privacyAcknowledgedAt ?? now) : now,
+      sensitiveDataConsentAt: currentPolicyAccepted ? (profile.sensitiveDataConsentAt ?? now) : now,
       policyVersion: POLICY_VERSION,
       profileCompletedAt: profile.profileCompletedAt ?? now,
       residencePrefecture,
