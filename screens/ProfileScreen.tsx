@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 import type { Profile } from '@/types';
 
+const POLICY_VERSION = '2026-10-05';
+
 function ageOf(dateOfBirth: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) return null;
   const birth = new Date(`${dateOfBirth}T00:00:00`);
-  if (Number.isNaN(birth.getTime())) return null;
+  if (Number.isNaN(birth.getTime()) || birth.toLocaleDateString('sv-SE') !== dateOfBirth) return null;
   const now = new Date();
   let age = now.getFullYear() - birth.getFullYear();
   if (now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) age--;
@@ -27,7 +29,7 @@ export function ProfileScreen({
   const [name, setName] = useState(profile.name);
   const [dateOfBirth, setDateOfBirth] = useState(profile.dateOfBirth ?? '');
   const [womenConfirmed, setWomenConfirmed] = useState(Boolean(profile.womenWellbeingConfirmedAt));
-  const [policyConfirmed, setPolicyConfirmed] = useState(Boolean(profile.policyConfirmedAt));
+  const [policyConfirmed, setPolicyConfirmed] = useState(profile.policyVersion === POLICY_VERSION);
   const [residencePrefecture, setResidencePrefecture] = useState(profile.residencePrefecture ?? '');
   const [lifestyle, setLifestyle] = useState(profile.lifestyle);
   const [livingSituation, setLivingSituation] = useState(profile.livingSituation ?? '');
@@ -42,6 +44,7 @@ export function ProfileScreen({
   const save = () => {
     if (!name.trim()) return setError('呼ばれたい名前を入力してください。');
     if (!dateOfBirth || age === null) return setError('生年月日を正しく入力してください。');
+    if (age < 18 || age > 45) return setError('Camelliaは18〜45歳の女性向けサービスです。');
     if (!womenConfirmed) return setError('Camelliaが女性向けサービスであることを確認してください。');
     if (!policyConfirmed) return setError('保存と利用に関する説明を確認してください。');
     const now = new Date().toISOString();
@@ -51,6 +54,9 @@ export function ProfileScreen({
       age: `${age}歳`,
       womenWellbeingConfirmedAt: profile.womenWellbeingConfirmedAt ?? now,
       policyConfirmedAt: profile.policyConfirmedAt ?? now,
+      termsAcceptedAt: profile.termsAcceptedAt ?? now,
+      privacyAcknowledgedAt: profile.privacyAcknowledgedAt ?? now,
+      policyVersion: POLICY_VERSION,
       profileCompletedAt: profile.profileCompletedAt ?? now,
       residencePrefecture,
       lifestyle,
@@ -71,15 +77,15 @@ export function ProfileScreen({
       <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例：さくら" autoComplete="nickname" />
     </label>
     <label>生年月日 <span aria-hidden="true">＊</span>
-      <input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" />
+      <input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toLocaleDateString('sv-SE')} autoComplete="bday" />
       {age !== null && <small>現在 {age}歳</small>}
     </label>
     <label className="toggle"><input type="checkbox" checked={womenConfirmed} onChange={(event) => setWomenConfirmed(event.target.checked)} />
       Camelliaは女性のためのウェルネス・ウェルビーイングサービスであることを確認しました。
     </label>
-    <label className="toggle"><input type="checkbox" checked={policyConfirmed} onChange={(event) => setPolicyConfirmed(event.target.checked)} />
-      保存と利用に関する説明を確認しました。
-    </label>
+    <div className="policy-consent"><label className="toggle"><input type="checkbox" checked={policyConfirmed} onChange={(event) => setPolicyConfirmed(event.target.checked)} required />
+      利用規約とプライバシーポリシーを確認し、同意します。
+    </label><p><a href="/terms.html" target="_blank" rel="noopener noreferrer">Camellia利用規約</a> ・ <a href="/privacy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a></p></div>
     <details>
       <summary>任意で設定する</summary>
       <label>居住地域（都道府県）<input value={residencePrefecture} onChange={(event) => setResidencePrefecture(event.target.value)} placeholder="例：福岡県" /></label>
