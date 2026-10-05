@@ -79,7 +79,7 @@ export default function Page() {
     onBack={() => setEntry('welcome')}
     onSelect={(method) => store.track('auth_method_selected', { auth_method: method })}
   />;
-  if (!store.state.profile.profileCompletedAt)
+  if (!store.state.profile.profileCompletedAt || store.state.profile.policyVersion !== '2026-10-05' || !store.state.profile.dateOfBirth)
     return <ProfileScreen profile={store.state.profile} mode="initial" onSave={(profile) => {
       store.updateProfile(profile);
       store.completeOnboarding();
