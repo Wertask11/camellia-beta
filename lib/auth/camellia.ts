@@ -11,3 +11,11 @@ async function exchange(path:string,body:object):Promise<{firebaseToken:string;l
 export async function ensureGuestSession(options:{explicit?:boolean}={}){await schoolParkAuth.authStateReady();if(schoolParkAuth.currentUser)return schoolParkAuth.currentUser;if(!options.explicit&&localStorage.getItem(LOGGED_OUT)==='1')return null;if(options.explicit)localStorage.removeItem(LOGGED_OUT);if(!guestSession)guestSession=signInAnonymously(schoolParkAuth).then(result=>result.user).finally(()=>{guestSession=null});return guestSession}
 export async function finishAuthCallback(){const url=new URL(location.href),ticket=url.searchParams.get('camellia_passport_ticket'),code=url.searchParams.get('code'),state=url.searchParams.get('state');if(!ticket&&!code)return null;try{if(ticket)return await exchange('passport/exchange',{ticket});const expected=sessionStorage.getItem(LINE_STATE),nonce=sessionStorage.getItem(LINE_NONCE);if(!state||!expected||state!==expected||!nonce)throw new Error('STATE_MISMATCH');return await exchange('line',{code,nonce,redirectUri:`${location.origin}/`})}finally{sessionStorage.removeItem(LINE_STATE);sessionStorage.removeItem(LINE_NONCE);['code','state','camellia_passport_ticket','error','error_description'].forEach(k=>url.searchParams.delete(k));history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`)}}
 export async function logoutCamellia(){localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth)}
+
+export type LinkedCamelliaMethods = { line: boolean; schoolpark: boolean };
+export async function getLinkedCamelliaMethods(): Promise<LinkedCamelliaMethods> {
+  const response = await fetch(`${API}/identities`, { headers: await headers() });
+  const data = await response.json().catch(() => ({})) as Partial<LinkedCamelliaMethods> & { error?: string };
+  if (!response.ok) throw new Error(data.error || 'IDENTITIES_FAILED');
+  return { line: data.line === true, schoolpark: data.schoolpark === true };
+}
