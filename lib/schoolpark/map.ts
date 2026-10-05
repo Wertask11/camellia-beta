@@ -152,6 +152,9 @@ export function mapCamelliaState(
   ].filter(Boolean);
   const root: Record<string, unknown> = {
     updatedAt: timestamps.sort().at(-1) || state.createdAt,
+    accountCreatedAt: state.profile.createdAt,
+    profileCompletedAt: state.profile.profileCompletedAt || null,
+    profileComplete: Boolean(state.profile.profileCompletedAt),
   };
   if (passport) root.passport = passport;
   const profile = state.profile;
@@ -159,9 +162,18 @@ export function mapCamelliaState(
     displayName: profile.name,
     occupation: profile.lifestyle,
     goal: profile.priority,
-    birthYear: profile.age,
+    birthYear: profile.dateOfBirth ? profile.dateOfBirth.slice(0, 4) : profile.age,
+    dateOfBirth: profile.dateOfBirth || null,
+    age: profile.dateOfBirth ? profile.age : null,
     interests: profile.interests,
     periodEnabled: profile.periodEnabled,
+    residencePrefecture: profile.residencePrefecture || null,
+    livingSituation: profile.livingSituation || null,
+    baselineSleepHours: profile.baselineSleepHours ?? null,
+    concerns: profile.concerns || [],
+    goals: profile.goals || [],
+    womenWellbeingConfirmedAt: profile.womenWellbeingConfirmedAt || null,
+    policyConfirmedAt: profile.policyConfirmedAt || null,
   };
   if (profile.availableMinutes !== undefined)
     basic.availableMinutes = profile.availableMinutes;
