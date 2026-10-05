@@ -78,13 +78,13 @@ export function ProfileScreen({
     <h1>{mode === 'initial' ? 'Camelliaを、あなたのための場所に' : 'あなたのプロフィール'}</h1>
     <p className="empty">必須なのは、呼ばれたい名前と生年月日、2つの確認だけです。ほかはあとから変更できます。</p>
     <label>呼ばれたい名前 <span aria-hidden="true">＊</span>
-      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例：さくら" autoComplete="nickname" />
+      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例：さくら" autoComplete="nickname" required />
     </label>
     <label>生年月日 <span aria-hidden="true">＊</span>
       <input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} max={new Date().toLocaleDateString('sv-SE')} autoComplete="bday" />
       {age !== null && <small>現在 {age}歳</small>}
     </label>
-    <label className="toggle"><input type="checkbox" checked={womenConfirmed} onChange={(event) => setWomenConfirmed(event.target.checked)} />
+    <label className="toggle"><input type="checkbox" checked={womenConfirmed} onChange={(event) => setWomenConfirmed(event.target.checked)} required />
       Camelliaは女性のためのウェルネス・ウェルビーイングサービスであることを確認しました。
     </label>
     <div className="policy-consent"><label className="toggle"><input type="checkbox" checked={policyConfirmed} onChange={(event) => setPolicyConfirmed(event.target.checked)} required />
