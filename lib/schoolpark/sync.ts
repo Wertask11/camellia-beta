@@ -14,12 +14,13 @@ import {
 import { mapCamelliaState } from './map';
 
 const SENT_KEY = 'camellia-sync-sent';
+const CONFLICT_KEY = 'camellia-sync-conflict';
 const WAIT_MS = 1500;
 let latestState: CamelliaState | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let syncing: Promise<void> | null = null;
 let rerunRequested = false;
-let passportCache: { uid: string; value?: string } | null = null;
+let passportCache: { uid: string; value: string } | null = null;
 
 export function fingerprint(value: string) {
   let hash = 5381;
@@ -43,6 +44,8 @@ function saveSent(uid: string, sent: Record<string, string>) {
 }
 
 async function readPassport(uid: string) {
+  // Do not cache a missing Passport: an anonymous user can link SchoolPark
+  // without changing Firebase UID, and the refreshed custom token then adds it.
   if (passportCache?.uid === uid) return passportCache.value;
   let value: string | undefined;
   try {
@@ -50,21 +53,20 @@ async function readPassport(uid: string) {
     if (typeof claims?.claims.schoolParkId === 'string' && claims.claims.schoolParkId)
       value = claims.claims.schoolParkId;
   } catch {
-    // Fall back to the existing SchoolPark account document.
+    // Fall back to the verified SchoolPark account document.
   }
   try {
-    if (value) {
-      passportCache = { uid, value };
-      return value;
+    if (!value) {
+      const snapshot = await getDoc(doc(schoolParkDb, 'ches_accounts', uid));
+      const data = snapshot.data();
+      const candidate = data?.spid;
+      if (typeof candidate === 'string' && candidate.startsWith('SP-'))
+        value = candidate;
     }
-    const snapshot = await getDoc(doc(schoolParkDb, 'ches_accounts', uid));
-    const data = snapshot.data();
-    const candidate = data?.chesAddress || data?.walletAddress;
-    if (typeof candidate === 'string' && candidate) value = candidate;
   } catch {
     // A Camellia-only account may not have permission or a Passport document.
   }
-  passportCache = { uid, value };
+  if (value) passportCache = { uid, value };
   return value;
 }
 
@@ -80,14 +82,15 @@ async function performSync() {
   if (!user) return;
   const uid = user.uid;
   const sent = readSent(uid);
-  let preserveRemote = false;
-  if (Object.keys(sent).length === 0) {
+  const conflictKey = `${CONFLICT_KEY}:${uid}`;
+  let preserveRemote = Boolean(localStorage.getItem(conflictKey));
+  if (!preserveRemote && Object.keys(sent).length === 0) {
     const remote = await getDoc(reference(uid, ''));
     if (remote.exists()) {
       const hasLocalData = latestState.checkins.length > 0 || latestState.fortunes.length > 0 ||
         latestState.treeLeaves.length > 0 || latestState.aiConversations.length > 0;
       if (hasLocalData) {
-        localStorage.setItem(`camellia-sync-conflict:${uid}`, new Date().toISOString());
+        localStorage.setItem(conflictKey, new Date().toISOString());
         preserveRemote = true;
       } else {
         return;
