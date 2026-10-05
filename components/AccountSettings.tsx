@@ -2,7 +2,7 @@
 import{useEffect,useState}from'react';
 import{onAuthStateChanged,type User}from'firebase/auth';
 import{schoolParkAuth}from'@/lib/schoolpark/firebase';
-import{ensureGuestSession,logoutCamellia,startLineLogin,startSchoolParkLogin}from'@/lib/auth/camellia';
+import{logoutCamellia,startLineLogin,startSchoolParkLogin}from'@/lib/auth/camellia';
 
 export function AccountSettings(){
   const[user,setUser]=useState<User|null>(schoolParkAuth.currentUser);
@@ -20,12 +20,12 @@ export function AccountSettings(){
     catch{setError('うまくつながりませんでした。もう一度試してください。')}
   };
   const leave=async()=>{
-    await logoutCamellia();
-    await ensureGuestSession();
+    try{await logoutCamellia();setError('ログアウトしました。保存済みデータはこの端末に残っています。')}
+    catch{setError('ログアウトできませんでした。もう一度お試しください。')}
   };
   const guest=Boolean(user?.isAnonymous)||provider==='guest';
   return <section className="panel"><h2>アカウント</h2>
-    {user?<p>{guest?'✓ ゲストとして記録を保存中':'✓ Camelliaアカウントに接続中'}</p>:<p className="empty">保存の準備をしています。</p>}
+    {user?<p>{guest?'✓ ゲストとして記録を保存中':'✓ Camelliaアカウントに接続中'}</p>:<p className="empty">ログアウト中です。保存済みデータはこの端末に残っています。</p>}
     <button className="settings-link" onClick={()=>connect('schoolpark')}>SchoolPark Passportをつなぐ</button>
     <button className="settings-link" onClick={()=>connect('line')}>LINEをつなぐ</button>
     {!guest&&user&&<button className="settings-link" onClick={()=>void leave()}>ログアウト</button>}
