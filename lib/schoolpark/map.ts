@@ -155,6 +155,7 @@ export function mapCamelliaState(
     accountCreatedAt: state.profile.createdAt,
     profileCompletedAt: state.profile.profileCompletedAt || null,
     profileComplete: Boolean(state.profile.profileCompletedAt),
+    birthDate: state.profile.dateOfBirth || '',
   };
   if (passport) root.passport = passport;
   const profile = state.profile;
