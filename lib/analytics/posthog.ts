@@ -8,6 +8,14 @@ import type {
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   session_start: [],
+  welcome_view: ['period'],
+  welcome_continue: ['period'],
+  login_view: ['authenticated'],
+  login_success: ['method'],
+  login_skip: [],
+  auth_method_selected: ['auth_method'],
+  account_link_started: ['auth_method'],
+  account_link_success: ['auth_method'],
   check_view: [],
   check_start: [],
   check_complete: ['hasDetails'],
