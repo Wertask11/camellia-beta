@@ -1,5 +1,6 @@
 import type { AIMessage, CamelliaState, ConversationIntent, ConversationTopic, Recommendation,TreeLeaf } from '@/types';
 import { buildCamelliaContext, type CamelliaContext } from '@/lib/conversation/context';
+import { LIVE_DESTINATIONS } from '@/lib/features';
 export function classifyIntent(t:string):ConversationIntent {
   if (/アドバイス.*いらない|聞いてほしい|ただ聞/.test(t)) return 'LISTEN';
   if (/誰か|人と話|つなが|寂し/.test(t)) return 'CONNECT';
@@ -43,14 +44,15 @@ function buildRuleResponse(input:string,recs:Recommendation[],context:CamelliaCo
   else if(context.relationship&&/この人|前は|以前|関係/.test(input)&&context.relationship.reflections.at(-1))text=`この人について、あなたは最近「${context.relationship.reflections.at(-1)}」と残していました。今の気持ちと重なるところはありますか？`;
   else if(intent==='LISTEN') text=listen(topics,input,previous);
   else if(intent==='REFLECT') text=topics.includes('WORK')||previous?.topics?.includes('WORK')?'自分にも悪いところがあったと思うことと、怒られてつらかったことは、分けて考えてもよさそう。どちらも本当でいいと思う。':'いくつかの気持ちが重なっていそうだね。まず一番大きいものだけ、言葉にしてみてもいいかも。';
-  else if(intent==='CONNECT') text='誰かと話したいんだね。ここで私と話し続けることも、同じ関心の人が集まる場所を見ることもできます。';
+  // Circle is not live in β2, so Camellia does not offer a place to meet people until it is.
+  else if(intent==='CONNECT') text=LIVE_DESTINATIONS.has('circle')?'誰かと話したいんだね。ここで私と話し続けることも、同じ関心の人が集まる場所を見ることもできます。':'誰かと話したいんだね。よければ、このまま私に話してみて。聞いてほしいだけでも大丈夫だよ。';
   else if(topics.includes('LOVE')&&topics.includes('BEAUTY')) text='明日のデート、楽しみと少し迷う気持ちがありそうだね。相手にどう見えるかより、自分が落ち着ける服を軸に選んでみるのはどうかな。';
   else if(topics.includes('WORK')&&topics.includes('ANXIETY')) text='辞めるかどうかは大きな決断だね。今日は結論を急がず、「続けてつらいこと」と「変われば続けられそうなこと」を分けてみると考えやすくなります。';
   else if(topics.includes('EXERCISE')&&topics.includes('HEALTH')) text=showAction?'動きたい気持ちと、今日は疲れている感覚の両方を大事にしてよさそう。負担の小さい選択をひとつ置いておきます。':'動きたい気持ちと、今日は疲れている感覚の両方を大事にしてよさそう。今日は負担の小さいことから考えてみよう。';
   else if(intent==='ADVICE') text=showAction?'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。必要なら小さな選択肢も置いておきます。':'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。';
   else if(topics.includes('FOOD')) text='お腹がすいていると、ほかのことも考えにくいよね。まずは何か食べて、ひと息ついてからでも大丈夫。';
   else text=showAction?'今の気分に合いそうな、小さな選択をひとつだけ置いておきます。':'今は無理に決めなくても大丈夫。気になることがあれば、そのまま話してね。';
-  return {intent,topics,text,showAction,action,showCircle:intent==='CONNECT'};
+  return {intent,topics,text,showAction,action,showCircle:intent==='CONNECT'&&LIVE_DESTINATIONS.has('circle')};
 }
 
 /** The current processor is deterministic and local. Future processors can implement the same boundary. */

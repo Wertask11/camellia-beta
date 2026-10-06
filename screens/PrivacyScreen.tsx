@@ -20,10 +20,10 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
           Treeの名前・タグ・メモ、Insightへの回答、操作イベントを、このブラウザのlocalStorageに保存します。ログイン中は、同じ記録をSchoolParkのFirestore（camellia_users/{'{uid}'}）にも同期します。
         </p>
         <p>
-          同期対象には、プロフィール、Check（気分・任意の睡眠/体調/ストレス/生理関連入力）、Action、Reflection、Fortune、My Tree、Insight、Camellia AIの会話が含まれます。同期データはSchoolParkの運営管理機能から確認できる場合があります。
+          同期対象には、プロフィール、Check（気分・任意の睡眠/体調/ストレス/生理関連入力）、Action、Reflection、Fortune、My Tree、Insight、Camelliaとの会話が含まれます。同期データはSchoolParkの運営管理機能から確認できる場合があります。
         </p>
         <p>
-          Camellia AIは現在、入力内容を端末内のルールベース処理で扱い、外部の生成AI APIには送信しません。サービス改善のための操作イベントはPostHogへ送信されます。イベント送信では許可した計測項目だけを使い、会話本文やCheckの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
+          Camelliaとの会話は現在、入力内容を端末内のルールベース処理で扱い、外部の生成AI APIには送信しません。サービス改善のための操作イベントはPostHogへ送信されます。イベント送信では許可した計測項目だけを使い、会話本文やCheckの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
         </p>
       </section>
       <section className="panel">
