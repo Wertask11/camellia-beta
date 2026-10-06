@@ -46,9 +46,12 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
       <section className="panel">
         <h2>データの削除</h2>
         <p>
-          Myの「保存データを削除する」から、このブラウザのCamelliaデータを削除できます。ログイン中で同期済みのSchoolParkアカウントがある場合は、そのCamellia記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。運営用の管理記録・返信と、PostHogへ送信済みの操作イベントは削除されません。同期データを削除できなかった場合は、削除失敗を表示し、端末内データも消去しません。
+          Myの「保存データを削除する」から、このブラウザのCamelliaデータを削除できます。ログイン中のCamelliaアカウントに同期済みの記録がある場合は、その記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。運営用の管理記録・返信、ログイン方法の連携記録と、PostHogへ送信済みの操作イベントは削除されません。同期データを削除できなかった場合は、削除失敗を表示し、端末内データも消去しません。
         </p>
       </section>
+      <p className="meta">
+        詳しくは<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>と<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>をご覧ください。
+      </p>
     </main>
   );
 }

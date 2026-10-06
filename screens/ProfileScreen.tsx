@@ -10,13 +10,13 @@ export function ProfileScreen({profile,onSave,onBack,existing=false}:{profile:Pr
     {onBack&&<button className="back" onClick={onBack}>← Myへ</button>}
     <header><div><p className="eyebrow">あなたのCamellia</p><h1>{onBack?'プロフィール':existing?'少しだけ、確認させてください。':'はじめに、少しだけ。'}</h1></div></header>
     {!onBack&&existing&&<p className="meta">これまでの記録は、そのまま残っています。続けるために、生年月日と、利用規約・プライバシーポリシーへの同意を確認させてください。</p>}
-    <form onSubmit={e=>{e.preventDefault();if(!valid)return;onSave({name:name.trim(),birthDate,womenServiceAcknowledged:women,agreedAt:profile.agreedAt||new Date().toISOString(),agreedVersion:profile.agreedVersion||'2026-10-05',region,lifestyle,livingSituation:living,usualSleep:sleep?Number(sleep):undefined,concerns,purposes,periodEnabled:period,availableMinutes:minutes?Number(minutes):undefined});}}>
+    <form onSubmit={e=>{e.preventDefault();if(!valid)return;onSave({name:name.trim(),birthDate,womenServiceAcknowledged:women,agreedAt:profile.agreedAt||new Date().toISOString(),agreedVersion:profile.agreedVersion||'2026-10-06',region,lifestyle,livingSituation:living,usualSleep:sleep?Number(sleep):undefined,concerns,purposes,periodEnabled:period,availableMinutes:minutes?Number(minutes):undefined});}}>
       <label>名前／ニックネーム<input required autoComplete="off" maxLength={30} value={name} onChange={e=>setName(e.target.value)}/></label>
       <label>生年月日<input required type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)}/></label>
       {age!==undefined&&<p className="meta">現在 {age}歳（生年月日から自動計算）</p>}
       {birthDate&&!valid&&(age===undefined||age<MIN_AGE||age>MAX_AGE)&&<p role="alert">Camelliaは18〜45歳の女性向けサービスです。生年月日を確認してください。</p>}
       <label className="profile-check"><input type="checkbox" checked={women} onChange={e=>setWomen(e.target.checked)}/>女性向けウェルビーイングサービスであることを確認しました（自己申告）</label>
-      <label className="profile-check"><input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}/><span><a href="https://schoolpark-emu.vercel.app/terms.html">利用規約</a>・<a href="https://schoolpark-emu.vercel.app/privacy.html">プライバシーポリシー</a>に同意します。</span></label>
+      <label className="profile-check"><input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}/><span><a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します。</span></label>
       <p className="meta">記録はこの端末とFirestoreに保存され、運営が内容を確認することがあります。</p>
       <details><summary>もう少し自分のことを添える（任意）</summary>
         <label>居住地域（都道府県程度）<input maxLength={20} value={region} onChange={e=>setRegion(e.target.value)}/></label>
