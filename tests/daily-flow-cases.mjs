@@ -13,7 +13,7 @@ const server=await createServer({configFile:false,root:rootPath,resolve:{alias:{
 const result=[];
 try{
  const {emptyState}=await server.ssrLoadModule('/hooks/useCamelliaStore.ts');
- const {recommend}=await server.ssrLoadModule('/lib/recommendation/engine.ts');
+ const {recommend,buildTodaySummary}=await server.ssrLoadModule('/lib/recommendation/engine.ts');
  const {FortuneScreen}=await server.ssrLoadModule('/screens/FortuneScreen.tsx');
  const {TodayScreen}=await server.ssrLoadModule('/screens/TodayScreen.tsx');
  const now=new Date(),iso=now.toISOString();
@@ -24,6 +24,15 @@ try{
  result.push(['1分でも行動の提案が出る',tiny.length>=2,tiny.map(r=>`${r.action.id}:${r.action.minutes}`)]);
  const ten=recommend(base(10),now);
  result.push(['10分なら10分以内の提案だけ',ten.length>=2&&ten.every(r=>r.action.minutes<=10),ten.map(r=>`${r.action.id}:${r.action.minutes}`)]);
+
+ // Before today's Check, yesterday's input is not described as today (JST days).
+ const morning=new Date('2026-10-06T23:00:00Z'),lastNight='2026-10-06T12:30:00Z';
+ const yesterday=base(20);yesterday.checkins=[{id:'y',mood:2,createdAt:lastNight,updatedAt:lastNight}];
+ const preCheck=buildTodaySummary(yesterday,morning);
+ result.push(['Check前の「今日のあなた」は昨日の入力を今日のこととして書かない',!preCheck.includes('入力を見ると')&&preCheck.includes('今日のあなたを、少しだけ教えてください'),preCheck]);
+ const sameDay=base(20);sameDay.checkins=[{id:'t',mood:2,createdAt:'2026-10-06T22:30:00Z',updatedAt:'2026-10-06T22:30:00Z'}];
+ const postCheck=buildTodaySummary(sameDay,morning);
+ result.push(['今日のCheckがあれば、その入力をもとに書く',postCheck.includes('心に少し負担'),postCheck]);
 
  const host=document.createElement('div');document.body.append(host);const app=createRoot(host);
  const render=async el=>{await act(async()=>{app.render(createElement(StrictMode,null,el));await new Promise(r=>setTimeout(r,10));});};
