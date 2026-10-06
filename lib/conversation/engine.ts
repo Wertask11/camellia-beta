@@ -2,7 +2,7 @@ import type { AIMessage, CamelliaState, ConversationIntent, ConversationTopic, R
 export function classifyIntent(t:string):ConversationIntent {
   if (/アドバイス.*いらない|聞いてほしい|ただ聞/.test(t)) return 'LISTEN';
   if (/誰か|人と話|つなが|寂し/.test(t)) return 'CONNECT';
-  if (/何かしたい|運動したい|気分.*変え|何着て|暇/.test(t)) return 'ACTION';
+  if (/何かしたい|運動したい|気分.*変え|何着て|暇|できること(?:って)?ある/.test(t)) return 'ACTION';
   if (/どうしたら|どうすれば|どう思う|迷って|教えて/.test(t)) return 'ADVICE';
   if (/整理|振り返|私も悪|もやもや/.test(t)) return 'REFLECT';
   return 'LISTEN';
