@@ -17,11 +17,6 @@ const stressValue = { 低い: 2, 普通: 5, やや高い: 7, 高い: 9 } as cons
 const fatigueValue = { 良い: 2, 普通: 4, 疲れ気味: 7, 悪い: 9 } as const;
 const energyValue = { 良い: 8, 普通: 6, 疲れ気味: 3, 悪い: 1 } as const;
 
-function menstrualDate(createdAt: string, periodDays: number) {
-  const date = new Date(createdAt);
-  date.setUTCDate(date.getUTCDate() - periodDays);
-  return jstParts(date).date;
-}
 
 export function mapCheckin(checkin: Checkin) {
   const date = jstParts(new Date(checkin.createdAt)).date;
@@ -38,11 +33,7 @@ export function mapCheckin(checkin: Checkin) {
     data.energy = energyValue[checkin.body];
   }
   if (checkin.periodDays !== undefined) {
-    data.cycle = `月経${checkin.periodDays}日目`;
-    data.lastMenstrualDate = menstrualDate(
-      checkin.createdAt,
-      checkin.periodDays,
-    );
+    data.periodDaysUntilExpected = checkin.periodDays;
   }
   return { date, data };
 }
@@ -93,12 +84,14 @@ function safeImportId(value: string) {
 
 function importDocument(kind: string, id: string, value: unknown, importedAt: string): SchoolParkDocument {
   const content = JSON.stringify(value);
+  if (new TextEncoder().encode(content).length > 700_000) throw new Error('ARCHIVE_RECORD_TOO_LARGE');
   return {
     path: `imports/${kind}-${safeImportId(id)}`,
     data: {
       name: `Camellia β ${kind}`,
       source: 'camellia-beta-localStorage',
       kind,
+      archiveKey: `${kind}-${safeImportId(id)}`,
       characters: content.length,
       importedAt,
       content,
@@ -124,6 +117,7 @@ function mapLocalStorageArchive(state: CamelliaState): SchoolParkDocument[] {
     ['saved-action', state.savedActions],
     ['conversation', state.aiConversations],
     ['context-memory', state.contextualMemory],
+    ['personal-memory', state.personalMemories || []],
     ['insight', state.insights],
     ['insight-feedback', state.insightFeedback],
     ['fortune', state.fortunes],
@@ -135,6 +129,10 @@ function mapLocalStorageArchive(state: CamelliaState): SchoolParkDocument[] {
     const at = item.updatedAt || item.createdAt || state.updatedAt;
     documents.push(importDocument(kind, id, item, at));
   }));
+  const archiveKeys=documents.map(item=>item.data.archiveKey as string);
+  if(new Set(archiveKeys).size!==archiveKeys.length)throw new Error('ARCHIVE_ID_COLLISION');
+  const meta=JSON.parse(documents[0].data.content as string);
+  documents[0]=importDocument('meta','state',{...meta,archiveKeys},state.updatedAt);
   return documents;
 }
 
@@ -152,19 +150,32 @@ export function mapCamelliaState(
   ].filter(Boolean);
   const root: Record<string, unknown> = {
     updatedAt: timestamps.sort().at(-1) || state.createdAt,
+    checkCount: state.checkins.length,
+    lastCheckAt: state.checkins.map(item=>item.createdAt).sort().at(-1)||'',
+    registeredAt: state.profile.agreedAt||'',
+    lastActiveAt: [...timestamps,...state.analyticsEvents.map(item=>item.createdAt),...state.actions.map(item=>item.updatedAt)].sort().at(-1)||state.createdAt,
   };
+  if (state.profile.birthDate) root.birthDate = state.profile.birthDate;
+  if (state.profile.agreedAt) root.agreedAt = state.profile.agreedAt;
+  if (state.profile.agreedVersion) root.agreedVersion = state.profile.agreedVersion;
   if (passport) root.passport = passport;
   const profile = state.profile;
   const basic: Record<string, unknown> = {
     displayName: profile.name,
     occupation: profile.lifestyle,
     goal: profile.priority,
-    birthYear: profile.age,
+    birthDate: profile.birthDate || '',
+    region: profile.region || '',
+    livingSituation: profile.livingSituation || '',
+    purposes: profile.purposes || [],
+    concerns: profile.concerns || '',
+    womenServiceAcknowledged: profile.womenServiceAcknowledged === true,
     interests: profile.interests,
     periodEnabled: profile.periodEnabled,
   };
   if (profile.availableMinutes !== undefined)
     basic.availableMinutes = profile.availableMinutes;
+  if (profile.usualSleep !== undefined) basic.usualSleep = profile.usualSleep;
 
   const latestByDate = new Map<string, Checkin>();
   state.checkins.forEach((checkin) => {

@@ -21,7 +21,7 @@ assert.match(mapper, /profile\/chat/);
 assert.match(mapper, /profile\/activity/);
 assert.doesNotMatch(mapper, /admin\//);
 assert.doesNotMatch(mapper, /camelliaId/);
-assert.doesNotMatch(mapper, /agreedAt/);
+assert.match(mapper, /agreedAt/);
 assert.match(mapper, /slice\(-200\)/);
 assert.match(mapper, /slice\(-300\)/);
 
@@ -29,9 +29,9 @@ assert.match(sync, /const WAIT_MS = 1500/);
 assert.match(sync, /camellia-sync-sent/);
 assert.match(sync, /sent\[entry\.path\] !== entry\.mark/);
 assert.match(sync, /window\.addEventListener\('pagehide'/);
-assert.match(sync, /batch\.commit\(\)/);
+assert.match(sync, /runTransaction/);
 assert.ok(
-  sync.indexOf('await batch.commit()') < sync.indexOf('sent[entry.path] = entry.mark'),
+  sync.indexOf('await runTransaction') < sync.indexOf('sent[entry.path] = entry.mark'),
   'fingerprints must be saved only after Firestore accepts the batch',
 );
 

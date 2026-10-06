@@ -4,6 +4,9 @@ import { ActionCard } from '@/components/ActionCard';
 import { buildTodaySummary, getTimeBand } from '@/lib/recommendation';
 import { buildDailyReflection } from '@/lib/reflection/engine';
 import { checkEntryCopy } from '@/lib/reflection/check-entry';
+import {useCurrentTime} from '@/hooks/useCurrentTime';
+import { checkInputError } from '@/lib/check';
+import { generateInsightCandidates, selectDisplayableInsight } from '@/lib/insight/candidates';
 import type {
   AnalyticsEventName,
   CamelliaState,
@@ -65,6 +68,7 @@ export function TodayScreen({
   ) => void;
 }) {
   const checkViewSent = useRef(false);
+  const currentTime=useCurrentTime(state.checkins);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!checkViewSent.current) {
@@ -81,22 +85,27 @@ export function TodayScreen({
   const [stress, setStress] = useState<Checkin['stress']>();
   const [period, setPeriod] = useState('');
   const [saved, setSaved] = useState(false);
+  const [inputError,setInputError] = useState('');
   const saveLocked = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  const resultFocused=useRef(false);
   useEffect(() => {
-    if (saved) {
+    if (!saved)resultFocused.current=false;
+    if (saved&&resultHeading.current&&!resultFocused.current) {
+      resultFocused.current=true;
       resultHeading.current?.focus({ preventScroll: true });
       resultHeading.current?.scrollIntoView({ block: 'start' });
     }
-  }, [saved]);
+  }, [saved,currentTime]);
   const date = useMemo(
     () =>
       new Intl.DateTimeFormat('ja-JP', {
         month: 'long',
         day: 'numeric',
         weekday: 'long',
-      }).format(new Date()),
-    [],
+        timeZone: 'Asia/Tokyo',
+      }).format(currentTime),
+    [currentTime],
   );
   const active = state.actions.filter((a) => a.status === 'started');
   const reflection = state.actions.filter(
@@ -109,12 +118,16 @@ export function TodayScreen({
       onProposals(recommendations.map((r) => r.action.id));
   }, [recommendations, state.checkins.length, onProposals]);
   const displayDate = useMemo(() => {
-    const value = new Date();
+    const value = new Date(currentTime.getTime());
     if (forceNight) value.setHours(21, 0, 0, 0);
     return value;
-  }, [forceNight]);
+  }, [forceNight,currentTime]);
   const dailyReflection = useMemo(
     () => buildDailyReflection(state, displayDate),
+    [state, displayDate],
+  );
+  const gentleInsight = useMemo(
+    () => selectDisplayableInsight(generateInsightCandidates(state, displayDate)),
     [state, displayDate],
   );
   const entryCopy = useMemo(
@@ -145,6 +158,9 @@ export function TodayScreen({
   }[timeBand];
   const save = () => {
     if (!mood || saveLocked.current) return;
+    const error=checkInputError({mood,sleep:sleep?Number(sleep):undefined,periodDays:period?Number(period):undefined});
+    setInputError(error);
+    if(error)return;
     saveLocked.current = true;
     onCheckin({
       mood,
@@ -174,10 +190,11 @@ export function TodayScreen({
         <h2>{entryCopy.title}</h2>
         <p className="check-intro">{entryCopy.prompt}</p>
         <fieldset className="mood-choice">
-        <legend className="mood-question">今の気分は？ <span>近いものをひとつ</span></legend>
+        <legend className="mood-question">今の気分は？ <span>近いものをひとつ。気分だけでも大丈夫。</span></legend>
         <div className="moods">
           {moods.map((x) => (
             <button
+              type="button"
               aria-label={x.label}
               aria-pressed={mood === x.value}
               className={mood === x.value ? 'selected' : ''}
@@ -198,7 +215,6 @@ export function TodayScreen({
         <p className="check-preview">
           Checkのあとに <span>今日のあなた</span>・<span>今日の過ごし方</span>・<span>今日の一枚</span>
         </p>
-        {!mood && <p className="check-intro">気分だけでも大丈夫。</p>}
         {mood && <>
         <button className="text-button" onClick={() => setMore(!more)}>
           {more ? '閉じる' : '睡眠や身体のことも添える（任意）'}
@@ -256,6 +272,7 @@ export function TodayScreen({
             )}
           </div>
         )}
+        {inputError&&<p role="alert">{inputError}</p>}
         <button className="primary" disabled={saved} onClick={save}>
           {saved ? '保存しました' : '今日の私を見てみる'}
         </button>
@@ -270,7 +287,14 @@ export function TodayScreen({
           {dailyReflection.messages.map((message, index) => (
             <p key={index}>{message}</p>
           ))}
-          <span className="meta">入力されたCheckだけをもとにしています</span>
+          {gentleInsight && !dailyReflection.messages.includes(gentleInsight.text) && (
+            <div className="insight-card">
+              <p className="eyebrow">最近のあなたから</p>
+              <p>{gentleInsight.text}</p>
+              <small>{gentleInsight.observations}件の記録から見えた傾向です。決めつけではありません。</small>
+            </div>
+          )}
+          <span className="meta">Checkとこれまでの行動記録をもとにしています</span>
         </section>
       ) : (
         <section className="summary-card">

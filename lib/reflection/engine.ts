@@ -36,6 +36,7 @@ export function dailyCheckins(
   for (const check of [...checkins].sort((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   )) {
+    if(!Number.isFinite(Date.parse(check.createdAt))||Date.parse(check.createdAt)>through.getTime())continue;
     const day = jstDate(new Date(check.createdAt));
     if (day <= throughDay) byDay.set(day, check);
   }
@@ -191,7 +192,7 @@ export function buildDailyReflection(
     historyDays: checks.length,
     title:
       stage === 'weekly'
-        ? '今週のあなた'
+        ? '最近のあなたのパターン'
         : stage === 'recent'
           ? '最近のあなた'
           : '今日のあなた',

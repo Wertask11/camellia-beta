@@ -47,6 +47,15 @@ export interface Profile {
   id: string;
   name: string;
   age: string;
+  birthDate?: string;
+  womenServiceAcknowledged?: boolean;
+  agreedAt?: string;
+  agreedVersion?: string;
+  region?: string;
+  livingSituation?: string;
+  usualSleep?: number;
+  concerns?: string;
+  purposes?: string[];
   interests: string[];
   lifestyle: string;
   availableMinutes?: number;
@@ -204,6 +213,7 @@ export type AnalyticsEventName =
   | 'login_view'
   | 'login_success'
   | 'login_skip'
+  | 'profile_complete'
   | 'auth_method_selected'
   | 'account_link_started'
   | 'account_link_success'
@@ -240,6 +250,7 @@ export interface CamelliaState {
   savedActions: SavedAction[];
   aiConversations: AIConversation[];
   contextualMemory: ContextualActionMemory[];
+  personalMemories?: Array<{id:string;text:string;createdAt:string;updatedAt:string;source:'explicit_conversation';status?:'removed'}>;
   insights: Insight[];
   insightFeedback: InsightFeedback[];
   fortunes: DailyFortune[];
