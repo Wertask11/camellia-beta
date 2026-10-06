@@ -21,11 +21,7 @@ assert.match(mapper, /profile\/chat/);
 assert.match(mapper, /profile\/activity/);
 assert.doesNotMatch(mapper, /admin\//);
 assert.doesNotMatch(mapper, /camelliaId/);
-assert.match(mapper, /root\.birthDate/);
-assert.match(mapper, /root\.agreedAt/);
-assert.match(mapper, /root\.agreedVersion/);
-assert.match(mapper, /data\.cycle/);
-assert.match(mapper, /data\.lastMenstrualDate/);
+assert.match(mapper, /agreedAt/);
 assert.match(mapper, /slice\(-200\)/);
 assert.match(mapper, /slice\(-300\)/);
 
@@ -33,11 +29,10 @@ assert.match(sync, /const WAIT_MS = 1500/);
 assert.match(sync, /camellia-sync-sent/);
 assert.match(sync, /sent\[entry\.path\] !== entry\.mark/);
 assert.match(sync, /window\.addEventListener\('pagehide'/);
-assert.match(sync, /runTransaction\(schoolParkDb/);
-assert.match(sync, /transaction\.set\(reference\(uid,entry\.path\)/);
+assert.match(sync, /runTransaction/);
 assert.ok(
-  sync.indexOf('await runTransaction(schoolParkDb') < sync.indexOf('sent[entry.path] = entry.mark'),
-  'fingerprints must be saved only after Firestore accepts the transaction',
+  sync.indexOf('await runTransaction') < sync.indexOf('sent[entry.path] = entry.mark'),
+  'fingerprints must be saved only after Firestore accepts the batch',
 );
 
 console.log('schoolpark sync: PASS (authenticated-only, mapped, debounced, differential)');

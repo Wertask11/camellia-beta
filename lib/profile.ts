@@ -11,5 +11,5 @@ export function currentAge(birthDate: string | undefined, now = new Date()) {
 }
 export function profileComplete(profile: Profile, now = new Date()) {
   const age = currentAge(profile.birthDate, now);
-  return Boolean(profile.name.trim() && age !== undefined && age >= MIN_AGE && age <= MAX_AGE && profile.womenServiceAcknowledged && profile.agreedAt);
+  return Boolean(profile.name.trim() && age !== undefined && age >= MIN_AGE && age <= MAX_AGE && profile.womenServiceAcknowledged===true && typeof profile.agreedAt==='string' && Number.isFinite(Date.parse(profile.agreedAt)));
 }

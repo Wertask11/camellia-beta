@@ -16,7 +16,7 @@ export function checkEntryCopy(checkins: Checkin[], now: Date) {
     };
   if (prior.length >= 7)
     return {
-      title: '今週のあなたに、どんな変化がある？',
+      title: '最近のあなたに、どんな変化がある？',
       prompt: '今の気分をひとつ。直近7回の記録と一緒に見てみましょう。',
     };
   if (prior.length >= 2)
@@ -35,7 +35,7 @@ export function checkEntryCopy(checkins: Checkin[], now: Date) {
       prompt: '今の気分をひとつ。昨日との違いも見えてきます。',
     };
   return {
-    title: '今日は、どんな一日？',
-    prompt: '今の気分をひとつ選ぶと、今日のあなたが少し見えてきます。',
+    title: '今日の私は、どんな感じ？',
+    prompt: 'Checkすると、今日のあなたが少し見えてきます。',
   };
 }

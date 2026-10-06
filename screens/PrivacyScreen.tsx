@@ -11,6 +11,9 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
         </div>
       </header>
       <section className="panel">
+        <h2>Memoryについて</h2><p>会話で「覚えておいて」と伝えた内容は候補として表示し、あなたが保存を選んだ一言だけをMemoryとして参照します。MyからMemoryを外せます。会話履歴そのものは別の記録として保存・同期されます。</p>
+      </section>
+      <section className="panel">
         <h2>保存・同期される情報</h2>
         <p>
           プロフィール、日々のCheck、選んだ行動と振り返り、あとで見る、見送り理由、Camelliaとの会話、今日の一枚、My

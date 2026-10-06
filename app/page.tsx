@@ -5,6 +5,7 @@ import { ActionSheet } from '@/components/ActionSheet';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { ACTIONS } from '@/data/actions';
 import { useCamelliaStore } from '@/hooks/useCamelliaStore';
+import {useCurrentTime} from '@/hooks/useCurrentTime';
 import { recommend } from '@/lib/recommendation';
 import { CamelliaScreen } from '@/screens/CamelliaScreen';
 import { DiscoverScreen } from '@/screens/DiscoverScreen';
@@ -22,10 +23,11 @@ import { AccountScreen } from '@/screens/AccountScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { finishAuthCallback } from '@/lib/auth/camellia';
-import type { Category, Recommendation } from '@/types';
+import type { Category, Recommendation, TreeLeaf } from '@/types';
 
 export default function Page() {
   const store = useCamelliaStore();
+  const currentTime=useCurrentTime(store.state.checkins);
   const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app'>('welcome');
   const [accountUser,setAccountUser]=useState<User|null>(null);
   const [accountReady,setAccountReady]=useState(false);
@@ -38,13 +40,14 @@ export default function Page() {
   const [secondary, setSecondary] = useState<'circle' | 'place'>();
   const [talkMenu, setTalkMenu] = useState(false);
   const [privacy, setPrivacy] = useState(false);
+  const [treeContext,setTreeContext]=useState<TreeLeaf>();
   const [feature, setFeature] = useState<'fortune' | 'tree'>();
   const [devNight, setDevNight] = useState(false);
   const recommendationDate = useMemo(() => {
-    const value = new Date();
+    const value = new Date(currentTime.getTime());
     if (devNight) value.setHours(21, 0, 0, 0);
     return value;
-  }, [devNight]);
+  }, [devNight,currentTime]);
   const recs = useMemo(
     () => recommend(store.state, recommendationDate),
     [store.state, recommendationDate],
@@ -61,9 +64,9 @@ export default function Page() {
     }
   }, [entry, store.ready, store.state.onboardingComplete, store.track]);
   useEffect(() => {
-    if(!store.ready)return;
+    if(!store.ready||store.storageError)return;
     let generation=0;
-    return onAuthStateChanged(schoolParkAuth,user=>{
+    const unsubscribe=onAuthStateChanged(schoolParkAuth,user=>{
       const request=++generation;
       setAccountReady(false);setAccountError('');setAccountUser(user?.isAnonymous?null:user);
       if(!user||user.isAnonymous){setAccountReady(true);return;}
@@ -72,6 +75,7 @@ export default function Page() {
         setAccountError(error instanceof Error?error.message:'SYNC_UNAVAILABLE');setAccountReady(true);
       });
     });
+    return ()=>{generation++;unsubscribe();};
   },[store.ready,store.prepareAccount]);
   useEffect(() => {
     void finishAuthCallback().then(result=>{
@@ -81,11 +85,12 @@ export default function Page() {
       setEntry('app');
     }).catch(error=>{setAccountError(error instanceof Error?error.message:'AUTH_FAILED');setEntry('account');});
   },[store.track]);
+  if(store.storageError)return <main className="screen"><h1>端末の記録を読み込めませんでした</h1><p>保存データを上書きせず、そのまま残しています。別の端末やアカウントへ切り替える前に、運営へお問い合わせください。</p></main>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
-  if(accountError&&accountUser)return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p><p role="alert">{['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError)?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p><button className="primary" onClick={()=>location.reload()}>もう一度確認する</button></main>;
+  if(accountError&&accountUser)return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p><p role="alert">{['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError)?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p><button className="primary" onClick={()=>location.reload()}>もう一度確認する</button>{['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError)&&<button className="secondary-button" onClick={()=>{setAccountReady(false);void store.prepareAccount(accountUser.uid,true).then(()=>{setAccountError('');setAccountReady(true);}).catch(error=>{setAccountError(error instanceof Error?error.message:'RESTORE_FAILED');setAccountReady(true);});}}>このアカウントの記録を開く（端末の記録は別に残す）</button>}</main>;
   if(!accountUser&&entry==='welcome')return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
   if(!accountUser)return <AccountScreen onBack={()=>setEntry('welcome')} onSelect={method=>store.track('auth_method_selected',{auth_method:method})} onContinue={()=>setEntry('app')}/>;
-  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{store.updateProfile(patch);if(!store.state.onboardingComplete){store.track('profile_complete');store.completeOnboarding();}setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
+  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!profileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.destination) {
       setSecondary(r.action.destination);
@@ -170,6 +175,7 @@ export default function Page() {
           onBack={() => setFeature(undefined)}
           onAdd={store.addTreeLeaf}
           onUpdate={store.updateTreeLeaf}
+          onTalk={leaf=>{setTreeContext(leaf);setFeature(undefined);setTab('camellia');}}
           onReflect={store.addTreeReflection}
           onTrack={store.track}
         />
@@ -205,6 +211,10 @@ export default function Page() {
       )}
       {tab === 'camellia' && (
         <CamelliaScreen
+          onRemember={store.remember}
+          treeContext={treeContext}
+          onClearTreeContext={()=>setTreeContext(undefined)}
+          onTree={()=>{setTreeContext(undefined);setFeature('tree');}}
           state={store.state}
           recommendations={recs}
           onSaveConversation={store.addConversation}
@@ -228,6 +238,7 @@ export default function Page() {
         <MyScreen
           state={store.state}
           devNight={devNight}
+          onForget={store.forget}
           onEditProfile={()=>setEditingProfile(true)}
           onReset={store.reset}
           onInsight={store.feedbackInsight}

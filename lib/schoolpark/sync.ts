@@ -29,29 +29,46 @@ let passportCache: { uid: string; value: string } | null = null;
 let preparedUid: string | null = null;
 const OWNER_KEY = 'camellia-cache-owner';
 const CLOUD_KEY = 'camellia-cloud-version:';
+export type SyncStatus={phase:'idle'|'pending'|'saved'|'error';at?:string;error?:string};
+let syncStatus:SyncStatus={phase:'idle'};
+const listeners=new Set<()=>void>();
+export const getSyncStatus=()=>syncStatus;
+export function subscribeSyncStatus(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
+function notifySync(status:SyncStatus){syncStatus=status;listeners.forEach(listener=>listener());}
 function rootSignature(data:Record<string,unknown>|undefined){return fingerprint(JSON.stringify(data?Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])):null));}
-export async function prepareSchoolParkAccount(state: CamelliaState, uid: string) {
+export async function prepareSchoolParkAccount(state: CamelliaState, uid: string, useRemote = false) {
   preparedUid = null;
+  latestState = null;
+  if(timer){clearTimeout(timer);timer=null;}
   const owner = localStorage.getItem(OWNER_KEY);
-  if (owner && owner !== uid && hasPersonalData(state)) throw new Error('IDENTITY_CONFLICT');
+  if (!useRemote && owner && owner !== uid && hasPersonalData(state)) throw new Error('IDENTITY_CONFLICT');
+  const foreignSync=Object.keys(localStorage).some(key=>key.startsWith(`${SENT_KEY}:`)&&key!==`${SENT_KEY}:${uid}`);
+  if(!useRemote&&!owner&&foreignSync&&hasPersonalData(state))throw new Error('IDENTITY_CONFLICT');
   const user = await currentSchoolParkUser();
   if (!user || user.uid !== uid || user.isAnonymous) throw new Error('ACCOUNT_REQUIRED');
   const root = await getDoc(reference(uid, ''));
+  if(root.data()?.archiveSyncInProgress&&(!owner||useRemote))throw new Error('REMOTE_SYNC_INCOMPLETE');
   const version=rootSignature(root.data());
   const known=localStorage.getItem(CLOUD_KEY+uid);
-  if(owner===uid&&root.exists()&&known&&known!==version)throw new Error('SYNC_CONFLICT');
+  if(!useRemote&&owner===uid&&root.exists()&&known!==version)throw new Error('SYNC_CONFLICT');
   let result = state;
-  if (root.exists() && !owner) {
+  if(useRemote&&hasPersonalData(state))localStorage.setItem(`camellia-local-backup:${state.profile.id}:${Date.now()}`,JSON.stringify(state));
+  if (root.exists() && (!owner || useRemote)) {
     const records = await getDocs(collection(schoolParkDb, 'camellia_users', uid, 'imports'));
+    const afterRead=await getDoc(reference(uid,''));
+    if(afterRead.data()?.archiveSyncInProgress||rootSignature(afterRead.data())!==version)throw new Error('REMOTE_SYNC_INCOMPLETE');
     const remote = restoreArchive(records.docs.map(item=>item.data()), state);
-    if (hasPersonalData(state)) throw new Error('SYNC_CONFLICT');
+    if (!useRemote && hasPersonalData(state)) throw new Error('SYNC_CONFLICT');
     if (!remote) throw new Error('REMOTE_RESTORE_UNAVAILABLE');
     result = remote;
   }
+  if(useRemote&&!root.exists())throw new Error('REMOTE_RESTORE_UNAVAILABLE');
   if (schoolParkAuth.currentUser?.uid !== uid) throw new Error('ACCOUNT_CHANGED');
+  if(useRemote){localStorage.removeItem(`${CONFLICT_KEY}:${uid}`);localStorage.removeItem(`${SENT_KEY}:${uid}`);}
   localStorage.setItem(CLOUD_KEY+uid,version);
   localStorage.setItem(OWNER_KEY,uid);
   preparedUid = uid;
+  latestState = result;
   return result;
 }
 const pausedUids = new Set<string>();
@@ -137,8 +154,9 @@ async function performSync() {
       part.forEach(entry=>transaction.set(reference(uid,entry.path),entry.data,{merge:true}));
       const revision=crypto.randomUUID();
       const rootEntry=part.find(entry=>entry.path==='')?.data||{};
-      transaction.set(rootRef,{syncRevision:revision},{merge:true});
-      return rootSignature({...current.data(),...rootEntry,syncRevision:revision});
+      const archiveSyncInProgress=offset+400<changed.length;
+      transaction.set(rootRef,{syncRevision:revision,archiveSyncInProgress},{merge:true});
+      return rootSignature({...current.data(),...rootEntry,syncRevision:revision,archiveSyncInProgress});
     });
     localStorage.setItem(CLOUD_KEY+uid,version);
     part.forEach((entry) => {
@@ -146,6 +164,7 @@ async function performSync() {
     });
     saveSent(uid, sent);
   }
+  notifySync({phase:'saved',at:new Date().toISOString()});
 }
 
 export function flushSchoolParkSync() {
@@ -160,6 +179,7 @@ export function flushSchoolParkSync() {
   if (!syncing) {
     syncing = performSync()
       .catch((error) => {
+        notifySync({phase:'error',error:error?.message==='SYNC_CONFLICT'?'SYNC_CONFLICT':'SYNC_UNAVAILABLE'});
         console.warn(
           'SchoolPark管理画面への同期に失敗しました:',
           error?.message || error,
@@ -192,6 +212,7 @@ export function syncToSchoolPark(state: CamelliaState) {
       pausedUids.delete(user.uid);
     }
     if (timer) clearTimeout(timer);
+    notifySync({phase:'pending'});
     timer = setTimeout(() => {
       timer = null;
       void flushSchoolParkSync();
@@ -206,7 +227,7 @@ export async function deleteSyncedCamelliaData(clearLocalData: () => void) {
     syncedOwnerUids: () => {
       const owners = Object.keys(localStorage)
         .filter((key) => key.startsWith(`${SENT_KEY}:`) || key.startsWith(CLOUD_KEY))
-        .map((key) => key.slice(key.lastIndexOf(':') + 1));
+        .map((key) => key.startsWith(`${SENT_KEY}:`) ? key.slice(SENT_KEY.length + 1) : key.slice(CLOUD_KEY.length));
       const owner = localStorage.getItem(OWNER_KEY);
       if (owner) owners.push(owner);
       return owners;

@@ -250,6 +250,7 @@ export interface CamelliaState {
   savedActions: SavedAction[];
   aiConversations: AIConversation[];
   contextualMemory: ContextualActionMemory[];
+  personalMemories?: Array<{id:string;text:string;createdAt:string;updatedAt:string;source:'explicit_conversation';status?:'removed'}>;
   insights: Insight[];
   insightFeedback: InsightFeedback[];
   fortunes: DailyFortune[];

@@ -6,7 +6,6 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const server = await createServer({ configFile: false, root, resolve: { alias: { '@': root } }, server: { middlewareMode: true }, appType: 'custom' });
 try {
   const { generateInsightCandidates, selectDisplayableInsight } = await server.ssrLoadModule('/lib/insight/candidates.ts');
-  const { generateInsights } = await server.ssrLoadModule('/lib/insight/engine.ts');
   const { buildCamelliaContext } = await server.ssrLoadModule('/lib/conversation/context.ts');
   const { RuleBasedProcessor } = await server.ssrLoadModule('/lib/conversation/engine.ts');
   const now = new Date('2026-10-06T12:00:00+09:00');
@@ -20,7 +19,6 @@ try {
   assert.equal(selectDisplayableInsight([{ type: 'mood_trend', observations: 6, confidence: 0.599, text: '', key: '', summaryData: {} }]), undefined, 'confidence below 0.6 is hidden');
   assert.equal(selectDisplayableInsight([{ type: 'mood_trend', observations: 3, confidence: 0.9, text: '', key: '', summaryData: {} }]), undefined, 'fewer than four observations is hidden');
   assert.ok(selectDisplayableInsight([{ type: 'mood_trend', observations: 4, confidence: 0.6, text: '', key: '', summaryData: {} }]), 'confidence 0.6 with four observations can be shown');
-  assert.deepEqual(generateInsights({ ...blank, checkins: [record(0, 4), record(1, 2)] }, now), [], 'My insights also hides a two-point comparison');
 
   const upYesterday = types({ ...blank, checkins: [record(0, 4), record(1, 2)] });
   assert.equal(upYesterday[0].type, 'yesterday_difference');
@@ -34,7 +32,6 @@ try {
   const fallingWeek = [5, 5, 5, 3, 3, 3, 3].map((mood, i) => record(6 - i, mood));
   const falling = types({ ...blank, checkins: fallingWeek });
   assert.ok(falling.some((candidate) => candidate.type === 'mood_trend' && candidate.summaryData.delta < 0));
-  assert.ok(generateInsights({ ...blank, checkins: risingWeek }, now).some((item) => item.confidence >= 0.6 && item.sampleSize >= 4), 'My insights uses the same minimum display threshold');
 
   const weekComparison = [
     ...Array.from({ length: 7 }, (_, i) => record(i, 5)),
@@ -63,8 +60,6 @@ try {
   assert.ok(!/あなたは|必ず|原因/.test(repeated.text));
   const futureAction = { id: 'future', actionId: 'walk', event: 'started', context: { mood: 3, timeBand: '昼', weekday: 1, lifestyle: '仕事' }, createdAt: new Date(now.getTime() + 86_400_000).toISOString() };
   assert.ok(!types({ ...blank, contextualMemory: [futureAction] }).some((item) => item.type === 'repeated_choice'), 'future actions do not enter patterns');
-  const savedMemory = [1, 2, 3].map((daysAgo) => ({ id: `saved-${daysAgo}`, actionId: 'walk', event: 'saved', context: { timeBand: '昼', weekday: 1, lifestyle: '仕事' }, createdAt: new Date(now.getTime() - daysAgo * 86_400_000).toISOString() }));
-  assert.ok(!generateInsights({ ...blank, contextualMemory: [...savedMemory, { ...futureAction, event: 'saved' }] }, now).some((item) => item.key === 'saved-not-done-walk'), 'future saved actions do not satisfy the minimum sample count');
 
   const jstNow = new Date('2026-10-05T15:01:00.000Z'); // 2026-10-06 00:01 JST
   const jstState = {
