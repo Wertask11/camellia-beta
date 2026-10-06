@@ -174,10 +174,11 @@ export function TodayScreen({
         <h2>{entryCopy.title}</h2>
         <p className="check-intro">{entryCopy.prompt}</p>
         <fieldset className="mood-choice">
-        <legend className="mood-question">今の気分は？ <span>近いものをひとつ</span></legend>
+        <legend className="mood-question">今の気分は？ <span>近いものをひとつ。気分だけでも大丈夫。</span></legend>
         <div className="moods">
           {moods.map((x) => (
             <button
+              type="button"
               aria-label={x.label}
               aria-pressed={mood === x.value}
               className={mood === x.value ? 'selected' : ''}
@@ -198,7 +199,6 @@ export function TodayScreen({
         <p className="check-preview">
           Checkのあとに <span>今日のあなた</span>・<span>今日の過ごし方</span>・<span>今日の一枚</span>
         </p>
-        {!mood && <p className="check-intro">気分だけでも大丈夫。</p>}
         {mood && <>
         <button className="text-button" onClick={() => setMore(!more)}>
           {more ? '閉じる' : '睡眠や身体のことも添える（任意）'}
