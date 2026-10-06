@@ -36,25 +36,35 @@ export const getSyncStatus=()=>syncStatus;
 export function subscribeSyncStatus(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
 function notifySync(status:SyncStatus){syncStatus=status;listeners.forEach(listener=>listener());}
 function rootSignature(data:Record<string,unknown>|undefined){return fingerprint(JSON.stringify(data?Object.fromEntries(Object.keys(data).sort().map(key=>[key,data[key]])):null));}
-export async function prepareSchoolParkAccount(state: CamelliaState, uid: string, useRemote = false) {
+/** The person's choice on the record-conflict screen. 'remote' opens the account's records (this device's are
+ * kept aside). Only while the account has no records yet: 'adopt' uses this device's records in it, and
+ * 'fresh' starts it empty (this device's are kept aside). */
+export type AccountChoice = 'remote' | 'adopt' | 'fresh';
+export async function prepareSchoolParkAccount(state: CamelliaState, uid: string, choice: AccountChoice | boolean = false, fresh?: CamelliaState) {
+  const useRemote = choice === true || choice === 'remote';
+  const intoEmpty = choice === 'adopt' || choice === 'fresh';
   preparedUid = null;
   latestState = null;
   if(timer){clearTimeout(timer);timer=null;}
   const owner = localStorage.getItem(OWNER_KEY);
-  if (!useRemote && owner && owner !== uid && hasPersonalData(state)) throw new Error('IDENTITY_CONFLICT');
   const foreignSync=Object.keys(localStorage).some(key=>key.startsWith(`${SENT_KEY}:`)&&key!==`${SENT_KEY}:${uid}`);
-  if(!useRemote&&!owner&&foreignSync&&hasPersonalData(state))throw new Error('IDENTITY_CONFLICT');
+  const otherAccount=!useRemote&&!intoEmpty&&hasPersonalData(state)&&(owner?owner!==uid:foreignSync);
   const user = await currentSchoolParkUser();
   if (!user || user.uid !== uid || user.isAnonymous) throw new Error('ACCOUNT_REQUIRED');
   const root = await getDoc(reference(uid, ''));
+  // This device's records belong to another account. If this account has none yet, say so: the person can go
+  // back to the method they used before, or choose what to do with this new account.
+  if(otherAccount)throw new Error(root.exists()?'IDENTITY_CONFLICT':'IDENTITY_CONFLICT_EMPTY_ACCOUNT');
+  if(intoEmpty&&root.exists())throw new Error('IDENTITY_CONFLICT');
+  if(choice==='fresh'&&!fresh)throw new Error('FRESH_STATE_REQUIRED');
   if(root.data()?.archiveSyncInProgress&&(!owner||useRemote))throw new Error('REMOTE_SYNC_INCOMPLETE');
   const version=rootSignature(root.data());
   const known=localStorage.getItem(CLOUD_KEY+uid);
   // The account changed since this device last confirmed it. Usually another device; but if the app closed
   // while this device's own write was in flight, the write landed and only its confirmation was lost.
   const unconfirmed=!useRemote&&owner===uid&&root.exists()&&known!==version;
-  let result = state;
-  if(useRemote&&hasPersonalData(state))localStorage.setItem(`camellia-local-backup:${state.profile.id}:${Date.now()}`,JSON.stringify(state));
+  let result = choice==='fresh'&&fresh ? fresh : state;
+  if((useRemote||choice==='fresh')&&hasPersonalData(state))localStorage.setItem(`camellia-local-backup:${state.profile.id}:${Date.now()}`,JSON.stringify(state));
   if (root.exists() && (!owner || useRemote || unconfirmed)) {
     const records = await getDocs(collection(schoolParkDb, 'camellia_users', uid, 'imports'));
     const afterRead=await getDoc(reference(uid,''));
