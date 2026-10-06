@@ -80,19 +80,26 @@ export default function Page() {
       store.track('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) });
     }
   }, [showWelcome, showAccount, accountReady, store.ready, store.storageError, store.track]);
+  /* Which user the screens were last prepared for ("uid:anonymous?"). A β guest that logs in keeps its
+     uid, and onAuthStateChanged only fires when the uid changes, so the login return applies it itself. */
+  const appliedUser=useRef<string|null>(null);
+  const applyUser=useRef<(user:User|null)=>void>(()=>{});
   useEffect(() => {
     if(!store.ready||store.storageError)return;
     let generation=0;
-    const unsubscribe=onAuthStateChanged(schoolParkAuth,user=>{
+    const apply=(user:User|null)=>{
       const request=++generation;
+      appliedUser.current=user?`${user.uid}:${user.isAnonymous}`:'';
       setAccountReady(false);setAccountError('');setAccountUser(user?.isAnonymous?null:user);
       if(!user||user.isAnonymous){setAccountReady(true);return;}
       void store.prepareAccount(user.uid).then(()=>{if(request===generation)setAccountReady(true);}).catch(error=>{
         if(request!==generation)return;
         setAccountError(error instanceof Error?error.message:'SYNC_UNAVAILABLE');setAccountReady(true);
       });
-    });
-    return ()=>{generation++;unsubscribe();};
+    };
+    applyUser.current=apply;
+    const unsubscribe=onAuthStateChanged(schoolParkAuth,apply);
+    return ()=>{generation++;unsubscribe();applyUser.current=()=>{};};
   },[store.ready,store.prepareAccount]);
   useEffect(() => {
     void finishAuthCallback().then(result=>{
@@ -100,6 +107,8 @@ export default function Page() {
       callbackHandled.current=true;
       store.track('login_success',{method:result.linked?'account_link':'login'});
       setEntry('app');
+      const user=schoolParkAuth.currentUser;
+      if(user&&appliedUser.current!==null&&appliedUser.current!==`${user.uid}:${user.isAnonymous}`)applyUser.current(user);
     }).catch(error=>{setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED'));setEntry('account');});
   },[store.track]);
   if(store.storageError)return <main className="screen"><h1>端末の記録を読み込めませんでした</h1><p>保存データを上書きせず、そのまま残しています。別の端末やアカウントへ切り替える前に、運営へお問い合わせください。</p></main>;
