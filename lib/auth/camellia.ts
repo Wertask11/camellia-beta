@@ -14,3 +14,11 @@ export async function logoutCamellia(){localStorage.setItem(LOGGED_OUT,'1');awai
 
 let callbackPromise: ReturnType<typeof exchangeAuthCallback> | null = null;
 export function finishAuthCallback(){return callbackPromise ??= exchangeAuthCallback();}
+
+export type LinkedCamelliaMethods = { line: boolean; schoolpark: boolean };
+export async function getLinkedCamelliaMethods(): Promise<LinkedCamelliaMethods> {
+  const response = await fetch(`${API}/identities`, { headers: await headers() });
+  const data = await response.json().catch(() => ({})) as Partial<LinkedCamelliaMethods> & { error?: string };
+  if (!response.ok) throw new Error(data.error || 'IDENTITIES_FAILED');
+  return { line: data.line === true, schoolpark: data.schoolpark === true };
+}

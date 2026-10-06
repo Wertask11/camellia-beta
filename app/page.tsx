@@ -25,6 +25,16 @@ import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation, TreeLeaf } from '@/types';
 
+/* ログインの戻り（LINE / SchoolPark）で起きたことを、その人に分かる言葉にする。
+   記録の食い違い（accountError）とは別物。止めるのはログインだけで、記録には触れない。 */
+function authNoticeFor(code:string){
+  if(code==='IDENTITY_LINKED_TO_OTHER')return 'このログイン方法は、別のCamelliaアカウントで使われています。記録を守るため、自動ではつなぎません。前に使っていた方法でログインしてください。';
+  if(code.startsWith('TICKET_')||code==='MISSING_TICKET')return 'SchoolParkでの確認の有効期限が切れました。もう一度お試しください。';
+  if(code==='STATE_MISMATCH'||code.startsWith('LINE_'))return 'LINEでの確認を完了できませんでした。もう一度お試しください。';
+  if(code==='AUTH_UNAVAILABLE')return 'いまログインを受け付けられません。少し時間をおいてお試しください。';
+  return 'ログインを完了できませんでした。通信を確認して、もう一度お試しください。';
+}
+
 export default function Page() {
   const store = useCamelliaStore();
   const currentTime=useCurrentTime(store.state.checkins);
@@ -32,6 +42,7 @@ export default function Page() {
   const [accountUser,setAccountUser]=useState<User|null>(null);
   const [accountReady,setAccountReady]=useState(false);
   const [accountError,setAccountError]=useState('');
+  const [authNotice,setAuthNotice]=useState('');
   const [editingProfile,setEditingProfile]=useState(false);
   const callbackHandled=useRef(false);
   const [tab, setTab] = useState<MainTab>('today');
@@ -52,17 +63,23 @@ export default function Page() {
     () => recommend(store.state, recommendationDate),
     [store.state, recommendationDate],
   );
+  /* 戻ってきた人（オンボーディングを終えている人）は、Welcome を挟まずにログインへ。
+     ログイン画面は、新しい人にも戻ってきた人にも login_view として数える
+     （正式版のファネルの account_view にあたる。同じ意味のイベントは増やさない）。 */
+  const returning = store.state.onboardingComplete;
+  const showWelcome = !accountUser && entry === 'welcome' && !returning;
+  const showAccount = !accountUser && !showWelcome;
   useEffect(() => {
-    if (!store.ready || store.state.onboardingComplete) return;
-    if (entry === 'welcome' && sessionStorage.getItem('camellia-welcome-view') !== '1') {
+    if (!store.ready || store.storageError || !accountReady) return;
+    if (showWelcome && sessionStorage.getItem('camellia-welcome-view') !== '1') {
       sessionStorage.setItem('camellia-welcome-view', '1');
       store.track('welcome_view', { period: welcomeTheme().period });
     }
-    if (entry === 'account' && sessionStorage.getItem('camellia-login-view') !== '1') {
+    if (showAccount && sessionStorage.getItem('camellia-login-view') !== '1') {
       sessionStorage.setItem('camellia-login-view', '1');
       store.track('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) });
     }
-  }, [entry, store.ready, store.state.onboardingComplete, store.track]);
+  }, [showWelcome, showAccount, accountReady, store.ready, store.storageError, store.track]);
   useEffect(() => {
     if(!store.ready||store.storageError)return;
     let generation=0;
@@ -83,13 +100,13 @@ export default function Page() {
       callbackHandled.current=true;
       store.track('login_success',{method:result.linked?'account_link':'login'});
       setEntry('app');
-    }).catch(error=>{setAccountError(error instanceof Error?error.message:'AUTH_FAILED');setEntry('account');});
+    }).catch(error=>{setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED'));setEntry('account');});
   },[store.track]);
   if(store.storageError)return <main className="screen"><h1>端末の記録を読み込めませんでした</h1><p>保存データを上書きせず、そのまま残しています。別の端末やアカウントへ切り替える前に、運営へお問い合わせください。</p></main>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accountError&&accountUser)return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p><p role="alert">{['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError)?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p><button className="primary" onClick={()=>location.reload()}>もう一度確認する</button>{['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError)&&<button className="secondary-button" onClick={()=>{setAccountReady(false);void store.prepareAccount(accountUser.uid,true).then(()=>{setAccountError('');setAccountReady(true);}).catch(error=>{setAccountError(error instanceof Error?error.message:'RESTORE_FAILED');setAccountReady(true);});}}>このアカウントの記録を開く（端末の記録は別に残す）</button>}</main>;
-  if(!accountUser&&entry==='welcome')return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
-  if(!accountUser)return <AccountScreen onBack={()=>setEntry('welcome')} onSelect={method=>store.track('auth_method_selected',{auth_method:method})} onContinue={()=>setEntry('app')}/>;
+  if(showWelcome)return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
+  if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');store.track('auth_method_selected',{auth_method:method});}} onContinue={()=>setEntry('app')}/>;
   if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!profileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.destination) {
@@ -184,6 +201,12 @@ export default function Page() {
   return (
     <div className="app-shell">
       <span className="beta-badge">Camellia β</span>
+      {authNotice && (
+        <p className="auth-error app-notice" role="alert">
+          {authNotice}
+          <button className="text-button" onClick={() => setAuthNotice('')}>閉じる</button>
+        </p>
+      )}
       {tab === 'today' && (
         <TodayScreen
           state={store.state}
