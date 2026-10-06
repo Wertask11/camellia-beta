@@ -59,3 +59,18 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
   if((foundProfile&&!foundMeta)||(expected&&seen.size!==expected.size))throw new Error('REMOTE_ARCHIVE_INCOMPLETE');
   return foundProfile?state:null;
 }
+/** True only when every record the account archive would restore is already on this device, at the same or a
+ * newer version. Then continuing with this device's records loses nothing; anything else stays a conflict. */
+export function remoteContainedInLocal(remote: CamelliaState, local: CamelliaState) {
+  const stamp=(item:Record<string,unknown>)=>{const value=item.updatedAt??item.createdAt;return typeof value==='string'?value:'';};
+  if(!remote.profile.id||remote.profile.id!==local.profile.id||stamp(remote.profile as unknown as Record<string,unknown>)>stamp(local.profile as unknown as Record<string,unknown>))return false;
+  for(const field of Object.values(groups)){
+    const key=(item:Record<string,unknown>)=>String(field==='fortunes'?item.date:item.id);
+    const mine=new Map(((local[field]??[]) as unknown as Record<string,unknown>[]).map(item=>[key(item),item]));
+    for(const item of (remote[field]??[]) as unknown as Record<string,unknown>[]){
+      const here=mine.get(key(item));
+      if(!here||stamp(item)>stamp(here))return false;
+    }
+  }
+  return true;
+}

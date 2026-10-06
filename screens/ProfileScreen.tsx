@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { currentAge, MIN_AGE, MAX_AGE } from '@/lib/profile';
 import type { Profile } from '@/types';
-export function ProfileScreen({profile,onSave,onBack}:{profile:Profile;onSave:(patch:Partial<Profile>)=>void;onBack?:()=>void}) {
+/** existing: someone who already used Camellia (β) and is asked once for what v1 requires; their records stay. */
+export function ProfileScreen({profile,onSave,onBack,existing=false}:{profile:Profile;onSave:(patch:Partial<Profile>)=>void;onBack?:()=>void;existing?:boolean}) {
   const [name,setName]=useState(profile.name),[birthDate,setBirthDate]=useState(profile.birthDate??''),[women,setWomen]=useState(profile.womenServiceAcknowledged??false),[agreed,setAgreed]=useState(Boolean(profile.agreedAt));
   const [region,setRegion]=useState(profile.region??''),[lifestyle,setLifestyle]=useState(profile.lifestyle),[living,setLiving]=useState(profile.livingSituation??''),[sleep,setSleep]=useState(String(profile.usualSleep??'')),[concerns,setConcerns]=useState(profile.concerns??''),[purposes,setPurposes]=useState(profile.purposes??[]),[period,setPeriod]=useState(profile.periodEnabled),[minutes,setMinutes]=useState(String(profile.availableMinutes??''));
   const age=currentAge(birthDate),valid=Boolean(name.trim()&&age!==undefined&&age>=MIN_AGE&&age<=MAX_AGE&&women&&agreed);
   return <main className="screen profile-screen">
     {onBack&&<button className="back" onClick={onBack}>← Myへ</button>}
-    <header><div><p className="eyebrow">あなたのCamellia</p><h1>{onBack?'プロフィール':'はじめに、少しだけ。'}</h1></div></header>
+    <header><div><p className="eyebrow">あなたのCamellia</p><h1>{onBack?'プロフィール':existing?'少しだけ、確認させてください。':'はじめに、少しだけ。'}</h1></div></header>
+    {!onBack&&existing&&<p className="meta">これまでの記録は、そのまま残っています。続けるために、生年月日と、利用規約・プライバシーポリシーへの同意を確認させてください。</p>}
     <form onSubmit={e=>{e.preventDefault();if(!valid)return;onSave({name:name.trim(),birthDate,womenServiceAcknowledged:women,agreedAt:profile.agreedAt||new Date().toISOString(),agreedVersion:profile.agreedVersion||'2026-10-05',region,lifestyle,livingSituation:living,usualSleep:sleep?Number(sleep):undefined,concerns,purposes,periodEnabled:period,availableMinutes:minutes?Number(minutes):undefined});}}>
       <label>名前／ニックネーム<input required autoComplete="off" maxLength={30} value={name} onChange={e=>setName(e.target.value)}/></label>
       <label>生年月日<input required type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)}/></label>

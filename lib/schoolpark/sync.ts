@@ -15,7 +15,7 @@ import {
   schoolParkDb,
 } from './firebase';
 import { mapCamelliaState } from './map';
-import { hasPersonalData, restoreArchive } from './restore';
+import { hasPersonalData, remoteContainedInLocal, restoreArchive } from './restore';
 import { CAMELLIA_SYNC_DELETE_COLLECTIONS, deleteCamelliaData, syncedOwnerUids } from './delete';
 
 const SENT_KEY = 'camellia-sync-sent';
@@ -58,9 +58,12 @@ export async function prepareSchoolParkAccount(state: CamelliaState, uid: string
     const afterRead=await getDoc(reference(uid,''));
     if(afterRead.data()?.archiveSyncInProgress||rootSignature(afterRead.data())!==version)throw new Error('REMOTE_SYNC_INCOMPLETE');
     const remote = restoreArchive(records.docs.map(item=>item.data()), state);
-    if (!useRemote && hasPersonalData(state)) throw new Error('SYNC_CONFLICT');
+    // A β device first signing in on v1: this device already synced to this account (β sent markers, no
+    // later conflict), and the account holds nothing this device lacks. Keep the device's records then.
+    const legacyOwner=!useRemote&&!owner&&Object.keys(readSent(uid)).length>0&&!localStorage.getItem(`${CONFLICT_KEY}:${uid}`)&&remote!==null&&remoteContainedInLocal(remote,state);
+    if (!useRemote && hasPersonalData(state) && !legacyOwner) throw new Error('SYNC_CONFLICT');
     if (!remote) throw new Error('REMOTE_RESTORE_UNAVAILABLE');
-    result = remote;
+    result = legacyOwner ? state : remote;
   }
   if(useRemote&&!root.exists())throw new Error('REMOTE_RESTORE_UNAVAILABLE');
   if (schoolParkAuth.currentUser?.uid !== uid) throw new Error('ACCOUNT_CHANGED');

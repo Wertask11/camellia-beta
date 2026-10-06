@@ -6,7 +6,7 @@ const server=await createServer({configFile:false,root,resolve:{alias:{'@':root}
 try{
  const {emptyState,migrate,load,STORAGE_KEY}=await server.ssrLoadModule('/hooks/useCamelliaStore.ts');
  const {currentAge,profileComplete}=await server.ssrLoadModule('/lib/profile.ts');
- const {restoreArchive,hasPersonalData}=await server.ssrLoadModule('/lib/schoolpark/restore.ts');
+ const {restoreArchive,hasPersonalData,remoteContainedInLocal}=await server.ssrLoadModule('/lib/schoolpark/restore.ts');
  const {mapCamelliaState}=await server.ssrLoadModule('/lib/schoolpark/map.ts');
  const now=new Date('2026-10-06T15:00:00Z');
  assert.equal(currentAge('2008-10-07',now),18);assert.equal(currentAge('2008-10-07',new Date(now.getTime()-1)),17);
@@ -30,6 +30,15 @@ try{
  const restored=restoreArchive(archive,emptyState());
  for(const key of ['profile','checkins','actions','actionFeedback','savedActions','aiConversations','contextualMemory','personalMemories','insights','insightFeedback','fortunes','treeLeaves'])assert.deepEqual(restored[key],state[key],key);
  assert.equal(restored.analyticsEvents[0].forwardedAt,at,'restored historic analytics not re-sent');
+ // A β device's own archive: continuing with the device's records is lossless only if the account holds nothing more.
+ const later='2026-10-02T00:00:00Z';
+ assert.equal(remoteContainedInLocal(restored,state),true,'account archive equal to device records');
+ assert.equal(remoteContainedInLocal(restored,{...state,checkins:[...state.checkins,{id:'new',mood:4,createdAt:later,updatedAt:later}]}),true,'device has newer records only');
+ assert.equal(remoteContainedInLocal({...restored,checkins:[...restored.checkins,{id:'other',mood:2,createdAt:later,updatedAt:later}]},state),false,'account has a record the device lacks');
+ assert.equal(remoteContainedInLocal({...restored,treeLeaves:[{...restored.treeLeaves[0],note:'edited elsewhere',updatedAt:later}]},state),false,'account has a newer version of a record');
+ assert.equal(remoteContainedInLocal({...restored,fortunes:[{...restored.fortunes[0],date:'2026-10-02'}]},state),false,'fortunes compare by day');
+ assert.equal(remoteContainedInLocal({...restored,profile:{...restored.profile,id:'someone-else'}},state),false,'a different profile is never treated as this device');
+ assert.equal(remoteContainedInLocal({...restored,profile:{...restored.profile,updatedAt:new Date(Date.parse(state.profile.updatedAt)+1000).toISOString()}},state),false,'a newer account profile');
  assert.throws(()=>restoreArchive(archive.filter(x=>x.kind!=='checkin'),emptyState()),/INCOMPLETE/,'missing archive record cannot silently erase history');
  const stale={...archive.find(x=>x.kind==='checkin'),archiveKey:'checkin-old',content:JSON.stringify({...state.checkins[0],id:'old'})};
  assert.deepEqual(restoreArchive([...archive,stale],emptyState()).checkins,state.checkins,'old unreferenced records do not return');
