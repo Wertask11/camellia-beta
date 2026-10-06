@@ -3,8 +3,8 @@ import { buildCamelliaContext, type CamelliaContext } from '@/lib/conversation/c
 export function classifyIntent(t:string):ConversationIntent {
   if (/アドバイス.*いらない|聞いてほしい|ただ聞/.test(t)) return 'LISTEN';
   if (/誰か|人と話|つなが|寂し/.test(t)) return 'CONNECT';
-  if (/何かしたい|運動したい|気分.*変え|何着て|暇|できること(?:って)?ある/.test(t)) return 'ACTION';
-  if (/どうしたら|どうすれば|どう思う|迷って|教えて/.test(t)) return 'ADVICE';
+  if (/何かしたい|運動したい|気分.*変え|何着て|暇|できること(?:って)?ある|行動を考え|行動したい/.test(t)) return 'ACTION';
+  if (/どうしたら|どうすれば|どう思う|迷って|教えて|一緒に考え/.test(t)) return 'ADVICE';
   if (/整理|振り返|私も悪|もやもや/.test(t)) return 'REFLECT';
   return 'LISTEN';
 }
@@ -33,6 +33,10 @@ export interface CamelliaProcessor {
 
 function buildRuleResponse(input:string,recs:Recommendation[],context:CamelliaContext){
   const intent=classifyIntent(input),topics=classifyTopics(input),previous=previousUser(context.conversationHistory);let text='';
+  /* 選択肢のカードを出すかを先に決める。返事が「置いておきます」と言うのはカードが出るときだけ。
+     食べ物の話では提案を出さない（空腹の人に行動を勧めない）。提案が無いときも出さない。 */
+  const action=(intent==='ADVICE'||intent==='ACTION')&&!topics.includes('FOOD')?recs[0]?.action:undefined;
+  const showAction=Boolean(action);
   const asksAboutPattern=/最近|傾向|前と比|変化/.test(input);
   if(/覚えてる|覚えている/.test(input))text=context.remembered.length?`あなたが覚えておくことを選んだ一言は「${context.remembered.at(-1)}」です。変わったらMyから外せます。`:'まだ、覚えておくことを選んだ一言はありません。';
   else if(asksAboutPattern&&context.recentPatterns[0]) text=`記録からは、${context.recentPatterns[0].text} そういう日もある、という傾向として受け取ってください。`;
@@ -42,10 +46,11 @@ function buildRuleResponse(input:string,recs:Recommendation[],context:CamelliaCo
   else if(intent==='CONNECT') text='誰かと話したいんだね。ここで私と話し続けることも、同じ関心の人が集まる場所を見ることもできます。';
   else if(topics.includes('LOVE')&&topics.includes('BEAUTY')) text='明日のデート、楽しみと少し迷う気持ちがありそうだね。相手にどう見えるかより、自分が落ち着ける服を軸に選んでみるのはどうかな。';
   else if(topics.includes('WORK')&&topics.includes('ANXIETY')) text='辞めるかどうかは大きな決断だね。今日は結論を急がず、「続けてつらいこと」と「変われば続けられそうなこと」を分けてみると考えやすくなります。';
-  else if(topics.includes('EXERCISE')&&topics.includes('HEALTH')) text='動きたい気持ちと、今日は疲れている感覚の両方を大事にしてよさそう。負担の小さい選択をひとつ置いておきます。';
-  else text=intent==='ADVICE'?'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。必要なら小さな選択肢も置いておきます。':'今の気分に合いそうな、小さな選択をひとつだけ置いておきます。';
-  const showAction=(intent==='ADVICE'||intent==='ACTION')&&!topics.includes('FOOD');
-  return {intent,topics,text,showAction,action:showAction?recs[0]?.action:undefined,showCircle:intent==='CONNECT'};
+  else if(topics.includes('EXERCISE')&&topics.includes('HEALTH')) text=showAction?'動きたい気持ちと、今日は疲れている感覚の両方を大事にしてよさそう。負担の小さい選択をひとつ置いておきます。':'動きたい気持ちと、今日は疲れている感覚の両方を大事にしてよさそう。今日は負担の小さいことから考えてみよう。';
+  else if(intent==='ADVICE') text=showAction?'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。必要なら小さな選択肢も置いておきます。':'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。';
+  else if(topics.includes('FOOD')) text='お腹がすいていると、ほかのことも考えにくいよね。まずは何か食べて、ひと息ついてからでも大丈夫。';
+  else text=showAction?'今の気分に合いそうな、小さな選択をひとつだけ置いておきます。':'今は無理に決めなくても大丈夫。気になることがあれば、そのまま話してね。';
+  return {intent,topics,text,showAction,action,showCircle:intent==='CONNECT'};
 }
 
 /** The current processor is deterministic and local. Future processors can implement the same boundary. */

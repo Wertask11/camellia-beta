@@ -4,6 +4,13 @@ const state={profile:{},checkins:[],actions:[],actionFeedback:[],savedActions:[]
 for(const input of['今できることある？','今できることある?','何かできることある？','今できることってある？']){const r=say(input);result.push([input,r.intent==='ACTION'&&r.showAction&&r.action?.id==='breathing',{intent:r.intent,card:r.showAction}])}
 // Existing intents keep their meaning.
 for(const[input,intent]of[['話を聞いてほしい','LISTEN'],['別にアドバイスはいらない、話聞いてほしい','LISTEN'],['気持ちを整理したい','REFLECT'],['どうしたらいいと思う？','ADVICE'],['誰かと話したい','CONNECT'],['なんか暇','ACTION']])result.push([input,con.classifyIntent(input)===intent,con.classifyIntent(input)]);
+// Wanting to think it through together is advice; wanting to think about what to do is an action request.
+for(const[input,intent]of[['一緒に考えたい','ADVICE'],['行動を考えたい','ACTION'],['何か行動したい','ACTION']]){const r=say(input);result.push([input,r.intent===intent&&r.showAction&&r.action?.id==='breathing',{intent:r.intent,card:r.showAction}])}
+// A reply never promises a choice that the screen does not show (food talk shows no card; neither does an empty recommendation list).
+const none=input=>con.respond(state,[],input,[]);
+const corpus=['今できることある？','一緒に考えたい','行動を考えたい','どうしたらいいと思う？','なんか暇','運動したいけど体調が悪くて疲れてる','お腹すいた、今できることある？','お腹すいたけどどうしたらいい？','話を聞いてほしい','気持ちを整理したい','明日デートなんだけど何着ていこうかな','仕事辞めようか迷ってる'];
+for(const input of corpus)for(const[label,r]of[['recs',say(input)],['no recs',none(input)]]){const promises=/置いておきます/.test(r.text);result.push([`${input} (${label})`,!promises||Boolean(r.showAction&&r.action),{promises,card:Boolean(r.showAction&&r.action),text:r.text}])}
+result.push(['お腹すいた、今できることある？ has no card',!say('お腹すいた、今できることある？').showAction,say('お腹すいた、今できることある？').text]);
 // Saying there is nothing one can do is not a request for an action.
 for(const input of['自分にできることなんてない','今できることなんて何もない','私にできることはない'])result.push([input,say(input).intent!=='ACTION'&&!say(input).showAction,say(input).intent]);
 // An explicit wish to be listened to, or to connect, still wins over the action question.
