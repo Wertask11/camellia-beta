@@ -16,7 +16,7 @@ import {
 } from './firebase';
 import { mapCamelliaState } from './map';
 import { hasPersonalData, restoreArchive } from './restore';
-import { CAMELLIA_SYNC_DELETE_COLLECTIONS, deleteCamelliaData } from './delete';
+import { CAMELLIA_SYNC_DELETE_COLLECTIONS, deleteCamelliaData, syncedOwnerUids } from './delete';
 
 const SENT_KEY = 'camellia-sync-sent';
 const CONFLICT_KEY = 'camellia-sync-conflict';
@@ -224,14 +224,7 @@ export function syncToSchoolPark(state: CamelliaState) {
 export async function deleteSyncedCamelliaData(clearLocalData: () => void) {
   return deleteCamelliaData({
     getCurrentUser: currentSchoolParkUser,
-    syncedOwnerUids: () => {
-      const owners = Object.keys(localStorage)
-        .filter((key) => key.startsWith(`${SENT_KEY}:`) || key.startsWith(CLOUD_KEY))
-        .map((key) => key.startsWith(`${SENT_KEY}:`) ? key.slice(SENT_KEY.length + 1) : key.slice(CLOUD_KEY.length));
-      const owner = localStorage.getItem(OWNER_KEY);
-      if (owner) owners.push(owner);
-      return owners;
-    },
+    syncedOwnerUids: () => syncedOwnerUids(Object.keys(localStorage),localStorage.getItem(OWNER_KEY)),
     deleteCloudData: async (uid, assertCurrentUid) => {
       pausedUids.add(uid);
       if (timer) { clearTimeout(timer); timer = null; }
@@ -255,7 +248,15 @@ export async function deleteSyncedCamelliaData(clearLocalData: () => void) {
       localStorage.removeItem(`${SENT_KEY}:${uid}`);
       localStorage.removeItem(`${CONFLICT_KEY}:${uid}`);
     },
-    clearLocalData,
+    clearLocalData:()=>{
+      clearLocalData();
+      const user=schoolParkAuth.currentUser;
+      if(user&&!user.isAnonymous){
+        localStorage.setItem(CLOUD_KEY+user.uid,rootSignature(undefined));
+        localStorage.setItem(OWNER_KEY,user.uid);
+      }
+      notifySync({phase:'idle'});
+    },
   });
 }
 

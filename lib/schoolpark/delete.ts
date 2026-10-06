@@ -5,6 +5,12 @@ export interface CamelliaDeleteUser {
 
 export const CAMELLIA_SYNC_DELETE_COLLECTIONS = ['daily', 'profile', 'imports'] as const;
 
+export function syncedOwnerUids(keys: string[], owner: string | null) {
+  const owners=keys.flatMap(key=>key.startsWith('camellia-sync-sent:')?[key.slice('camellia-sync-sent:'.length)]:key.startsWith('camellia-cloud-version:')?[key.slice('camellia-cloud-version:'.length)]:[]);
+  if(owner)owners.push(owner);
+  return [...new Set(owners.filter(Boolean))];
+}
+
 interface DeleteDependencies {
   getCurrentUser: () => Promise<CamelliaDeleteUser | null>;
   syncedOwnerUids: () => string[];

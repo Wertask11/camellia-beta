@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const server = await createServer({ configFile: false, root, resolve: { alias: { '@': root } }, server: { middlewareMode: true }, appType: 'custom' });
 try {
-  const { deleteCamelliaData, CAMELLIA_SYNC_DELETE_COLLECTIONS } = await server.ssrLoadModule('/lib/schoolpark/delete.ts');
+  const { deleteCamelliaData, CAMELLIA_SYNC_DELETE_COLLECTIONS, syncedOwnerUids } = await server.ssrLoadModule('/lib/schoolpark/delete.ts');
+  assert.deepEqual(syncedOwnerUids(['camellia-sync-sent:camellia:user-A','camellia-cloud-version:camellia:user-A','camellia-state-v3'],'camellia:user-A'),['camellia:user-A']);
   const makeHarness = ({ user = { uid: 'firebase-A', isAnonymous: false }, owners = ['firebase-A'], cloudError, switchUid } = {}) => {
     const local = new Map([['camellia-state-v3', 'personal data'], ['camellia-sync-sent:firebase-A', 'marker']]);
     let currentUid = user?.uid || null;
