@@ -1,6 +1,7 @@
 import { ACTIONS, CATEGORY_LABELS } from '@/data/actions';
 import { behaviorAdjustments } from '@/lib/memory/engine';
 import { jstDate } from '@/lib/fortune/engine';
+import { LIVE_DESTINATIONS } from '@/lib/features';
 import type { CamelliaState, Category, Checkin, Recommendation, TimeBand } from '@/types';
 
 export type CategoryScores = Record<Category, number>;
@@ -86,7 +87,7 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
   const band = getTimeBand(date);
   /* 使える時間に収まるものだけにする。ただし収まるものが少なすぎるときは絞らず、
      長いものを下げるだけにする（1分と答えた人に「何もしない」しか出なくなるため）。 */
-  const inCategory = ACTIONS.filter((action) => !category || action.category === category);
+  const inCategory = ACTIONS.filter((action) => (!category || action.category === category) && (!action.requires || LIVE_DESTINATIONS.has(action.requires)));
   const fits = inCategory.filter(action=>!state.profile.availableMinutes||action.minutes<=state.profile.availableMinutes);
   const pool = fits.filter(action=>action.id!=='do-nothing').length >= limit ? fits : inCategory;
   return pool

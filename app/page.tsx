@@ -23,6 +23,7 @@ import { AccountScreen } from '@/screens/AccountScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { finishAuthCallback, logoutCamellia } from '@/lib/auth/camellia';
+import { LIVE_DESTINATIONS } from '@/lib/features';
 import type { Category, Recommendation, TreeLeaf } from '@/types';
 
 /* ログインの戻り（LINE / SchoolPark）で起きたことを、その人に分かる言葉にする。
@@ -138,7 +139,13 @@ export default function Page() {
   if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');store.track('auth_method_selected',{auth_method:method});}} onContinue={()=>setEntry('app')}/>;
   if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!profileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
-    if (r.action.destination) {
+    if (r.action.opens === 'camellia') {
+      setFeature(undefined);
+      setTab('camellia');
+      return;
+    }
+    // A place that is not live yet (β2: Circle, Place) never interrupts a doable action like a café visit.
+    if (r.action.destination && LIVE_DESTINATIONS.has(r.action.destination)) {
       setSecondary(r.action.destination);
       return;
     }
@@ -176,14 +183,14 @@ export default function Page() {
   if (privacy)
     return (
       <div className="app-shell">
-        <span className="beta-badge">Camellia β</span>
+        <span className="beta-badge">Camellia β2</span>
         <PrivacyScreen onBack={() => setPrivacy(false)} />
       </div>
     );
   if (feature === 'fortune')
     return (
       <div className="app-shell">
-        <span className="beta-badge">Camellia β</span>
+        <span className="beta-badge">Camellia β2</span>
         <FortuneScreen
           state={store.state}
           recommendations={recs}
@@ -215,12 +222,13 @@ export default function Page() {
   if (feature === 'tree')
     return (
       <div className="app-shell">
-        <span className="beta-badge">Camellia β</span>
+        <span className="beta-badge">Camellia β2</span>
         <TreeScreen
           leaves={store.state.treeLeaves}
           onBack={() => setFeature(undefined)}
           onAdd={store.addTreeLeaf}
           onUpdate={store.updateTreeLeaf}
+          onRemove={store.removeTreeLeaf}
           onTalk={leaf=>{setTreeContext(leaf);setFeature(undefined);setTab('camellia');}}
           onReflect={store.addTreeReflection}
           onTrack={store.track}
@@ -229,7 +237,7 @@ export default function Page() {
     );
   return (
     <div className="app-shell">
-      <span className="beta-badge">Camellia β</span>
+      <span className="beta-badge">Camellia β2</span>
       {authNotice && (
         <div className="app-notice-wrap"><p className="auth-error app-notice" role="alert">
           {authNotice}
@@ -339,7 +347,7 @@ export default function Page() {
                 setTalkMenu(false);
               }}
             >
-              AI Camelliaと話す
+              Camelliaと話す
             </button>
             <button
               className="secondary-button"

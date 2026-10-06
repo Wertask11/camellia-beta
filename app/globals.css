@@ -1028,3 +1028,11 @@ details {
 .app-notice-wrap{padding:30px 16px 0}.app-notice{margin:0;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;line-height:1.6}.app-notice .text-button{flex:0 0 auto;margin:0;padding:0 4px;font-size:12px}
 .linked-methods{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:6px}.linked-methods li{display:flex;justify-content:space-between;gap:12px;font-size:13px;flex-wrap:wrap}.linked-methods b{font-weight:600;color:var(--muted)}
 .fortune-question{margin:14px 0 6px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.7);font-weight:600;line-height:1.7}
+
+/* My Tree: more people than the drawing shows, and managing one leaf */
+.tree-more{margin:6px 20px 0;color:#7a6870;font-size:12px;line-height:1.6;text-align:center}.leaf-manage{display:flex;justify-content:space-between;gap:12px;margin-top:14px}.leaf-remove{margin-top:12px;padding:12px;border-radius:14px;background:#fff0f2;color:#7c2a40;font-size:13px;line-height:1.6}.leaf-remove p{margin:0 0 8px}
+
+/* Discover categories: one row on the 460px app column (tablet, desktop); on phones swipe, with the edge
+   fading so the row reads as continuing. The extra end padding lets the last chip clear the fade. */
+.category-scroll{gap:6px;scrollbar-width:none}.category-scroll::-webkit-scrollbar{display:none}.category-scroll button{padding:9px 10px}
+@media (max-width:459px){.category-scroll{padding-right:40px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent)}}

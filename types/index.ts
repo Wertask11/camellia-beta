@@ -186,7 +186,8 @@ export interface TreeLeaf {
   category: TreeCategory;
   meaningTags: TreeMeaningTag[];
   note: string;
-  status: 'active' | 'memory';
+  /** removed: deleted by the person; name, note, tags and reflections are erased (the empty record keeps the deletion synced). */
+  status: 'active' | 'memory' | 'removed';
   reflections: TreeReflection[];
   createdAt: string;
   updatedAt: string;
@@ -270,6 +271,10 @@ export interface ActionDefinition {
   description: string;
   tags: string[];
   destination?: 'circle' | 'place';
+  /** Only possible inside that place (not recommended until it is live). */
+  requires?: 'circle' | 'place';
+  /** Choosing it opens this screen instead of starting an action. */
+  opens?: 'camellia';
 }
 export interface Recommendation {
   action: ActionDefinition;
