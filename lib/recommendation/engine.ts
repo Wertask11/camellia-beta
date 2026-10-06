@@ -1,5 +1,6 @@
 import { ACTIONS, CATEGORY_LABELS } from '@/data/actions';
 import { behaviorAdjustments } from '@/lib/memory/engine';
+import { jstDate } from '@/lib/fortune/engine';
 import type { CamelliaState, Category, Checkin, Recommendation, TimeBand } from '@/types';
 
 export type CategoryScores = Record<Category, number>;
@@ -113,6 +114,8 @@ export function buildTodaySummary(state: CamelliaState, date = new Date()): stri
   const check = latestCheckin(state.checkins, date);
   const name = state.profile.name ? `${state.profile.name}さん、` : '';
   if (!check) return `${name}はじめまして。まず、今日のあなたを少しだけ教えてください。`;
+  // Before today's Check, an earlier day's input must not be described as today.
+  if (jstDate(new Date(check.createdAt)) !== jstDate(date)) return `${name}今日のあなたを、少しだけ教えてください。前回のCheckとの違いも見えてきます。`;
   const parts: string[] = [];
   if (check.mood <= 2) parts.push('入力を見ると、心に少し負担を感じているのかもしれません');
   else if (check.mood >= 4) parts.push('入力を見ると、今日は気持ちに少し余裕があるのかもしれません');
