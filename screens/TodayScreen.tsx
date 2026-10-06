@@ -396,10 +396,12 @@ export function TodayScreen({
           </button>
         </section>
       )}
-      {timeBand === '夜' &&
-        reflection.map((a) => (
+      {/* 「できた」を押したら、その場で「どうだった？」に答えられる。
+          前は夜にしか出ず、朝や昼に終えた行動は夜まで答えられなかった。
+          答えは次の提案（合わなかったものを下げる等）に使う。 */}
+      {reflection.map((a) => (
           <section className="reflection" key={a.id}>
-            <p className="eyebrow">夜の振り返り</p>
+            <p className="eyebrow">{timeBand === '夜' ? '夜の振り返り' : 'やってみて'}</p>
             <h2>「{a.title}」はどうだった？</h2>
             <div>
               {(

@@ -83,9 +83,12 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
   const check = latestCheckin(state.checkins, date);
   const isGoodState = isGoodCheck(check);
   const band = getTimeBand(date);
-  return ACTIONS
-    .filter((action) => !category || action.category === category)
-    .filter(action=>!state.profile.availableMinutes||action.minutes<=state.profile.availableMinutes)
+  /* 使える時間に収まるものだけにする。ただし収まるものが少なすぎるときは絞らず、
+     長いものを下げるだけにする（1分と答えた人に「何もしない」しか出なくなるため）。 */
+  const inCategory = ACTIONS.filter((action) => !category || action.category === category);
+  const fits = inCategory.filter(action=>!state.profile.availableMinutes||action.minutes<=state.profile.availableMinutes);
+  const pool = fits.filter(action=>action.id!=='do-nothing').length >= limit ? fits : inCategory;
+  return pool
     .map((action) => {
       const memory=behaviorAdjustments(state,action.id,date);
       let score = scores[action.category] + memory.history + memory.saveBoost - memory.proposalPenalty - memory.recentExecutionPenalty - memory.dislikePenalty;
