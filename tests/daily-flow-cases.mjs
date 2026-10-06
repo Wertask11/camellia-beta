@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {Window} from 'happy-dom';
 import {createServer} from 'vite';
 import {fileURLToPath} from 'node:url';
-import {createElement,StrictMode,act} from 'react';
+import {createElement,StrictMode,act,useEffect} from 'react';
 const dom=new Window({url:'http://localhost/'});
 for(const key of ['window','document','HTMLElement','HTMLInputElement','Event','MouseEvent','localStorage','sessionStorage'])globalThis[key]=key==='window'?dom:dom[key];
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
@@ -51,7 +51,7 @@ try{
  result.push(['答えると記録される',fb.length>=1&&fb[0][2]==='great',fb]);
  // The store keeps one answer per finished action, even on a double tap.
  const {useCamelliaStore}=await server.ssrLoadModule('/hooks/useCamelliaStore.ts');
- let store;function Probe(){store=useCamelliaStore();return null;}
+ let store;function Probe(){const current=useCamelliaStore();useEffect(()=>{store=current;});return null;}
  await render(createElement(Probe));
  await act(async()=>{store.addFeedback('r1','breathing','great');store.addFeedback('r1','breathing','bad');await new Promise(r=>setTimeout(r,5));});
  result.push(['同じ行動への答えは1件だけ',store.state.actionFeedback.filter(f=>f.actionRecordId==='r1').length===1,store.state.actionFeedback.map(f=>f.rating)]);
