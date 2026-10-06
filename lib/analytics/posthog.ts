@@ -13,6 +13,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   login_view: ['authenticated'],
   login_success: ['method'],
   login_skip: [],
+  profile_complete: [],
   auth_method_selected: ['auth_method'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
@@ -35,9 +36,20 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   tree_archive: [],
 };
 let initialized = false;
+let identifiedId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
+/** PostHog adds page URLs on its own ($current_url, $session_entry_url, …). A login return carries a
+ * one-time LINE code or Passport ticket in the query, so keep only origin and path. */
+export function scrubUrlProperties<T extends { properties?: Record<string, unknown> } | null>(result: T): T {
+  const properties = result?.properties;
+  if (!properties) return result;
+  for (const [key, value] of Object.entries(properties))
+    if (typeof value === 'string' && /^https?:\/\//.test(value)) properties[key] = value.split(/[?#]/)[0];
+  return result;
+}
 export function initAnalytics(distinctId: string) {
-  if (initialized || typeof window === 'undefined') return initialized;
+  if (typeof window === 'undefined') return initialized;
+  if(initialized){if(identifiedId!==distinctId){posthog.identify(`camellia_${distinctId}`);identifiedId=distinctId;}return true;}
   const key = import.meta.env.VITE_POSTHOG_KEY || PUBLIC_PROJECT_TOKEN;
   posthog.init(key, {
     api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
@@ -49,10 +61,17 @@ export function initAnalytics(distinctId: string) {
     respect_dnt: true,
     persistence: 'localStorage',
     save_campaign_params: false,
+    before_send: scrubUrlProperties,
   });
   posthog.identify(`camellia_${distinctId}`);
+  identifiedId=distinctId;
   initialized = true;
   return true;
+}
+export function resetAnalyticsIdentity() {
+  if (typeof window === 'undefined' || !initialized) return;
+  posthog.reset();
+  initialized = false;
 }
 export function sanitizeEventProperties(
   event: AnalyticsEvent,

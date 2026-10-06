@@ -47,6 +47,13 @@ export function calculateCategoryScores(state: CamelliaState, date = new Date())
     if (interest.includes('趣味') || interest.includes('音楽')) scores.PLAY += 1;
     if (interest.includes('メンタル')) scores.REST += 1;
   }
+  for(const purpose of profile.purposes||[]){
+    if(purpose==='身体を整えたい')scores.BODY+=1;
+    if(purpose==='生活を整えたい'){scores.BODY+=0.5;scores.LEARN+=0.5;}
+    if(purpose==='心を整えたい'){scores.REST+=0.5;scores.CONNECT+=0.5;}
+    if(purpose==='人間関係'||purpose==='恋愛')scores.CONNECT+=1;
+    if(purpose==='仕事')scores.LEARN+=1;
+  }
   const priorities: Record<string, Category> = { 整える: 'BODY', 楽しむ: 'PLAY', 話す: 'CONNECT', 学ぶ: 'LEARN', 休む: 'REST', 美容: 'BEAUTY' };
   if (priorities[profile.priority]) scores[priorities[profile.priority]] += 1.5;
   const band = getTimeBand(date);
@@ -76,8 +83,12 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
   const check = latestCheckin(state.checkins, date);
   const isGoodState = isGoodCheck(check);
   const band = getTimeBand(date);
-  return ACTIONS
-    .filter((action) => !category || action.category === category)
+  /* 使える時間に収まるものだけにする。ただし収まるものが少なすぎるときは絞らず、
+     長いものを下げるだけにする（1分と答えた人に「何もしない」しか出なくなるため）。 */
+  const inCategory = ACTIONS.filter((action) => !category || action.category === category);
+  const fits = inCategory.filter(action=>!state.profile.availableMinutes||action.minutes<=state.profile.availableMinutes);
+  const pool = fits.filter(action=>action.id!=='do-nothing').length >= limit ? fits : inCategory;
+  return pool
     .map((action) => {
       const memory=behaviorAdjustments(state,action.id,date);
       let score = scores[action.category] + memory.history + memory.saveBoost - memory.proposalPenalty - memory.recentExecutionPenalty - memory.dislikePenalty;
@@ -106,7 +117,7 @@ export function buildTodaySummary(state: CamelliaState, date = new Date()): stri
   if (check.mood <= 2) parts.push('入力を見ると、心に少し負担を感じているのかもしれません');
   else if (check.mood >= 4) parts.push('入力を見ると、今日は気持ちに少し余裕があるのかもしれません');
   else parts.push('入力では、今日は比較的穏やかな状態のようです');
-  const previous = [...state.checkins].filter((x) => x.id !== check.id && x.sleep !== undefined).sort((a,b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const previous = [...state.checkins].filter((x) => x.id !== check.id && x.sleep !== undefined && Date.parse(x.createdAt)<Date.parse(check.createdAt)).sort((a,b) => b.createdAt.localeCompare(a.createdAt))[0];
   if (check.sleep !== undefined && previous?.sleep !== undefined) {
     if (check.sleep < previous.sleep) parts.push(`睡眠は前回より${(previous.sleep-check.sleep).toFixed(1)}時間短めです`);
     else if (check.sleep > previous.sleep) parts.push(`睡眠は前回より${(check.sleep-previous.sleep).toFixed(1)}時間とれています`);

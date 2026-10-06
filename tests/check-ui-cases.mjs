@@ -16,6 +16,8 @@ try {
   assert.ok(!html.includes('今日の私を見てみる'));
   assert.ok(!html.includes('睡眠や身体のことも添える'));
   assert.match(html,/気分だけでも大丈夫/);
+  assert.ok(html.indexOf('気分だけでも大丈夫') < html.indexOf('aria-pressed="false"'));
+  assert.ok(html.indexOf('今の気分は？') < html.indexOf('Checkのあとに'));
   assert.match(html,/Checkのあとに/);
   console.log('check UI: PASS (five existing moods, clear question, no competing completion/details before first tap)');
 } finally {await server.close();}

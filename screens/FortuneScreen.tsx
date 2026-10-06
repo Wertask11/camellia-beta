@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { drawFortune, fortuneMessage, jstDate } from '@/lib/fortune/engine';
 import type { CamelliaState, DailyFortune, Recommendation } from '@/types';
@@ -26,11 +26,18 @@ export function FortuneScreen({
 }) {
   const date = jstDate();
   const saved = state.fortunes.find((f) => f.date === date);
+  /* 今日の一枚は、Checkした今日の自分を別の角度から見るためのもの。
+     Checkの前には引けない（Todayからの入口もCheck後にしか出していない）。 */
+  const checkedToday = state.checkins.some((c) => jstDate(new Date(c.createdAt)) === date);
+  const chosen = useRef(false);
   const draw = useMemo(
     () => drawFortune(state.profile.id, date),
     [state.profile.id, date],
   );
   const choose = (status: 'drawn' | 'skipped') => {
+    /* 二度押しで fortune_draw が二重に数えられないようにする。1日1枚（日本時間）。 */
+    if (saved || chosen.current) return;
+    chosen.current = true;
     const now = new Date().toISOString();
     onSave({
       date,
@@ -57,7 +64,21 @@ export function FortuneScreen({
           <h1>今日の一枚</h1>
         </div>
       </header>
-      {!saved && (
+      {!saved && !checkedToday && (
+        <section className="fortune-intro">
+          <div className="tarot-back">✿</div>
+          <h2>まずは今日のCheckから</h2>
+          <p>
+            今日の一枚は、Checkした今日の自分を
+            <br />
+            別の角度から見るためのものです。
+          </p>
+          <button className="primary" onClick={onBack}>
+            TodayでCheckする
+          </button>
+        </section>
+      )}
+      {!saved && checkedToday && (
         <section className="fortune-intro">
           <div className="tarot-back">✿</div>
           <h2>今日、占ってみる？</h2>
@@ -93,6 +114,9 @@ export function FortuneScreen({
             </p>
             <h2>{draw.card.keywords.join('・')}</h2>
             <p>{fortuneMessage(state, saved)}</p>
+            <p className="fortune-question">
+              「{draw.card.keywords[0]}」という言葉に、今日のあなたと重なるところはありますか？
+            </p>
             <small>
               未来や健康状態を断定するものではありません。気になる言葉だけ受け取ってください。
             </small>

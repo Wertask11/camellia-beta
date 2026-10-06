@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Camellia プライバシーポリシー</title>
+<style>
+:root{color-scheme:light}body{max-width:760px;margin:auto;padding:24px 18px calc(56px + env(safe-area-inset-bottom));font:16px/1.9 system-ui,-apple-system,sans-serif;color:#342b30;background:#fffaf9;overflow-wrap:anywhere}h1{font-size:1.7rem;line-height:1.4}h2{margin-top:2em;font-size:1.2rem}a{color:#9b3c59;text-underline-offset:3px}.date{color:#776d72;font-size:.9rem}li{margin:.35em 0}table{width:100%;border-collapse:collapse;font-size:.92rem;line-height:1.7}th,td{border:1px solid #ead8dc;padding:8px;text-align:left;vertical-align:top}th{background:#fbeef0}
+</style>
+</head>
+<body>
+<p><a href="/">Camelliaへ戻る</a></p>
+<h1>Camellia プライバシーポリシー</h1>
+<p class="date">制定日：2026年10月6日　最終改定日：2026年10月6日</p>
+<p>合同会社型DAO SchoolPark（LLC.DAO School Park。以下「運営者」といいます。）は、Camelliaにおける利用者のプライバシーを重要なものと考えています。Camelliaでは、日々の気分や身体の状態、生活、人間関係に関する記録など、利用者にとって非常に私的な情報を扱う場合があります。</p>
+
+<h2>1. 取得する情報</h2>
+<h3>アカウント・プロフィール</h3>
+<ul><li>呼ばれたい名前、生年月日、生年月日から算出する年齢、居住地域、職業・生活スタイル、同居状況、利用目的、関心その他プロフィール情報</li><li>利用規約・本ポリシーへの同意日時と版、女性向けサービスであることの確認（自己申告）</li><li>Firebase Authの内部ユーザー識別子、認証方法（LINEまたはSchoolPark Passport）、SchoolPark Passportとの連携状態・識別情報、連携に必要な認証記録（LINEの利用者識別子は、そのままではなく変換した値で保存します）</li></ul>
+<p>認証処理に必要なコードやトークンは、認証処理のために一時的に取り扱います。パスワードやアクセストークンを分析イベントへ送信しません。本人確認書類（運転免許証、マイナンバーカード、パスポート等）は取得しません。</p>
+<h3>サービスへの入力</h3>
+<ul><li>Checkの気分、睡眠、ストレス、身体、月経等の記録</li><li>日々の振り返り、選択・保存した行動と評価、Insight、Recommendation、Contextual Memory等</li><li>Camelliaとの会話に入力した文章と会話履歴、会話で「覚えておく」を選んだ一言（Memory）</li><li>今日の一枚のカード、利用日時、関連する行動の選択・完了状況</li><li>My Treeに登録した人物の名称・ニックネーム、カテゴリ、タグ、文章</li><li>利用履歴その他、利用者が機能を通じて入力・生成・保存する情報</li></ul>
+<p>これらの情報は内容により健康、性生活その他の慎重な取扱いを要する個人情報を含むことがあります。第三者に関する個人情報は、必要以上に登録しないでください。</p>
+<h3>端末・利用情報</h3>
+<ul><li>サービスの状態を保存するlocalStorageの情報</li><li>アクセス・機能利用の日時、画面・操作イベント、ブラウザ・端末・通信に関する情報、エラー情報</li></ul>
+
+<h2>2. 利用目的</h2>
+<p>取得した情報は、(1)認証・アカウント管理、(2)Check、会話、Insight、Recommendation、今日の一枚、My Tree等の提供、(3)利用者自身の過去記録の表示と継続的な振り返り、(4)記録や利用目的に応じた表示の調整、(5)利用者が選んだSchoolPark Passportとの連携、(6)不正利用・安全上の対応、(7)障害調査・データ同期、(8)問い合わせ対応、(9)サービス利用状況の分析と改善、(10)法令上必要な対応のために利用します。</p>
+<p>運営管理画面には、記録日数や操作への反応等から、反応率・継続率・過去記録との差（偏差）・追従／抵抗・コミュニティ投稿数等の運営用指標を算出・表示する機能があります。これらの指標は、上記(7)(9)の目的の範囲で、権限を付与された運営担当者が閲覧します。医療診断や心理状態の判定として利用しません。</p>
+<p>Camelliaとの会話は、現在、アプリ内のルールに基づいて応答を作成しており、入力内容を外部の生成AIサービスへ送信していません。</p>
+
+<h2>3. 保存先・運営者による閲覧</h2>
+<p>本サービスの状態は、ブラウザのlocalStorageに保存されるほか、ログイン中はFirebase AuthenticationおよびGoogle Firebase / Cloud Firestoreを利用するFirebaseプロジェクト（emusch-2a111）に保存・同期されます。認証処理にはSchoolPark側のサーバー（Render）を利用し、アプリはVercelから配信されます。同期されたプロフィール、Check、会話、My Treeその他の情報は、SchoolParkの運営管理画面に反映され、権限を付与された運営担当者が閲覧できる場合があります。管理画面で詳細を開くことは画面上の表示切替であり、サーバー側に保存されたデータへのアクセス制限を意味しません。</p>
+<p>利用開始時のプロフィール画面で、記録の保存先と運営者が内容を確認する場合があることを案内します。アプリ内のMy→その他→「プライバシーと保存データ」でも、いつでも確認できます。</p>
+<p>ブラウザのlocalStorageを削除しても、Firestore上のアカウントデータは削除されません。ログアウト、アプリのアンインストール、端末内データの消去も、サーバー上のデータ削除とは異なります。サーバー上の記録の削除方法は第9条のとおりです。</p>
+
+<h2>4. 外部サービス・委託先</h2>
+<table>
+<tr><th>事業者・サービス</th><th>取り扱う情報</th><th>目的</th><th>所在国</th></tr>
+<tr><td>Google LLC（Firebase Authentication / Cloud Firestore）</td><td>認証情報、プロフィール、記録、会話、My Tree等</td><td>認証およびデータ保存・同期</td><td>米国</td></tr>
+<tr><td>Vercel Inc.</td><td>アクセスログ</td><td>アプリ配信</td><td>米国</td></tr>
+<tr><td>Render Services, Inc.</td><td>認証のためのリクエストデータ</td><td>LINE認証コードの検証、Passport連携の一時チケット交換等（SchoolParkのサーバー）</td><td>米国</td></tr>
+<tr><td>LINEヤフー株式会社（LINEログイン）</td><td>LINEの利用者識別子</td><td>利用者が選択したLINEログインの認証</td><td>日本</td></tr>
+<tr><td>PostHog, Inc.</td><td>第5条の操作イベント</td><td>イベントベースの利用状況分析（米国向けホスト）</td><td>米国</td></tr>
+</table>
+<p>行動の提案に表示する一部の画像は、Unsplash（images.unsplash.com）から読み込みます。その際、IPアドレスやブラウザの種類等の通信情報が同サービスに送られます。記録の内容は送られません。</p>
+<p>SchoolPark Passportとの連携および運営管理は、運営者（SchoolPark）が行います。各事業者のプライバシー情報：<a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase</a>、<a href="https://vercel.com/legal/privacy-policy" rel="noopener">Vercel</a>、<a href="https://render.com/privacy" rel="noopener">Render</a>、<a href="https://www.lycorp.co.jp/ja/company/privacypolicy/" rel="noopener">LINEヤフー</a>、<a href="https://posthog.com/privacy" rel="noopener">PostHog</a>。</p>
+
+<h2>5. 分析サービスへ送信する情報</h2>
+<p>PostHogには、許可リストに基づくイベント名、機能ID、PostHogが端末ごとに発行するランダムな識別子等を送信します。名前、生年月日、Firebase UID、Passport ID、LINE内部識別子、Checkの入力値、会話本文、Memoryの本文、My Treeの人物名・本文は送信しない設計です。PostHogの識別子はFirebaseアカウントを横断する本人識別子ではありません。ページのURLは、ログインの戻り値等を含まないよう、クエリを除いて送信します。通信の性質上、IPアドレスやブラウザの種類等の通信情報はPostHogに届きます。画面の録画（セッション録画）や、画面操作の自動収集は行っていません。</p>
+
+<h2>6. 慎重な取扱いを要する情報</h2>
+<p>気分、月経、身体やストレスの記録、会話、人間関係に関する記述は、内容により要配慮個人情報その他特に慎重な取扱いを要する情報を含み得ます。運営者は、法令上必要な同意・通知等の対応を行い、本ポリシーに記載した目的と権限管理の範囲で取り扱います。月経関連の記録を提案に使うかどうかは、プロフィールで選べます。</p>
+
+<h2>7. 第三者提供</h2>
+<p>運営者は、法令で認められる場合を除き、本人の同意なく個人データを第三者へ提供しません。サービス提供に必要な外部事業者への委託は、法令に従い委託先を選定・監督します。</p>
+
+<h2>8. 保存期間</h2>
+<p>アカウントおよび記録情報は、サービス運営期間中保存し、サービス終了後6ヶ月以内に削除します。利用者が第9条の方法で削除した記録は、その時点でFirestoreから削除します。法令上保存が必要な情報は、必要な期間に限り分離して保管します。</p>
+
+<h2>9. 開示・訂正・利用停止・削除の請求</h2>
+<p>アプリ内のMy→その他→「保存データを削除する」から、この端末のCamelliaデータと、ログイン中のアカウントに同期したCamelliaの記録（プロフィール、日々の記録、会話、My Tree等）を削除できます。PostHogへ送信済みの操作イベント、ログイン方法の連携記録、運営用の管理記録は、この操作では削除されません。</p>
+<p>本人は、法令に基づき自身の個人情報の開示、訂正、利用停止または削除（上記で削除されない情報を含みます）を請求できます。請求は第12条の問い合わせ先へメールでご連絡ください。ご本人であることを、ご利用のログイン方法等により確認したうえで、法令に従い遅滞なく対応します。</p>
+
+<h2>10. 安全管理</h2>
+<p>運営者は、情報の性質と取扱状況に応じ、アクセス権限の制限、認証、通信の保護、管理画面のアクセス制御その他必要かつ適切な安全管理措置を実施します。管理画面では権限を付与された運営担当者が閲覧する場合があります。</p>
+
+<h2>11. 利用対象・医療サービスではないこと</h2>
+<p>本サービスは18歳以上45歳以下の女性を対象とするウェルビーイングサービスです。医療機関、診断、治療、心理療法または緊急相談の代替ではありません。</p>
+
+<h2>12. 改定・問い合わせ先</h2>
+<p>本ポリシーを変更する場合、変更内容と効力発生日を本サービス上で周知します。</p>
+<p>運営者：合同会社型DAO SchoolPark（LLC.DAO School Park）<br>代表者：浅加 天輝<br>所在地：〒813-0042 福岡県福岡市東区舞松原5-2-16 ラムセス7 101号室<br>問い合わせ先：<a href="mailto:takakiasaka1@gmail.com">takakiasaka1@gmail.com</a></p>
+<p><a href="/terms.html">Camellia利用規約</a>　|　<a href="/">Camelliaへ戻る</a></p>
+</body></html>
