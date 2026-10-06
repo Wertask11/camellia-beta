@@ -1,6 +1,6 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionSheet } from '@/components/ActionSheet';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { ACTIONS } from '@/data/actions';
@@ -9,7 +9,9 @@ import { recommend } from '@/lib/recommendation';
 import { CamelliaScreen } from '@/screens/CamelliaScreen';
 import { DiscoverScreen } from '@/screens/DiscoverScreen';
 import { MyScreen } from '@/screens/MyScreen';
-import { OnboardingScreen } from '@/screens/OnboardingScreen';
+import { ProfileScreen } from '@/screens/ProfileScreen';
+import { profileComplete } from '@/lib/profile';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
@@ -19,12 +21,17 @@ import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
-import { ensureGuestSession, finishAuthCallback } from '@/lib/auth/camellia';
+import { finishAuthCallback } from '@/lib/auth/camellia';
 import type { Category, Recommendation } from '@/types';
 
 export default function Page() {
   const store = useCamelliaStore();
   const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app'>('welcome');
+  const [accountUser,setAccountUser]=useState<User|null>(null);
+  const [accountReady,setAccountReady]=useState(false);
+  const [accountError,setAccountError]=useState('');
+  const [editingProfile,setEditingProfile]=useState(false);
+  const callbackHandled=useRef(false);
   const [tab, setTab] = useState<MainTab>('today');
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
@@ -54,50 +61,31 @@ export default function Page() {
     }
   }, [entry, store.ready, store.state.onboardingComplete, store.track]);
   useEffect(() => {
-    if (!store.ready || !store.state.onboardingComplete) return;
-    void ensureGuestSession();
-  }, [store.ready, store.state.onboardingComplete]);
+    if(!store.ready)return;
+    let generation=0;
+    return onAuthStateChanged(schoolParkAuth,user=>{
+      const request=++generation;
+      setAccountReady(false);setAccountError('');setAccountUser(user?.isAnonymous?null:user);
+      if(!user||user.isAnonymous){setAccountReady(true);return;}
+      void store.prepareAccount(user.uid).then(()=>{if(request===generation)setAccountReady(true);}).catch(error=>{
+        if(request!==generation)return;
+        setAccountError(error instanceof Error?error.message:'SYNC_UNAVAILABLE');setAccountReady(true);
+      });
+    });
+  },[store.ready,store.prepareAccount]);
   useEffect(() => {
-    void finishAuthCallback().then((result) => {
-      if (!result) return;
-      store.track('login_success', { method: result.linked ? 'account_link' : 'login' });
-      store.completeOnboarding();
+    void finishAuthCallback().then(result=>{
+      if(!result||callbackHandled.current)return;
+      callbackHandled.current=true;
+      store.track('login_success',{method:result.linked?'account_link':'login'});
       setEntry('app');
-    }).catch(() => setEntry('account'));
-  }, [store.track, store.completeOnboarding]);
-  if (!store.ready) return <div className="loading">Camellia ✿</div>;
-  if (!store.state.onboardingComplete && entry === 'welcome')
-    return <WelcomeScreen onContinue={() => {
-      store.track('welcome_continue', { period: welcomeTheme().period });
-      setEntry('account');
-    }} />;
-  if (!store.state.onboardingComplete && entry === 'account')
-    return <AccountScreen
-      onBack={() => setEntry('welcome')}
-      onGuest={async () => {
-        await ensureGuestSession({ explicit: true });
-        store.track('login_skip');
-        store.completeOnboarding();
-        setEntry('app');
-      }}
-      onSelect={(method) => store.track('auth_method_selected', { auth_method: method })}
-      onContinue={() => {
-        store.track('login_success', { method: 'existing_session' });
-        store.completeOnboarding();
-        setEntry('app');
-      }}
-    />;
-  if (!store.state.onboardingComplete && entry === 'onboarding')
-    return (
-      <OnboardingScreen
-        initialStep={3}
-        onFinish={(p) => {
-          store.updateProfile(p);
-          store.completeOnboarding();
-          setTab('today');
-        }}
-      />
-    );
+    }).catch(error=>{setAccountError(error instanceof Error?error.message:'AUTH_FAILED');setEntry('account');});
+  },[store.track]);
+  if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
+  if(accountError&&accountUser)return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p><p role="alert">{['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError)?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p><button className="primary" onClick={()=>location.reload()}>もう一度確認する</button></main>;
+  if(!accountUser&&entry==='welcome')return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
+  if(!accountUser)return <AccountScreen onBack={()=>setEntry('welcome')} onSelect={method=>store.track('auth_method_selected',{auth_method:method})} onContinue={()=>setEntry('app')}/>;
+  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{store.updateProfile(patch);if(!store.state.onboardingComplete){store.track('profile_complete');store.completeOnboarding();}setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.destination) {
       setSecondary(r.action.destination);
@@ -240,7 +228,7 @@ export default function Page() {
         <MyScreen
           state={store.state}
           devNight={devNight}
-          onProfile={store.updateProfile}
+          onEditProfile={()=>setEditingProfile(true)}
           onReset={store.reset}
           onInsight={store.feedbackInsight}
           onPrivacy={() => setPrivacy(true)}

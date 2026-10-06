@@ -11,21 +11,23 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
         </div>
       </header>
       <section className="panel">
-        <h2>この端末に保存される情報</h2>
+        <h2>保存・同期される情報</h2>
         <p>
           プロフィール、日々のCheck、選んだ行動と振り返り、あとで見る、見送り理由、Camelliaとの会話、今日の一枚、My
-          Treeの名前・タグ・メモ、Insightへの回答、匿名の操作イベントを、このブラウザのlocalStorageに保存します。
+          Treeの名前・タグ・メモ、Insightへの回答、操作イベントを、このブラウザのlocalStorageに保存します。ログイン中は、同じ記録をSchoolParkのFirestore（camellia_users/{'{uid}'}）にも同期します。
         </p>
         <p>
-          日々の記録本文は外部サーバーへ送信しません。サービス改善のため、匿名の操作イベントだけをPostHogへ送信します。人名、ニックネーム、My
-          Treeのメモ、会話本文、健康情報の入力値は送信しません。ブラウザや端末を変えると記録データは引き継がれません。
+          同期対象には、プロフィール、Check（気分・任意の睡眠/体調/ストレス/生理関連入力）、Action、Reflection、Fortune、My Tree、Insight、Camellia AIの会話が含まれます。同期データはSchoolParkの運営管理機能から確認できる場合があります。
+        </p>
+        <p>
+          Camellia AIは現在、入力内容を端末内のルールベース処理で扱い、外部の生成AI APIには送信しません。サービス改善のための操作イベントはPostHogへ送信されます。イベント送信では許可した計測項目だけを使い、会話本文やCheckの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
         </p>
       </section>
       <section className="panel">
         <h2>My Treeについて</h2>
         <p>
           My
-          Treeは本人だけが見る記録です。人間関係を評価・順位付けせず、連絡頻度によるスコアや通知も行いません。
+          Treeは本人向けの記録機能です。人間関係を評価・順位付けせず、連絡頻度によるスコアや通知も行いません。保存内容は上記のとおりFirestoreへ同期され、運営管理機能から確認できる場合があります。
         </p>
       </section>
       <section className="panel">
@@ -41,7 +43,7 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
       <section className="panel">
         <h2>データの削除</h2>
         <p>
-          Myの「保存データを削除する」から、このブラウザに保存されたCamelliaのデータを削除できます。
+          Myの「保存データを削除する」から、このブラウザのCamelliaデータを削除できます。ログイン中で同期済みのSchoolParkアカウントがある場合は、そのCamellia記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。運営用の管理記録・返信と、PostHogへ送信済みの操作イベントは削除されません。同期データを削除できなかった場合は、削除失敗を表示し、端末内データも消去しません。
         </p>
       </section>
     </main>

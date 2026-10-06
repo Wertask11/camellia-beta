@@ -4,6 +4,7 @@ import { ActionCard } from '@/components/ActionCard';
 import { buildTodaySummary, getTimeBand } from '@/lib/recommendation';
 import { buildDailyReflection } from '@/lib/reflection/engine';
 import { checkEntryCopy } from '@/lib/reflection/check-entry';
+import { generateInsightCandidates, selectDisplayableInsight } from '@/lib/insight/candidates';
 import type {
   AnalyticsEventName,
   CamelliaState,
@@ -115,6 +116,10 @@ export function TodayScreen({
   }, [forceNight]);
   const dailyReflection = useMemo(
     () => buildDailyReflection(state, displayDate),
+    [state, displayDate],
+  );
+  const gentleInsight = useMemo(
+    () => selectDisplayableInsight(generateInsightCandidates(state, displayDate)),
     [state, displayDate],
   );
   const entryCopy = useMemo(
@@ -270,7 +275,14 @@ export function TodayScreen({
           {dailyReflection.messages.map((message, index) => (
             <p key={index}>{message}</p>
           ))}
-          <span className="meta">入力されたCheckだけをもとにしています</span>
+          {gentleInsight && !dailyReflection.messages.includes(gentleInsight.text) && (
+            <div className="insight-card">
+              <p className="eyebrow">最近のあなたから</p>
+              <p>{gentleInsight.text}</p>
+              <small>{gentleInsight.observations}件の記録から見えた傾向です。決めつけではありません。</small>
+            </div>
+          )}
+          <span className="meta">Checkとこれまでの行動記録をもとにしています</span>
         </section>
       ) : (
         <section className="summary-card">

@@ -13,6 +13,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   login_view: ['authenticated'],
   login_success: ['method'],
   login_skip: [],
+  profile_complete: [],
   auth_method_selected: ['auth_method'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
@@ -35,9 +36,11 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   tree_archive: [],
 };
 let initialized = false;
+let identifiedId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
 export function initAnalytics(distinctId: string) {
-  if (initialized || typeof window === 'undefined') return initialized;
+  if (typeof window === 'undefined') return initialized;
+  if(initialized){if(identifiedId!==distinctId){posthog.identify(`camellia_${distinctId}`);identifiedId=distinctId;}return true;}
   const key = import.meta.env.VITE_POSTHOG_KEY || PUBLIC_PROJECT_TOKEN;
   posthog.init(key, {
     api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
@@ -51,8 +54,14 @@ export function initAnalytics(distinctId: string) {
     save_campaign_params: false,
   });
   posthog.identify(`camellia_${distinctId}`);
+  identifiedId=distinctId;
   initialized = true;
   return true;
+}
+export function resetAnalyticsIdentity() {
+  if (typeof window === 'undefined' || !initialized) return;
+  posthog.reset();
+  initialized = false;
 }
 export function sanitizeEventProperties(
   event: AnalyticsEvent,

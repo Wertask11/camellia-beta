@@ -400,6 +400,17 @@ select {
   min-height: 100dvh;
   padding: 28px 20px 110px;
 }
+.profile-check { display:flex; align-items:flex-start; gap:10px; font-size:14px; line-height:1.6; }
+.profile-check input { flex:0 0 auto; width:20px; height:20px; margin-top:2px; }
+.profile-screen fieldset { min-width:0; border:0; padding:0; }
+.profile-screen input,.profile-screen textarea { min-width:0; width:100%; font-size:16px; }
+.profile-screen .profile-check input { width:20px; }
+.profile-screen textarea { border:1px solid var(--line); border-radius:12px; min-height:80px; padding:12px; }
+.profile-screen .primary { margin-top:20px; }
+.sheet { max-height: calc(100dvh - 24px); overflow-y:auto; padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
+.bottom-nav { padding-bottom:env(safe-area-inset-bottom); height:calc(76px + env(safe-area-inset-bottom)); }
+.composer input { min-width:0; font-size:16px; }
+.bubble { overflow-wrap:anywhere; }
 .screen header {
   display: flex;
   justify-content: space-between;

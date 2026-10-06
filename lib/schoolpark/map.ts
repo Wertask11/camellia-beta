@@ -23,6 +23,7 @@ function menstrualDate(createdAt: string, periodDays: number) {
   return jstParts(date).date;
 }
 
+
 export function mapCheckin(checkin: Checkin) {
   const date = jstParts(new Date(checkin.createdAt)).date;
   const data: Record<string, unknown> = {
@@ -39,10 +40,7 @@ export function mapCheckin(checkin: Checkin) {
   }
   if (checkin.periodDays !== undefined) {
     data.cycle = `月経${checkin.periodDays}日目`;
-    data.lastMenstrualDate = menstrualDate(
-      checkin.createdAt,
-      checkin.periodDays,
-    );
+    data.lastMenstrualDate = menstrualDate(checkin.createdAt, checkin.periodDays);
   }
   return { date, data };
 }
@@ -153,18 +151,27 @@ export function mapCamelliaState(
   const root: Record<string, unknown> = {
     updatedAt: timestamps.sort().at(-1) || state.createdAt,
   };
+  if (state.profile.birthDate) root.birthDate = state.profile.birthDate;
+  if (state.profile.agreedAt) root.agreedAt = state.profile.agreedAt;
+  if (state.profile.agreedVersion) root.agreedVersion = state.profile.agreedVersion;
   if (passport) root.passport = passport;
   const profile = state.profile;
   const basic: Record<string, unknown> = {
     displayName: profile.name,
     occupation: profile.lifestyle,
     goal: profile.priority,
-    birthYear: profile.age,
+    birthDate: profile.birthDate || '',
+    region: profile.region || '',
+    livingSituation: profile.livingSituation || '',
+    purposes: profile.purposes || [],
+    concerns: profile.concerns || '',
+    womenServiceAcknowledged: profile.womenServiceAcknowledged === true,
     interests: profile.interests,
     periodEnabled: profile.periodEnabled,
   };
   if (profile.availableMinutes !== undefined)
     basic.availableMinutes = profile.availableMinutes;
+  if (profile.usualSleep !== undefined) basic.usualSleep = profile.usualSleep;
 
   const latestByDate = new Map<string, Checkin>();
   state.checkins.forEach((checkin) => {
