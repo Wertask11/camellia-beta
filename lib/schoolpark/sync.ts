@@ -50,20 +50,26 @@ export async function prepareSchoolParkAccount(state: CamelliaState, uid: string
   if(root.data()?.archiveSyncInProgress&&(!owner||useRemote))throw new Error('REMOTE_SYNC_INCOMPLETE');
   const version=rootSignature(root.data());
   const known=localStorage.getItem(CLOUD_KEY+uid);
-  if(!useRemote&&owner===uid&&root.exists()&&known!==version)throw new Error('SYNC_CONFLICT');
+  // The account changed since this device last confirmed it. Usually another device; but if the app closed
+  // while this device's own write was in flight, the write landed and only its confirmation was lost.
+  const unconfirmed=!useRemote&&owner===uid&&root.exists()&&known!==version;
   let result = state;
   if(useRemote&&hasPersonalData(state))localStorage.setItem(`camellia-local-backup:${state.profile.id}:${Date.now()}`,JSON.stringify(state));
-  if (root.exists() && (!owner || useRemote)) {
+  if (root.exists() && (!owner || useRemote || unconfirmed)) {
     const records = await getDocs(collection(schoolParkDb, 'camellia_users', uid, 'imports'));
     const afterRead=await getDoc(reference(uid,''));
-    if(afterRead.data()?.archiveSyncInProgress||rootSignature(afterRead.data())!==version)throw new Error('REMOTE_SYNC_INCOMPLETE');
-    const remote = restoreArchive(records.docs.map(item=>item.data()), state);
+    if(afterRead.data()?.archiveSyncInProgress||rootSignature(afterRead.data())!==version)throw new Error(unconfirmed?'SYNC_CONFLICT':'REMOTE_SYNC_INCOMPLETE');
+    let remote:CamelliaState|null;
+    try{remote = restoreArchive(records.docs.map(item=>item.data()), state);}catch(error){if(unconfirmed)throw new Error('SYNC_CONFLICT');throw error;}
+    // Lossless only: the account holds nothing this device lacks (same or older versions of its records).
+    const contained=remote!==null&&remoteContainedInLocal(remote,state);
+    if(unconfirmed&&!contained)throw new Error('SYNC_CONFLICT');
     // A β device first signing in on v1: this device already synced to this account (β sent markers, no
     // later conflict), and the account holds nothing this device lacks. Keep the device's records then.
-    const legacyOwner=!useRemote&&!owner&&Object.keys(readSent(uid)).length>0&&!localStorage.getItem(`${CONFLICT_KEY}:${uid}`)&&remote!==null&&remoteContainedInLocal(remote,state);
-    if (!useRemote && hasPersonalData(state) && !legacyOwner) throw new Error('SYNC_CONFLICT');
+    const legacyOwner=!useRemote&&!owner&&Object.keys(readSent(uid)).length>0&&!localStorage.getItem(`${CONFLICT_KEY}:${uid}`)&&contained;
+    if (!useRemote && hasPersonalData(state) && !legacyOwner && !unconfirmed) throw new Error('SYNC_CONFLICT');
     if (!remote) throw new Error('REMOTE_RESTORE_UNAVAILABLE');
-    result = legacyOwner ? state : remote;
+    result = legacyOwner || unconfirmed ? state : remote;
   }
   if(useRemote&&!root.exists())throw new Error('REMOTE_RESTORE_UNAVAILABLE');
   if (schoolParkAuth.currentUser?.uid !== uid) throw new Error('ACCOUNT_CHANGED');
