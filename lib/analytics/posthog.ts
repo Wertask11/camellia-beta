@@ -38,6 +38,15 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
 let initialized = false;
 let identifiedId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
+/** PostHog adds page URLs on its own ($current_url, $session_entry_url, …). A login return carries a
+ * one-time LINE code or Passport ticket in the query, so keep only origin and path. */
+export function scrubUrlProperties<T extends { properties?: Record<string, unknown> } | null>(result: T): T {
+  const properties = result?.properties;
+  if (!properties) return result;
+  for (const [key, value] of Object.entries(properties))
+    if (typeof value === 'string' && /^https?:\/\//.test(value)) properties[key] = value.split(/[?#]/)[0];
+  return result;
+}
 export function initAnalytics(distinctId: string) {
   if (typeof window === 'undefined') return initialized;
   if(initialized){if(identifiedId!==distinctId){posthog.identify(`camellia_${distinctId}`);identifiedId=distinctId;}return true;}
@@ -52,6 +61,7 @@ export function initAnalytics(distinctId: string) {
     respect_dnt: true,
     persistence: 'localStorage',
     save_campaign_params: false,
+    before_send: scrubUrlProperties,
   });
   posthog.identify(`camellia_${distinctId}`);
   identifiedId=distinctId;

@@ -32,5 +32,10 @@ const ok =
   safe.history_days === 7 &&
   forbidden.every((x) => !serialized.includes(x));
 console.log(`analytics privacy: ${ok ? 'PASS' : 'FAIL'}`, serialized);
+// Page URLs that PostHog adds itself: a login return must not carry its one-time code or ticket.
+const captured = { event: 'login_view', properties: { $current_url: 'https://camellia-beta.vercel.app/?code=LINE_CODE&state=STATE', $session_entry_url: 'https://camellia-beta.vercel.app/?camellia_passport_ticket=TICKET#x', $referrer: '$direct', $pathname: '/', period: 'morning' } };
+const scrubbed = JSON.stringify(analytics.scrubUrlProperties(captured));
+const urlsOk = !/LINE_CODE|STATE|TICKET/.test(scrubbed) && scrubbed.includes('"$current_url":"https://camellia-beta.vercel.app/"') && scrubbed.includes('"$referrer":"$direct"') && scrubbed.includes('"period":"morning"') && analytics.scrubUrlProperties(null) === null;
+console.log(`analytics URL scrub: ${urlsOk ? 'PASS' : 'FAIL'}`, scrubbed);
 await server.close();
-if (!ok) process.exitCode = 1;
+if (!ok || !urlsOk) process.exitCode = 1;
