@@ -32,6 +32,7 @@ function authNoticeFor(code:string,signedIn=false){
   // signedIn: the person was adding a login method to the account they are using, not logging in.
   if(code==='IDENTITY_LINKED_TO_OTHER')return signedIn?'このログイン方法は、すでに別のCamelliaアカウントにつながっています。記録を守るため、自動ではまとめません。今のアカウントは、このまま使えます。':'このログイン方法は、別のCamelliaアカウントで使われています。記録を守るため、自動ではつなぎません。前に使っていた方法でログインしてください。';
   if(code.startsWith('TICKET_')||code==='MISSING_TICKET')return 'SchoolParkでの確認の有効期限が切れました。もう一度お試しください。';
+  if(code==='LINE_CANCELLED')return 'LINEでのログインをキャンセルしました。もう一度試すか、別のログイン方法を選んでください。';
   if(code==='STATE_MISMATCH'||code.startsWith('LINE_'))return 'LINEでの確認を完了できませんでした。もう一度お試しください。';
   if(code==='AUTH_UNAVAILABLE')return 'いまログインを受け付けられません。少し時間をおいてお試しください。';
   return 'ログインを完了できませんでした。通信を確認して、もう一度お試しください。';
