@@ -53,8 +53,10 @@ try {
   state.checkins[0].createdAt=new Date().toISOString();
   const html=renderToStaticMarkup(createElement(TodayScreen,{state,recommendations:[],onCheckView:noop,onCheckStart:noop,onCheckin:noop,onOpenAction:noop,onIntent:noop,onTalk:noop,onFortune:noop,onTree:noop,onComplete:noop,onFeedback:noop,onProposals:noop,onTrack:noop}));
   assert.ok(html.indexOf('id="today-result"')<html.indexOf('id="today-plans"'));
-  assert.ok(html.indexOf('id="today-plans"')<html.indexOf('class="daily-bridges"'));
-  assert.ok(html.indexOf('class="daily-bridges"')<html.indexOf('id="today-intent"'));
+  assert.ok(html.indexOf('id="today-plans"')<html.indexOf('class="fortune-entry"'));
+  assert.ok(html.indexOf('class="fortune-entry"')<html.indexOf('id="today-intent"'));
+  assert.ok(html.indexOf('id="today-intent"')<html.indexOf('class="tomorrow-card"'));
+  assert.equal(html.split('今日は何もしない').length-1,1,'今日は何もしない appears once');
   assert.ok(!html.includes('aria-label="普通"'),'Check form folds only after today exists');
   console.log('First experience: PASS (3 bounded starters, real JST Check context, no Memory mutation, yesterday across stages, no inferred data/week, analytics allowlist, optional result→plans→card→intent flow).');
 } finally { await server.close(); }

@@ -2,6 +2,15 @@ import { dailyCheckins, jstDayOffset } from '@/lib/reflection/engine';
 import { jstDate } from '@/lib/fortune/engine';
 import type { Checkin } from '@/types';
 
+/** The mood recorded yesterday (JST, the last Check of that day), or undefined when there is none.
+ * Only a real record is ever shown; a first day never gets a made-up yesterday. */
+export function yesterdayMood(checkins: Checkin[], now: Date): Checkin['mood'] | undefined {
+  const yesterday = jstDayOffset(now, -1);
+  return dailyCheckins(checkins, now).find(
+    (check) => jstDate(new Date(check.createdAt)) === yesterday,
+  )?.mood;
+}
+
 export function checkEntryCopy(checkins: Checkin[], now: Date) {
   const checks = dailyCheckins(checkins, now);
   const today = jstDate(now);

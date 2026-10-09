@@ -64,7 +64,7 @@
 .fortune-result small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size:12px;
   line-height: 1.6;
 }
 .orientation {
@@ -126,7 +126,7 @@
 .branch text,
 .self-label {
   text-anchor: middle;
-  font-size: 11px;
+  font-size:12px;
   fill: #55484d;
 }
 .self {
@@ -195,7 +195,7 @@
   background: #fff;
   border-radius: 99px;
   padding: 7px 10px;
-  font-size: 11px;
+  font-size:12px;
 }
 .meaning-tags button.selected {
   background: var(--pale);
@@ -212,7 +212,7 @@
   display: grid;
 }
 .my-tree-entry strong {
-  font-size: 11px;
+  font-size:12px;
   color: var(--pink);
 }
 .tree-mini {
@@ -267,7 +267,7 @@
   top: 8px;
   z-index: 3;
   color: #9b7c87;
-  font-size: 11px;
+  font-size:12px;
 }
 .feedback-note {
   margin: -95px 20px 110px;
@@ -363,7 +363,7 @@
   gap: 8px;
 }
 .conversation-action span {
-  font-size: 11px;
+  font-size:12px;
   color: var(--pink);
 }
 :root {
@@ -655,7 +655,7 @@ select {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 10px;
+  font-size:12px;
 }
 .bottom-nav button.active {
   color: var(--pink);
@@ -721,7 +721,7 @@ select {
   font-size: 13px;
 }
 .history-row small {
-  font-size: 10px;
+  font-size:12px;
   color: var(--muted);
 }
 details {
@@ -952,7 +952,7 @@ details {
   min-height:100dvh; padding:max(46px,env(safe-area-inset-top)) 28px max(32px,env(safe-area-inset-bottom));
   display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; position:relative; z-index:1;
 }
-.welcome-time { margin:0 0 30px; font-size:11px; letter-spacing:.16em; opacity:.68; }
+.welcome-time { margin:0 0 30px; font-size:12px; letter-spacing:.16em; opacity:.68; }
 .welcome-brand { margin:18px 0 10px; font:24px Georgia,'Noto Serif JP',serif; letter-spacing:.06em; }
 .welcome h1,.account-card h1 { margin:0; font:34px/1.45 Georgia,'Noto Serif JP',serif; font-weight:400; }
 .welcome-prompt { margin:10px 0 34px; font-size:16px; letter-spacing:.02em; }
@@ -962,7 +962,7 @@ details {
   box-shadow:0 12px 30px #b8446329; cursor:pointer;
 }
 .welcome-primary:focus-visible,.account-secondary:focus-visible,.account-back:focus-visible { outline:3px solid #7653c0; outline-offset:3px; }
-.welcome-content small { margin-top:13px; font-size:11px; opacity:.62; }
+.welcome-content small { margin-top:13px; font-size:12px; opacity:.62; }
 .camellia-bloom { position:relative; width:112px; height:112px; animation:bloom-in 800ms cubic-bezier(.2,.8,.2,1) both; }
 .camellia-bloom i { position:absolute; width:49px; height:57px; left:32px; top:10px; border-radius:55% 55% 45% 45%; transform-origin:50% 48px; background:linear-gradient(145deg,#f78ba0,#d94f72); box-shadow:inset 6px 7px 10px #fff5; }
 .camellia-bloom i:nth-child(1){transform:rotate(0deg)}.camellia-bloom i:nth-child(2){transform:rotate(72deg)}.camellia-bloom i:nth-child(3){transform:rotate(144deg)}.camellia-bloom i:nth-child(4){transform:rotate(216deg)}.camellia-bloom i:nth-child(5){transform:rotate(288deg)}
@@ -983,9 +983,9 @@ details {
 .account-status b,.account-status small { display:block; }.account-status small { margin-top:2px; color:#74676c; }
 .account-secondary { width:100%; min-height:48px; margin-top:10px; border:1px solid #dfcfd4; border-radius:999px; background:#fff; color:#5b444d; cursor:pointer; }
 .account-coming { margin:24px 0 0; padding:14px; border-top:1px solid #e7dbe0; display:grid; gap:7px; text-align:left; }
-.account-coming p { margin:0 0 3px; font-size:11px; color:#8b7a80; }.account-coming span { font-size:12px; color:#76686d; }
+.account-coming p { margin:0 0 3px; font-size:12px; color:#8b7a80; }.account-coming span { font-size:12px; color:#76686d; }
 .account-coming span::before { content:'○'; margin-right:8px; color:#d77a90; }
-.account-note { margin:16px 0 0; font-size:10px; line-height:1.6; color:#877980; }
+.account-note { margin:16px 0 0; font-size:12px; line-height:1.6; color:#877980; }
 .account-policy { margin:14px 4px; font-size:12px; line-height:1.75; color:#6e5860; }
 .account-policy a { color:#9b3c59; text-underline-offset:3px; font-weight:600; }
 .welcome--night .account-policy { color:#eee3ea; }
@@ -1088,3 +1088,141 @@ details {
    fading so the row reads as continuing. The extra end padding lets the last chip clear the fade. */
 .category-scroll{gap:6px;scrollbar-width:none}.category-scroll::-webkit-scrollbar{display:none}.category-scroll button{padding:9px 10px}
 @media (max-width:459px){.category-scroll{padding-right:40px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent)}}
+
+/* β2 Today one flow (TODAY_ONE_FLOW): Check first, then 1/3 → 2/3 → 3/3 → 今日どうする？ → 明日のCamellia.
+   Selection and progress never rely on colour alone (✓, bold, border, 「済み」). */
+.today-flow .check-primary{margin-bottom:16px}
+.today-flow .check-primary h2{font-size:20px;margin:6px 0 8px}
+.yesterday-pill{display:inline-block;margin:0 0 8px;padding:6px 12px;border-radius:999px;background:#fff0f4;border:1px solid #f1cbd6;color:#81314d;font-size:13px;font-weight:600;line-height:1.5}
+.today-flow .check-intro{margin:2px 0 4px}
+.mood-check button{position:relative;border-width:2px}
+.mood-check button.selected{border-color:#9b3152;background:#fff0f3}
+.mood-check button.selected .mood-label{font-weight:700;color:#5d2236}
+.mood-tick{position:absolute;top:3px;right:5px;font-size:12px;font-weight:700;color:#9b3152;line-height:1}
+.check-details{margin:4px 0 14px;padding-top:12px;border-top:1px solid var(--line)}
+.check-details-title{margin:0 0 4px;font-size:13px;font-weight:700;color:#5f4651}
+.chip-group{border:0;margin:10px 0 0;padding:0;min-width:0}
+.chip-group legend{font-size:12px;color:var(--muted);margin-bottom:6px;padding:0}
+.chip-group>div{display:flex;flex-wrap:wrap;gap:6px}
+.chip-group button{min-height:44px;min-width:58px;padding:8px 12px;border-radius:999px;border:1px solid #e3d3d9;background:#fff;color:#4c3a42;font-size:14px;line-height:1.3}
+.chip-group button.selected{border:2px solid #9b3152;background:#fff0f3;color:#5d2236;font-weight:700;padding:7px 11px}
+.period-input{margin:12px 0 0;font-size:12px}
+.period-input input{max-width:140px;min-height:44px}
+.check-note{margin:8px 0 0;text-align:center;font-size:12px;color:var(--muted)}
+.flow-preview{margin:0 0 24px;padding:14px 16px;border:1px dashed #e3cfd6;border-radius:16px;color:var(--muted)}
+.flow-preview>p{margin:0 0 8px;font-size:13px;font-weight:600;color:#6c5560}
+.flow-preview ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.flow-preview li{display:flex;align-items:center;gap:10px;font-size:13px}
+.flow-preview li span{flex:0 0 24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#f6eef1;color:#7a5a67;font-size:12px;font-weight:700}
+.check-folded{display:flex;align-items:center;gap:12px;margin:0 0 18px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,#fff,#fff8f8)}
+.check-folded-emoji{font-size:26px;line-height:1}
+.check-folded>div{flex:1;min-width:0}
+.check-folded p{margin:0;font-size:12px;color:var(--muted)}
+.check-folded b{display:block;font-size:14px;overflow-wrap:anywhere}
+.check-folded .text-button{flex:0 0 auto;font-size:13px;padding:0 4px}
+.flow-step{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 6px;font-size:12px;font-weight:700;color:#9b3152}
+.flow-step b{font-size:12px;font-weight:600;color:#5f4651}
+.flow-now b{padding:2px 8px;border-radius:999px;background:#fff0f3;border:1px solid #e9b8c6;color:#81314d}
+.flow-next{color:#86707b}
+.flow-card{border:1px solid var(--line);border-radius:20px;padding:16px 16px 14px;margin:0 0 26px;background:linear-gradient(135deg,#fff,#fff8f8)}
+.flow-card h2{font-family:Georgia,serif;font-size:20px;font-weight:500;margin:8px 0 12px;scroll-margin-top:24px}
+.flow-card>p{font-size:14px;margin:8px 0}
+.flow-insight{font-size:14px;margin:8px 0;padding-top:8px;border-top:1px solid var(--line)}
+.flow-insight small{display:block;font-size:12px;color:var(--muted)}
+.flow-card .meta{display:block;margin-top:10px}
+.flow-section{margin:0 0 26px}
+.flow-section .gentle-copy{margin:0 0 10px;font-size:13px}
+.plan-main{border:1px solid var(--line);border-radius:20px;overflow:hidden;background:#fff}
+.plan-main img{display:block;width:100%;height:136px;object-fit:cover}
+.plan-main>div{padding:12px 16px 16px}
+.plan-main h3{font-size:17px;margin:4px 0}
+.plan-main p{margin:0;font-size:13px;color:#64595e}
+.plan-cta{display:block;width:100%;margin-top:12px;min-height:46px;border:0;border-radius:999px;background:#fdeef1;color:#8a2d4b;font-size:15px;font-weight:700}
+.plan-chosen{margin-top:12px!important;padding:10px 12px;border-radius:12px;background:#f4faf5;color:#2f5c3c!important;font-weight:700}
+.plan-others{list-style:none;margin:6px 0 0;padding:0}
+.plan-others li{border-bottom:1px solid var(--line)}
+.plan-others button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:48px;padding:10px 2px;border:0;background:transparent;color:var(--ink);font-size:14px;text-align:left}
+.plan-others small{color:var(--muted);font-size:12px}
+.plan-others button>span:last-child{color:#9b3152}
+.fortune-entry{width:100%;display:flex;gap:16px;align-items:center;padding:16px;border:1px solid #efc9d5;border-radius:20px;background:linear-gradient(135deg,#fff7f9,#fbeef3);text-align:left;color:var(--ink)}
+.fortune-entry-card{flex:0 0 58px;height:82px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(160deg,#fff,#fde7ee);border:1px solid #f0c8d4;box-shadow:0 4px 12px #b8446318;color:#d4587a;font-size:26px}
+.fortune-entry>span:last-child{display:grid;gap:4px;min-width:0}
+.fortune-entry b{font-size:16px}
+.fortune-entry span span{font-size:13px;color:#64595e;line-height:1.6}
+.fortune-entry strong{font-size:14px;color:#8a2d4b}
+.flow-intent{margin:0 0 26px}
+.flow-intent h2{font-family:Georgia,serif;font-weight:500;font-size:21px;margin:0 0 4px;scroll-margin-top:20px}
+.intent-sub{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.intent-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.intent-row button{min-height:56px;display:grid;place-items:center;gap:2px;padding:6px 2px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);font-size:13px}
+.intent-row b{font-size:16px;font-weight:400}
+.intent-final{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.intent-final button{min-height:48px;border-radius:999px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px}
+.intent-talk{border:1px solid #dcc9d0;background:#fff;color:var(--ink)}
+.intent-nothing{border:0;background:#f4eef3;color:#4c3a42}
+.flow-active{margin:0 0 22px}
+.active-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.active-head h2{font-size:16px;margin:0}
+.active-head span,.active-head .text-button{font-size:12px;color:var(--muted)}
+.flow-active .meta{padding:10px 0}
+.tomorrow-card{margin:0 0 24px;padding:16px;border-radius:20px;background:#f8f2f5}
+.tomorrow-card .eyebrow{font-weight:700;color:#5f4651}
+.tomorrow-card>p:not(.eyebrow){margin:8px 0 10px;font-size:15px;line-height:1.75;padding-bottom:10px;border-bottom:1px solid #eadde3}
+.tomorrow-card .text-button{padding:0;font-size:13px;text-align:left}
+.sheet-note{font-size:12px;color:var(--muted);margin:8px 0 0;text-align:center}
+.runner ol{margin:12px 0 14px;padding-left:22px;display:grid;gap:8px;font-size:15px;line-height:1.6}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* 「説明を少なめにする」 (My): the person's own choice, never inferred from age. */
+.less-explain .explain{display:none}
+
+/* Minimum 12px for everyone (bottom nav, history dates, fortune note, β badge and other small labels). */
+.bottom-nav button{font-size:12px}
+.history-row small{font-size:12px}
+.fortune-result small{font-size:12px}
+.beta-badge{font-size:12px}
+
+/* 今日の一枚（結果）: answer the question in one tap, then a clear way back to Today. */
+.fortune-reflect>div{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.fortune-reflect button{min-height:44px;min-width:84px;padding:8px 14px;border-radius:999px;border:1px solid #e3d3d9;background:#fff;color:#4c3a42;font-size:14px}
+.fortune-reflect button.selected{border:2px solid #9b3152;background:#fff0f3;color:#5d2236;font-weight:700;padding:7px 13px}
+.fortune-result small{margin-bottom:4px}
+.fortune-try{margin:28px 0 18px}
+.fortune-try h2{font-size:17px;margin:0 0 10px}
+.fortune-actions button{min-height:48px;align-items:center;color:var(--ink);font-size:14px}
+.fortune-actions button span{color:#9b3152}
+.fortune-decide{margin:4px 0 24px}
+
+/* Conversation: tap a choice instead of typing; today's Check stays visible next to the input. */
+.conversation-choices{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.conversation-choices button{min-height:44px;padding:9px 14px;border-radius:999px;border:1px solid #dcc9d0;background:#fff;color:#703749;font-size:14px}
+.today-check-chip{display:inline-block;margin:0 0 8px;padding:4px 12px;border-radius:999px;background:#fff0f4;color:#81314d;font-size:12px}
+
+/* Discover: whole-card tap; places that are not open yet are a quiet line, not a dead end. */
+.discover .category-scroll{margin:4px 0 18px}
+.discover-rest h2{font-size:17px;margin:0 0 2px}
+.discover-rest .meta,.discover-hint{margin:0 0 12px}
+.action-card--whole{width:100%;grid-template-columns:82px 1fr;text-align:left;color:var(--ink);font:inherit;cursor:pointer}
+.action-card--whole .action-copy{display:grid;gap:3px;min-width:0}
+.action-card--whole .action-title{font-size:15px;font-weight:700;line-height:1.45}
+.action-card--whole .action-text{font-size:12px;color:#64595e;line-height:1.55}
+.coming-places{margin:24px 0 8px;padding:14px 16px;border-radius:15px;background:#f9f2f5;color:var(--muted);font-size:12px;line-height:1.7}
+.coming-places b{display:block;font-size:13px;color:#5f4651}
+
+/* My: a calm top; account and sync details folded into 「アカウントと記録」. */
+.my-alert{margin:0 0 16px;padding:10px 14px;border-radius:14px;background:#fff6e8;border:1px solid #f0d9b5;color:#5c4320}
+.my-alert p{margin:0;font-size:13px;line-height:1.6}
+.my-alert .text-button{padding:0;font-size:13px}
+.account-records{margin:0 0 22px;border:1px solid var(--line);border-radius:16px;padding:0 14px;background:#fff}
+.account-records summary{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;cursor:pointer}
+.account-records summary span{font-size:12px;font-weight:400;color:var(--muted)}
+.account-records[open]{padding-bottom:6px}
+.switch-row{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink);margin:4px 0;min-height:44px}
+.switch-row input{width:22px;height:22px}
+
+/* My Tree: names on up to two lines; the list says when each leaf was last written to. */
+.leaf-list button>div{flex:1;min-width:0}
+.leaf-updated{flex:0 0 auto;margin-top:0!important;align-self:center;font-size:12px}
+.fortune-reflect{border:0;margin:0;padding:0;min-width:0}
+.fortune-reflect legend{width:100%;box-sizing:border-box}
+.plan-chosen{display:block}
+.check-folded b{word-break:keep-all}

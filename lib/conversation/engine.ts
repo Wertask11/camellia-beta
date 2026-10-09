@@ -12,9 +12,21 @@ export function classifyIntent(t:string):ConversationIntent {
 const rules:[ConversationTopic,RegExp][]=[['WORK',/仕事|会社|上司|職場|辞め/],['RELATIONSHIP',/関係|うまくいって/],['LOVE',/彼氏|彼女|恋愛|デート|好きな人/],['FAMILY',/家族|親|母|父|子ども|夫|妻/],['FRIEND',/友達|友人|喧嘩/],['BEAUTY',/肌|美容|メイク|服|何着/],['HEALTH',/体調|具合|痛|疲れ/],['SLEEP',/眠|睡眠|寝/],['FOOD',/お腹|食べ|ごはん|料理/],['EXERCISE',/運動|散歩|ストレッチ/],['STUDY',/勉強|試験|学/],['MONEY',/お金|給料|貯金|支払/],['HOBBY',/趣味|推し|音楽|映画|本/],['FUN',/暇|楽しい|遊び/],['LONELINESS',/寂し|孤独|ひとり/],['ANXIETY',/不安|心配|迷って|将来/],['HAPPINESS',/嬉しい|うれしい|最高|幸せ/],['ANGER',/怒|最悪|むかつ|イライラ/],['SADNESS',/悲しい|つらい|泣|嫌なこと/]];
 export function classifyTopics(t:string):ConversationTopic[]{const found=rules.filter(([,r])=>r.test(t)).map(([k])=>k);return found.length?found:['OTHER']}
 const previousUser=(h:CamelliaContext['conversationHistory'])=>[...h].reverse().find(m=>m.role==='user');
+const previousReply=(h:CamelliaContext['conversationHistory'])=>[...h].reverse().find(m=>m.role==='assistant')?.text;
+/* Empathy → one question → choices the person can tap (shown as buttons, never only promised). */
+const TIRED='今日は少し疲れてるんだね。今は「少し話したい」「静かに休みたい」どちらに近い？';
+const TIRED_CHOICES=['少し話したい','静かに休みたい'];
+/* When the same words would come back twice in a row, ask instead of repeating. */
+const AGAIN='同じ気持ちが続いているんだね。今は「もう少し話したい」「静かに休みたい」どちらに近い？';
+const AGAIN_CHOICES=['少し話したい','静かに休みたい'];
+/* Actions offered inside the conversation: not 「Camelliaに話す」 (already here) and not 何もしない. */
+const offerable=(recs:Recommendation[])=>recs.find(r=>r.action.opens!=='camellia'&&r.action.id!=='do-nothing'&&r.action.id!=='talk-ai');
 function listen(topics:ConversationTopic[],text:string,previous?:AIMessage){
   if (/さっき|その話/.test(text)&&previous) return `うん、さっきの「${previous.text.slice(0,28)}」の話だね。続き、聞かせて。`;
+  if (/^少し話したい$/.test(text)) return 'うん、聞かせて。今日いちばん残っていることから、ひと言でも大丈夫。';
+  if (/^静かに休みたい$/.test(text)) return 'うん、今日は休む方に近いんだね。ここで話すのはおしまいにしても大丈夫。休む過ごし方を見たくなったら、Discoverにあります。';
   if (/何もしたくない/.test(text)) return '今日は何もしたくないんだね。何もしないまま、ここにいるだけでも大丈夫。';
+  if (topics.includes('HEALTH')&&!topics.includes('EXERCISE')) return TIRED;
   if (topics.includes('HAPPINESS')) return 'それはいい一日だったんだね。うれしさがこちらにも伝わってくるよ。';
   if (topics.includes('ANGER')) return 'それは嫌だったね。すぐに整理しなくていいから、話したいところから聞かせて。';
   if (topics.includes('SADNESS')) return '今日はつらいことがあったんだね。ここでは無理に元気にならなくて大丈夫。';
@@ -36,7 +48,7 @@ function buildRuleResponse(input:string,recs:Recommendation[],context:CamelliaCo
   const intent=classifyIntent(input),topics=classifyTopics(input),previous=previousUser(context.conversationHistory);let text='';
   /* 選択肢のカードを出すかを先に決める。返事が「置いておきます」と言うのはカードが出るときだけ。
      食べ物の話では提案を出さない（空腹の人に行動を勧めない）。提案が無いときも出さない。 */
-  const action=(intent==='ADVICE'||intent==='ACTION')&&!topics.includes('FOOD')?recs[0]?.action:undefined;
+  const action=(intent==='ADVICE'||intent==='ACTION')&&!topics.includes('FOOD')?offerable(recs)?.action:undefined;
   const showAction=Boolean(action);
   const asksAboutPattern=/最近|傾向|前と比|変化/.test(input);
   if(/^今日のCheckについて話したい$/.test(input))text=context.today?`今日のCheckでは「${['','つらい','少しつらい','普通','良い','とても良い'][context.today.mood]}」を選んでいましたね。今の気持ちに近いですか？気になったところから話してみて。`:'今日はまだCheckの記録がありません。今の気持ちから話しても大丈夫です。';
@@ -53,7 +65,9 @@ function buildRuleResponse(input:string,recs:Recommendation[],context:CamelliaCo
   else if(intent==='ADVICE') text=showAction?'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。必要なら小さな選択肢も置いておきます。':'すぐに正解を決めず、今いちばん困っていることから一緒に考えよう。';
   else if(topics.includes('FOOD')) text='お腹がすいていると、ほかのことも考えにくいよね。まずは何か食べて、ひと息ついてからでも大丈夫。';
   else text=showAction?'今の気分に合いそうな、小さな選択をひとつだけ置いておきます。':'今は無理に決めなくても大丈夫。気になることがあれば、そのまま話してね。';
-  return {intent,topics,text,showAction,action,showCircle:intent==='CONNECT'&&LIVE_DESTINATIONS.has('circle')};
+  let choices:string[]=text===TIRED?TIRED_CHOICES:[];
+  if(text===previousReply(context.conversationHistory)){text=AGAIN;choices=AGAIN_CHOICES;}
+  return {intent,topics,text,showAction,action,choices,showCircle:intent==='CONNECT'&&LIVE_DESTINATIONS.has('circle')};
 }
 
 /** The current processor is deterministic and local. Future processors can implement the same boundary. */

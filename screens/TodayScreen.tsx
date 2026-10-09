@@ -1,78 +1,99 @@
+/* oxlint-disable next/no-img-element -- external editorial images are intentionally unoptimized in this prototype */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageCircle, Sparkles } from 'lucide-react';
-import { ActionCard } from '@/components/ActionCard';
-import { buildTodaySummary, getTimeBand } from '@/lib/recommendation';
+import { MessageCircle } from 'lucide-react';
+import { ACTIONS } from '@/data/actions';
+import { getTimeBand } from '@/lib/recommendation';
 import { buildDailyReflection } from '@/lib/reflection/engine';
-import { checkEntryCopy } from '@/lib/reflection/check-entry';
-import {useCurrentTime} from '@/hooks/useCurrentTime';
+import { checkEntryCopy, yesterdayMood } from '@/lib/reflection/check-entry';
+import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { checkInputError } from '@/lib/check';
 import { generateInsightCandidates, selectDisplayableInsight } from '@/lib/insight/candidates';
-import type {
-  AnalyticsEventName,
-  CamelliaState,
-  Checkin,
-  FeedbackRating,
-  Mood,
-  Recommendation,
-} from '@/types';
+import { drawFortune, jstDate } from '@/lib/fortune/engine';
+import { ADAPTIVE_STAGE_UI, TODAY_ONE_FLOW } from '@/lib/features';
+import {
+  BODY_CHIPS, IN_PLACE_STEPS, MOODS, SLEEP_CHIPS, STRESS_CHIPS, actionTitle, checkSummaryLine,
+  choseSomethingToday, jstTime, moodMeta, reflectionHeading, splitActiveActions, todayCheck, todayPlans, tomorrowCopy,
+} from '@/lib/today/flow';
+import { TodayScreenClassic } from '@/screens/TodayScreenClassic';
+import type { AnalyticsEventName, CamelliaState, Checkin, FeedbackRating, Mood, Recommendation } from '@/types';
 
-const moods: { value: Mood; emoji: string; label: string }[] = [
-  { value: 5, emoji: '😊', label: 'とても良い' },
-  { value: 4, emoji: '🙂', label: '良い' },
-  { value: 3, emoji: '😐', label: '普通' },
-  { value: 2, emoji: '😔', label: '少しつらい' },
-  { value: 1, emoji: '😣', label: 'つらい' },
-];
-export function TodayScreen({
-  state,
-  recommendations,
-  forceNight = false,
-  onCheckView,
-  onCheckStart,
-  onCheckin,
-  onOpenAction,
-  onIntent,
-  onTalk,
-  onFortune,
-  onTree,
-  onComplete,
-  onFeedback,
-  onProposals,
-  onTrack,
-  focusIntent = false,
-  onIntentFocused,
-}: {
+type TodayProps = {
   state: CamelliaState;
   recommendations: Recommendation[];
   forceNight?: boolean;
   onCheckView: () => void;
   onCheckStart: () => void;
-  onCheckin: (
-    v: { mood: Mood } & Partial<
-      Omit<Checkin, 'id' | 'mood' | 'createdAt' | 'updatedAt'>
-    >,
-  ) => void;
+  onCheckin: (v: { mood: Mood } & Partial<Omit<Checkin, 'id' | 'mood' | 'createdAt' | 'updatedAt'>>) => void;
   onOpenAction: (r: Recommendation) => void;
+  /** 「これにする」: choose this for today (recorded as やってみていること) without leaving Today. */
+  onChoose?: (r: Recommendation) => void;
   onIntent: (x: string) => void;
   onTalk: () => void;
   onFortune: () => void;
   onTree: () => void;
+  onMy?: () => void;
   onComplete: (id: string) => void;
-  onFeedback: (
-    recordId: string,
-    actionId: string,
-    rating: FeedbackRating,
-  ) => void;
+  onFeedback: (recordId: string, actionId: string, rating: FeedbackRating) => void;
   onProposals: (ids: string[]) => void;
-  onTrack: (
-    name: AnalyticsEventName,
-    properties?: Record<string, string | number | boolean>,
-  ) => void;
+  onTrack: (name: AnalyticsEventName, properties?: Record<string, string | number | boolean>) => void;
   focusIntent?: boolean;
   onIntentFocused?: () => void;
+};
+
+/** TODAY_ONE_FLOW off → the Today that was live before β2's one flow, unchanged. */
+export function TodayScreen(props: TodayProps) {
+  return TODAY_ONE_FLOW ? <TodayOneFlow {...props} /> : <TodayScreenClassic {...props} />;
+}
+
+const INTENTS: { label: string; icon: string }[] = [
+  { label: '整える', icon: '🌿' },
+  { label: '楽しむ', icon: '♫' },
+  { label: '学ぶ', icon: '📖' },
+  { label: '休む', icon: '☾' },
+];
+const FEEDBACK: [FeedbackRating, string][] = [
+  ['great', '😍 よかった'],
+  ['okay', '🙂 まあまあ'],
+  ['same', '😐 変わらない'],
+  ['bad', '🙅 合わなかった'],
+];
+
+/** 「1 / 3 ・ 今日のあなた」 with a text state, so where the person is does not depend on colour. */
+function Step({ n, label, state }: { n: number; label: string; state: 'done' | 'now' | 'next' }) {
+  return <p className={`flow-step flow-${state}`} aria-current={state === 'now' ? 'step' : undefined}>
+    <span>{n} / 3 ・ {label}</span>
+    {state === 'done' && <b>✓ 済み</b>}
+    {state === 'now' && <b>いまここ</b>}
+  </p>;
+}
+
+function ChipGroup<T extends string | number>({ label, options, value, onChange }: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T | undefined;
+  onChange: (v: T | undefined) => void;
 }) {
+  return <fieldset className="chip-group">
+    <legend>{label}</legend>
+    <div>
+      {options.map(o => {
+        const on = value === o.value;
+        return <button type="button" key={String(o.value)} aria-pressed={on} className={on ? 'selected' : ''}
+          onClick={() => onChange(on ? undefined : o.value)}>
+          {on && <span aria-hidden="true">✓ </span>}{o.label}
+        </button>;
+      })}
+    </div>
+  </fieldset>;
+}
+
+function TodayOneFlow({
+  state, forceNight = false, onCheckView, onCheckStart, onCheckin, onOpenAction, onChoose,
+  onIntent, onTalk, onFortune, onTree, onMy, onComplete, onFeedback, onProposals, onTrack,
+  focusIntent = false, onIntentFocused,
+}: TodayProps) {
   const checkViewSent = useRef(false);
-  const currentTime=useCurrentTime(state.checkins);
+  const currentTime = useCurrentTime(state.checkins);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!checkViewSent.current) {
@@ -83,371 +104,311 @@ export function TodayScreen({
     return () => window.clearTimeout(timer);
   }, [onCheckView]);
   const [mood, setMood] = useState<Mood | undefined>();
-  const [more, setMore] = useState(false);
-  const [sleep, setSleep] = useState('');
+  const [sleep, setSleep] = useState<number | undefined>();
   const [body, setBody] = useState<Checkin['body']>();
   const [stress, setStress] = useState<Checkin['stress']>();
   const [period, setPeriod] = useState('');
-  const [saved, setSaved] = useState(false);
   const [editingCheck, setEditingCheck] = useState(false);
-  const [inputError,setInputError] = useState('');
+  const [inputError, setInputError] = useState('');
   const saveLocked = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const intentHeading = useRef<HTMLHeadingElement>(null);
+  const justSaved = useRef(false);
   useEffect(() => {
     if (!focusIntent) return;
     intentHeading.current?.focus({ preventScroll: true });
     intentHeading.current?.scrollIntoView({ block: 'start' });
     onIntentFocused?.();
   }, [focusIntent, onIntentFocused]);
-  const resultFocused=useRef(false);
-  useEffect(() => {
-    if (!saved)resultFocused.current=false;
-    if (saved&&resultHeading.current&&!resultFocused.current) {
-      resultFocused.current=true;
-      resultHeading.current?.focus({ preventScroll: true });
-      resultHeading.current?.scrollIntoView({ block: 'start' });
-    }
-  }, [saved,currentTime]);
-  const date = useMemo(
-    () =>
-      new Intl.DateTimeFormat('ja-JP', {
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long',
-        timeZone: 'Asia/Tokyo',
-      }).format(currentTime),
-    [currentTime],
-  );
-  const active = state.actions.filter((a) => a.status === 'started');
-  const reflection = state.actions.filter(
-    (a) =>
-      a.status === 'completed' &&
-      !state.actionFeedback.some((f) => f.actionRecordId === a.id),
-  );
-  useEffect(() => {
-    if (state.checkins.length)
-      onProposals(recommendations.map((r) => r.action.id));
-  }, [recommendations, state.checkins.length, onProposals]);
+
   const displayDate = useMemo(() => {
     const value = new Date(currentTime.getTime());
     if (forceNight) value.setHours(21, 0, 0, 0);
     return value;
-  }, [forceNight,currentTime]);
-  const dailyReflection = useMemo(
-    () => buildDailyReflection(state, displayDate),
-    [state, displayDate],
-  );
+  }, [forceNight, currentTime]);
+  const date = useMemo(() => new Intl.DateTimeFormat('ja-JP', {
+    month: 'long', day: 'numeric', weekday: 'long', timeZone: 'Asia/Tokyo',
+  }).format(currentTime), [currentTime]);
+  const dailyReflection = useMemo(() => buildDailyReflection(state, displayDate), [state, displayDate]);
   const gentleInsight = useMemo(
     () => selectDisplayableInsight(generateInsightCandidates(state, displayDate)),
     [state, displayDate],
   );
-  const entryCopy = useMemo(
-    () => checkEntryCopy(state.checkins, displayDate),
-    [state.checkins, displayDate],
-  );
+  const entryCopy = useMemo(() => checkEntryCopy(state.checkins, displayDate), [state.checkins, displayDate]);
+  const yesterday = useMemo(() => yesterdayMood(state.checkins, displayDate), [state.checkins, displayDate]);
+  const check = dailyReflection ? todayCheck(state, displayDate) : undefined;
+  const checked = Boolean(dailyReflection && check);
+  const showForm = !checked || editingCheck;
+
+  useEffect(() => {
+    if (checked && justSaved.current && resultHeading.current) {
+      justSaved.current = false;
+      resultHeading.current.focus({ preventScroll: true });
+      resultHeading.current.scrollIntoView({ block: 'start' });
+    }
+  }, [checked, state.checkins.length]);
+  /* 2/3: one plan in front, two quiet ones. 何もしない lives only in 今日どうする？. */
+  const plans = useMemo(() => todayPlans(state, displayDate), [state, displayDate]);
+  useEffect(() => {
+    if (state.checkins.length) onProposals(plans.map(r => r.action.id));
+  }, [plans, state.checkins.length, onProposals]);
   const reflectionViewSent = useRef('');
   useEffect(() => {
     if (!dailyReflection) return;
     const key = `${dailyReflection.stage}:${dailyReflection.historyDays}`;
     if (reflectionViewSent.current === key) return;
     reflectionViewSent.current = key;
-    onTrack('daily_reflection_view', {
-      reflection_stage: dailyReflection.stage,
-      history_days: dailyReflection.historyDays,
-    });
-    if (dailyReflection.hasWeeklyInsight)
-      onTrack('weekly_insight_view', {
-        history_days: dailyReflection.historyDays,
-      });
+    onTrack('daily_reflection_view', { reflection_stage: dailyReflection.stage, history_days: dailyReflection.historyDays });
+    if (dailyReflection.hasWeeklyInsight) onTrack('weekly_insight_view', { history_days: dailyReflection.historyDays });
   }, [dailyReflection, onTrack]);
+
   const timeBand = getTimeBand(displayDate);
-  const greeting = {
-    朝: 'おはよう',
-    昼: 'こんにちは',
-    夕方: '今日もおつかれさま',
-    夜: 'こんばんは',
-  }[timeBand];
+  const greeting = { 朝: 'おはよう', 昼: 'こんにちは', 夕方: '今日もおつかれさま', 夜: 'こんばんは' }[timeBand];
   const save = () => {
     if (!mood || saveLocked.current) return;
-    const error=checkInputError({mood,sleep:sleep?Number(sleep):undefined,periodDays:period?Number(period):undefined});
+    const error = checkInputError({ mood, sleep, periodDays: period ? Number(period) : undefined });
     setInputError(error);
-    if(error)return;
+    if (error) return;
     saveLocked.current = true;
-    onCheckin({
-      mood,
-      sleep: sleep ? Number(sleep) : undefined,
-      body: body || undefined,
-      stress: stress || undefined,
-      periodDays: period ? Number(period) : undefined,
-    });
-    setSaved(true);
+    justSaved.current = true;
+    onCheckin({ mood, sleep, body: body || undefined, stress: stress || undefined, periodDays: period ? Number(period) : undefined });
     setEditingCheck(false);
-    setMore(false);
   };
+  const recheck = () => {
+    saveLocked.current = false;
+    setMood(undefined); setSleep(undefined); setBody(undefined); setStress(undefined); setPeriod(''); setInputError('');
+    setEditingCheck(true);
+  };
+
+  const today = jstDate(displayDate);
+  /* Once something is chosen today it stays in front (the engine may reorder after a choice). */
+  const mainRecord = state.actions.find(a => jstDate(new Date(a.startedAt ?? a.createdAt)) === today
+    && a.status !== 'skipped' && a.actionId !== 'do-nothing' && ACTIONS.some(x => x.id === a.actionId));
+  const chosenAction = mainRecord && ACTIONS.find(x => x.id === mainRecord.actionId);
+  const main: Recommendation | undefined = chosenAction
+    ? plans.find(r => r.action.id === chosenAction.id) ?? { action: chosenAction, score: 0, reasons: ['今日、あなたが選んだ過ごし方'] }
+    : plans[0];
+  const others = plans.filter(r => r.action.id !== main?.action.id).slice(0, 2);
+  const chose = choseSomethingToday(state, displayDate);
+  const fortune = state.fortunes.find(f => f.date === today);
+  const card = fortune?.status === 'drawn' ? drawFortune(state.profile.id, fortune.date).card : undefined;
+  const { today: activeToday, earlier } = splitActiveActions(state.actions, displayDate);
+  const awaitingFeedback = state.actions.filter(a =>
+    a.status === 'completed' && !state.actionFeedback.some(f => f.actionRecordId === a.id)
+    && jstDate(new Date(a.completedAt ?? a.updatedAt)) === today)
+    /* The same action done twice today asks once (the latest). */
+    .filter((a, i, all) => !all.slice(i + 1).some(b => b.actionId === a.actionId));
+  const pickMain = () => {
+    if (!main) return;
+    if (main.action.opens === 'camellia' || IN_PLACE_STEPS[main.action.id] || !onChoose) onOpenAction(main);
+    else onChoose(main);
+  };
+  const mainLabel = !main ? '' : main.action.opens === 'camellia' ? 'Camelliaに話す' : IN_PLACE_STEPS[main.action.id] ? 'やってみる' : 'これにする';
+  const heading = dailyReflection
+    ? ADAPTIVE_STAGE_UI ? reflectionHeading(state, dailyReflection.stage, displayDate) : dailyReflection.title
+    : '';
+  /* 明日のCamellia says what tomorrow brings, so 1/3 does not repeat that sentence. */
+  const insightMessages = dailyReflection
+    ? dailyReflection.messages.filter(m => !dailyReflection.yesterdayMessages.includes(m))
+      .map(m => ADAPTIVE_STAGE_UI ? m.replace(/明日またCheckすると、今日との違いが少し見えてきます。$/, '') : m)
+    : [];
+
   return (
-    <main className={`screen today ${dailyReflection ? 'today--checked' : 'today--unchecked'}`}>
+    <main className={`screen today today-flow ${checked ? 'today--checked' : 'today--unchecked'}`}>
       <header>
         <div>
           <p className="date">{date}</p>
-          <h1>
-            {state.profile.name
-              ? `${state.profile.name}さん、${greeting}`
-              : `${greeting}`}
-          </h1>
+          <h1>{state.profile.name ? `${state.profile.name}さん、${greeting}` : greeting}</h1>
         </div>
         <span className="logo-small">Camellia ✿</span>
       </header>
-      <section className="check-card">
-        <p className="eyebrow">今日のCheck</p>
-        {dailyReflection && !editingCheck ? <div className="check-done">
-          <p>今日の記録から、過ごし方を考えてみましょう。</p>
-          <button className="text-button" onClick={() => { saveLocked.current = false; setMood(undefined); setMore(false); setEditingCheck(true); setSaved(false); }}>気分が変わったら、もう一度Check</button>
-        </div> : <>
-        <h2>{entryCopy.title}</h2>
-        <p className="check-intro">{!dailyReflection && !state.checkins.length && <>まずは、今日のあなたを教えてください。<br/></>}{entryCopy.prompt} <span>1分くらいで、気分だけでも。</span></p>
-        <fieldset className="mood-choice">
-        <legend className="mood-question">今の気分は？ <span>近いものをひとつ。気分だけでも大丈夫。</span></legend>
-        <div className="moods">
-          {moods.map((x) => (
-            <button
-              type="button"
-              aria-label={x.label}
-              aria-pressed={mood === x.value}
-              className={mood === x.value ? 'selected' : ''}
-              key={x.value}
-              onClick={() => {
-                onCheckStart();
-                saveLocked.current = false;
-                setMood(x.value);
-                setSaved(false);
-              }}
-            >
-              <span aria-hidden="true">{x.emoji}</span>
-              <span className="mood-label">{x.label}</span>
-            </button>
-          ))}
-        </div>
-        </fieldset>
-        <p className="check-preview">
-          Checkのあとに <span>今日のあなた</span>・<span>今日の過ごし方</span>・<span>今日の一枚</span>
-        </p>
-        {mood && <>
-        <button className="text-button" onClick={() => setMore(!more)}>
-          {more ? '閉じる' : '睡眠や身体のことも添える（任意）'}
-        </button>
-        {more && (
-          <div className="more-check">
-            <label>
-              睡眠（時間）
-              <input
-                type="number"
-                min="0"
-                max="14"
-                step="0.5"
-                value={sleep}
-                onChange={(e) => setSleep(e.target.value)}
-                placeholder="例 6.5"
-              />
-            </label>
-            <label>
-              <span id="check-body-label">身体</span>
-              <select
-                aria-labelledby="check-body-label"
-                value={body ?? ''}
-                onChange={(e) => setBody(e.target.value as Checkin['body'])}
-              >
-                <option value="">選択しない</option>
-                <option>良い</option>
-                <option>普通</option>
-                <option>疲れ気味</option>
-                <option>悪い</option>
-              </select>
-            </label>
-            <label>
-              <span id="check-stress-label">ストレス</span>
-              <select
-                aria-labelledby="check-stress-label"
-                value={stress ?? ''}
-                onChange={(e) => setStress(e.target.value as Checkin['stress'])}
-              >
-                <option value="">選択しない</option>
-                <option>低い</option>
-                <option>普通</option>
-                <option>やや高い</option>
-                <option>高い</option>
-              </select>
-            </label>
-            {state.profile.periodEnabled && (
-              <label>
-                生理予定まで（日）
-                <input
-                  type="number"
-                  min="0"
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                />
-              </label>
-            )}
-          </div>
-        )}
-        {inputError&&<p role="alert">{inputError}</p>}
-        <button className="primary" disabled={saved} onClick={save}>
-          {saved ? '保存しました' : '今日の私を見てみる'}
-        </button>
-        </>}
-        </>}
-        <a className="check-privacy" href="/privacy.html" target="_blank" rel="noopener">記録の取り扱いについて（別タブ）</a>
-      </section>
-      {dailyReflection && <nav className="daily-path" aria-label="Checkのあとの過ごし方">
-        <a href="#today-result">1 今日のあなた</a>
-        <a href="#today-plans">2 今日の過ごし方</a>
-        <button onClick={onFortune}>3 今日の一枚</button>
-        <a href="#today-intent">4 今日どうする？</a>
-      </nav>}
-      {dailyReflection ? (
-        <section className="summary-card reflection-card">
-          <div className="section-title">
-            <Sparkles size={18} />
-            <h2 id="today-result" ref={resultHeading} tabIndex={-1}>{dailyReflection.title}</h2>
-          </div>
-          {!!dailyReflection.yesterdayMessages.length && <div className="yesterday-difference">
-            <p className="eyebrow">昨日との違い</p>
-            {dailyReflection.yesterdayMessages.map(message => <p key={message}>{message}</p>)}
-          </div>}
-          {dailyReflection.messages.filter(message => !dailyReflection.yesterdayMessages.includes(message)).map((message, index) => (
-            <p key={index}>{message}</p>
-          ))}
-          <span className="meta">Checkとこれまでの行動記録をもとにしています</span>
-        </section>
-      ) : (
-        <section className="summary-card">
-          <div className="section-title">
-            <Sparkles size={18} />
-            <h2>今日のあなた</h2>
-          </div>
-          <p>{buildTodaySummary(state, displayDate)}</p>
-          <span className="meta">
-            今日のCheck後に、今のあなたへ短い気づきを返します
-          </span>
-        </section>
-      )}
-      <section>
-        <div className="section-title">
+
+      {checked && check && !editingCheck && (
+        <section className="check-folded" aria-label="今日のCheck">
+          <span className="check-folded-emoji" aria-hidden="true">{moodMeta(check.mood).emoji}</span>
           <div>
-            <p className="eyebrow">無理に選ばなくても大丈夫</p>
-            <h2 id="today-plans" tabIndex={-1}>今日の過ごし方</h2>
+            <p>今日のCheck · {jstTime(check.createdAt)} · {dailyReflection!.historyDays}日目</p>
+            <b>{checkSummaryLine(check)}</b>
           </div>
-        </div>
-        {dailyReflection ? (
-          <>
-            <p className="gentle-copy">
-              今日のCheckを手がかりに、こんな過ごし方も。ひとつだけでも、選ばなくても大丈夫。
-            </p>
-            <div className="action-list">
-              {recommendations
-                .filter((r) => r.action.id !== 'do-nothing')
-                .slice(0, 3)
-                .map((r) => (
-                  <ActionCard
-                    key={r.action.id}
-                    item={r}
-                    onOpen={() => onOpenAction(r)}
-                  />
-                ))}
-            </div>
-            <button
-              className="quiet-choice"
-              onClick={() => onIntent('何もしない')}
-            >
-              今日は何もしない <span>→</span>
-            </button>
-          </>
-        ) : (
-          <p className="empty">
-            気分をひとつ教えてくれたら、今日のあなたに合いそうな過ごし方を一緒に探せます。
+          <button className="text-button" onClick={recheck}>選び直す</button>
+        </section>
+      )}
+
+      {showForm && (
+        <section className="check-card check-primary">
+          <p className="eyebrow">今日のCheck · 1分くらい</p>
+          <h2>{entryCopy.title}</h2>
+          {yesterday && !checked && (
+            <p className="yesterday-pill">昨日は「{moodMeta(yesterday).label}」でした。今日は？</p>
+          )}
+          <p className="check-intro explain">
+            {!state.checkins.length && <>まずは、今日のあなたを教えてください。<br /></>}
+            {entryCopy.prompt}
           </p>
-        )}
-      </section>
-      {dailyReflection && (
-        <section className="daily-bridges">
-          <button onClick={onFortune}>
-            <b>今日の一枚</b>
-            <span>過ごし方に迷ったら、今の自分を別の角度から →</span>
-          </button>
-        </section>
-      )}
-      <section>
-        <p className="eyebrow">今日は、自分のために何する？</p>
-        <h2 id="today-intent" ref={intentHeading} tabIndex={-1}>今日どうする？</h2>
-        {dailyReflection && <p className="gentle-copy">気になることをひとつ。選んだら、あなたの生活へ。必要ならCamelliaに話しても。</p>}
-        <div className="intent-grid">
-          {['整える', '楽しむ', '学ぶ', '休む'].map((x, i) => (
-            <button key={x} onClick={() => onIntent(x)}>
-              <b>{['🌿', '♫', '📖', '☾'][i]}</b>
-              {x}
-            </button>
-          ))}
-          <button onClick={onTalk}>
-            <b>
-              <MessageCircle size={23} />
-            </b>
-            Camelliaに話す
-          </button>
-          <button className="do-nothing" onClick={() => onIntent('何もしない')}>
-            <b>○</b>今日は何もしない
-          </button>
-        </div>
-      </section>
-      {active.length > 0 && (
-        <section>
-          <div className="section-title"><h2>やってみていること</h2></div>
-          {active.map((a) => (
-            <div className="active-action" key={a.id}>
-              <span>{a.title}</span>
-              <button className="small-button" onClick={() => onComplete(a.id)}>できた</button>
-            </div>
-          ))}
-        </section>
-      )}
-      {dailyReflection && (
-        <section className="daily-bridges secondary-bridge">
-          <button onClick={onTree}>
-            <b>今日、印象に残った人はいましたか？</b>
-            <span>My Treeに一言を残す（スキップできます） →</span>
-          </button>
-        </section>
-      )}
-      {dailyReflection && gentleInsight && !dailyReflection.messages.includes(gentleInsight.text) && (
-        <div className="insight-card">
-          <p className="eyebrow">最近のあなたから</p>
-          <p>{gentleInsight.text}</p>
-          <small>{gentleInsight.observations}件の記録から見えた傾向です。決めつけではありません。</small>
-        </div>
-      )}
-      {/* 「できた」を押したら、その場で「どうだった？」に答えられる。
-          前は夜にしか出ず、朝や昼に終えた行動は夜まで答えられなかった。
-          答えは次の提案（合わなかったものを下げる等）に使う。 */}
-      {reflection.map((a) => (
-          <section className="reflection" key={a.id}>
-            <p className="eyebrow">{timeBand === '夜' ? '夜の振り返り' : 'やってみて'}</p>
-            <h2>「{a.title}」はどうだった？</h2>
-            <div>
-              {(
-                [
-                  ['great', '😍 よかった'],
-                  ['okay', '🙂 まあまあ'],
-                  ['same', '😐 変わらない'],
-                  ['bad', '🙅 合わなかった'],
-                ] as [FeedbackRating, string][]
-              ).map(([r, l]) => (
-                <button key={r} onClick={() => onFeedback(a.id, a.actionId, r)}>
-                  {l}
+          <fieldset className="mood-choice">
+            <legend className="mood-question">今の気分は？ <span>近いものをひとつ。気分だけでも大丈夫。</span></legend>
+            <div className="moods mood-check">
+              {MOODS.map(x => (
+                <button type="button" aria-label={x.label} aria-pressed={mood === x.value}
+                  className={mood === x.value ? 'selected' : ''} key={x.value}
+                  onClick={() => { onCheckStart(); saveLocked.current = false; setMood(x.value); }}>
+                  {mood === x.value && <span className="mood-tick" aria-hidden="true">✓</span>}
+                  <span aria-hidden="true">{x.emoji}</span>
+                  <span className="mood-label">{x.label}</span>
                 </button>
               ))}
             </div>
+          </fieldset>
+          {mood && <>
+            <div className="check-details">
+              <p className="check-details-title">添えたいものだけ（任意）</p>
+              <ChipGroup label="睡眠" options={SLEEP_CHIPS} value={sleep} onChange={setSleep} />
+              <ChipGroup label="身体" options={BODY_CHIPS.map(v => ({ value: v, label: v }))} value={body} onChange={setBody} />
+              <ChipGroup label="ストレス" options={STRESS_CHIPS.map(v => ({ value: v, label: v }))} value={stress} onChange={setStress} />
+              {state.profile.periodEnabled && (
+                <label className="period-input">
+                  生理予定まで（日）
+                  <input type="number" inputMode="numeric" min="0" value={period} onChange={e => setPeriod(e.target.value)} />
+                </label>
+              )}
+            </div>
+            {inputError && <p role="alert">{inputError}</p>}
+            <button className="primary" onClick={save}>今日の私を見てみる</button>
+            <p className="check-note">気分だけでも、このまま見られます</p>
+          </>}
+          {editingCheck && <button className="text-button" onClick={() => setEditingCheck(false)}>選び直さずに戻る</button>}
+          <a className="check-privacy" href="/privacy.html" target="_blank" rel="noopener">記録の取り扱いについて（別タブ）</a>
+        </section>
+      )}
+
+      {!checked && (
+        <section className="flow-preview" aria-label="Checkのあとに返ってくるもの">
+          <p>Checkすると、ここに返ってきます</p>
+          <ol>
+            <li><span>1</span>今日のあなた ・ 昨日との違い</li>
+            <li><span>2</span>今日の過ごし方</li>
+            <li><span>3</span>今日の一枚</li>
+          </ol>
+        </section>
+      )}
+
+      {checked && dailyReflection && <>
+        <section className="flow-card" id="today-result">
+          <Step n={1} label="今日のあなた" state="done" />
+          <h2 ref={resultHeading} tabIndex={-1}>{heading}</h2>
+          {!!dailyReflection.yesterdayMessages.length && (
+            <div className="yesterday-difference">
+              {heading !== '昨日との違い' && <p className="eyebrow">昨日との違い</p>}
+              {dailyReflection.yesterdayMessages.map(m => <p key={m}>{m}</p>)}
+            </div>
+          )}
+          {insightMessages.map(m => <p key={m}>{m}</p>)}
+          {gentleInsight && !dailyReflection.messages.includes(gentleInsight.text) && (
+            <p className="flow-insight">{gentleInsight.text}<small>{gentleInsight.observations}件の記録から見えた傾向です。</small></p>
+          )}
+          <span className="meta">Checkとこれまでの記録から。決めつけではありません。</span>
+        </section>
+
+        <section className="flow-section" id="today-plans">
+          <Step n={2} label="今日の過ごし方" state={chose ? 'done' : 'now'} />
+          <p className="gentle-copy explain">今日のCheckを手がかりに、ひとつだけ。選ばなくても大丈夫。</p>
+          {main ? <>
+            <article className="plan-main">
+              <img src={main.action.image} alt="" />
+              <div>
+                <p className="eyebrow">{main.action.discoverCategory} ・ {main.action.minutes ? `${main.action.minutes}分` : '時間を決めない'}</p>
+                <h3>{main.action.title}</h3>
+                <p>{main.reasons.join('、')}。</p>
+                {mainRecord
+                  ? <output className="plan-chosen">✓ {mainRecord.status === 'completed' ? 'できました' : '今日はこれにしました'}</output>
+                  : <button className="plan-cta" onClick={pickMain}>{mainLabel}</button>}
+              </div>
+            </article>
+            {!!others.length && (
+              <ul className="plan-others">
+                {others.map(r => (
+                  <li key={r.action.id}>
+                    <button onClick={() => onOpenAction(r)} aria-label={`${r.action.title}（${r.action.minutes ? `${r.action.minutes}分` : '時間を決めない'}）を開く`}>
+                      <span>{r.action.title}<small> · {r.action.minutes ? `${r.action.minutes}分` : '時間を決めない'}</small></span>
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </> : <p className="empty">今日は、提案できる過ごし方がまだありません。</p>}
+        </section>
+
+        <section className="flow-section">
+          <Step n={3} label="今日の一枚" state={fortune ? 'done' : chose ? 'now' : 'next'} />
+          <button className="fortune-entry" onClick={onFortune}>
+            <span className="fortune-entry-card" aria-hidden="true">✿</span>
+            <span>
+              {card ? <>
+                <b>{card.nameJa}（{fortune!.orientation === 'upright' ? '正位置' : '逆位置'}）</b>
+                <span>{card.keywords.join('・')}。もう一度見る →</span>
+              </> : fortune?.status === 'skipped' ? <>
+                <b>今日は引かない日</b>
+                <span>自分で決める日。開いて確かめる →</span>
+              </> : <>
+                <b>今の自分を、別の角度から</b>
+                <span>未来を決めるものではなく、今日を見るための小さなきっかけ。</span>
+                <strong>一枚引く →</strong>
+              </>}
+            </span>
+          </button>
+        </section>
+
+        <section className="flow-intent">
+          <h2 id="today-intent" ref={intentHeading} tabIndex={-1}>今日どうする？</h2>
+          <p className="intent-sub">ほかの気分の過ごし方を見る</p>
+          <div className="intent-row">
+            {INTENTS.map(x => (
+              <button key={x.label} onClick={() => onIntent(x.label)} aria-label={`${x.label}過ごし方を見る`}>
+                <b aria-hidden="true">{x.icon}</b>{x.label}
+              </button>
+            ))}
+          </div>
+          <div className="intent-final">
+            <button className="intent-talk" onClick={onTalk}><MessageCircle size={18} aria-hidden="true" />Camelliaに話す</button>
+            <button className="intent-nothing" onClick={() => onIntent('何もしない')}>今日は何もしない</button>
+          </div>
+        </section>
+
+        {(activeToday.length > 0 || earlier.length > 0) && (
+          <section className="flow-active">
+            <div className="active-head">
+              <h2>やってみていること</h2>
+              {earlier.length > 0 && (onMy
+                ? <button className="text-button" onClick={onMy}>以前の{earlier.length}件はMyに</button>
+                : <span>以前の{earlier.length}件はMyに</span>)}
+            </div>
+            {activeToday.map(a => (
+              <div className="active-action" key={a.id}>
+                <span>{actionTitle(a)}</span>
+                <button className="small-button" onClick={() => onComplete(a.id)}>できた</button>
+              </div>
+            ))}
+            {!activeToday.length && <p className="meta">今日の分はまだありません。</p>}
+          </section>
+        )}
+
+        {awaitingFeedback.map(a => (
+          <section className="reflection" key={a.id}>
+            <p className="eyebrow">{timeBand === '夜' ? '夜の振り返り' : 'やってみて'}</p>
+            <h2>「{actionTitle(a)}」はどうだった？</h2>
+            <div>
+              {FEEDBACK.map(([r, l]) => <button key={r} onClick={() => onFeedback(a.id, a.actionId, r)}>{l}</button>)}
+            </div>
           </section>
         ))}
+
+        <section className="tomorrow-card">
+          <p className="eyebrow">明日のCamellia</p>
+          <p>{tomorrowCopy(dailyReflection.stage, dailyReflection.historyDays, ADAPTIVE_STAGE_UI)}</p>
+          <button className="text-button" onClick={onTree}>今日、印象に残った人は？ My Treeに一言 →</button>
+        </section>
+      </>}
     </main>
   );
 }

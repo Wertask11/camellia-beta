@@ -1,7 +1,25 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { drawFortune, fortuneMessage, jstDate } from '@/lib/fortune/engine';
+import { recommend } from '@/lib/recommendation';
+import type { TarotCard } from '@/data/tarot';
 import type { CamelliaState, DailyFortune, Recommendation } from '@/types';
+
+type Reflect = 'yes' | 'some' | 'no';
+const REFLECT_CHOICES: [Reflect, string][] = [['yes', '重なる'], ['some', '少し'], ['no', '今日は違う']];
+const reflectKey = (date: string) => `camellia-fortune-reflect:${date}`;
+const readReflect = (date: string): Reflect | undefined => {
+  try { const v = localStorage.getItem(reflectKey(date)); return v === 'yes' || v === 'some' || v === 'no' ? v : undefined; } catch { return undefined; }
+};
+
+/* 「変化」を、小さく試すなら: the existing recommendations, only reordered so that those matching the card's
+   themes come first. No new judgement; 何もしない stays in Today's 今日どうする？. */
+export function fortuneActions(card: TarotCard, recommendations: Recommendation[], limit = 2) {
+  const fits = (r: Recommendation) => card.actionThemes.includes(r.action.category)
+    || (card.actionThemes.includes('REFLECT') && ['three-lines', 'talk-ai'].includes(r.action.id));
+  const pool = recommendations.filter(r => r.action.id !== 'do-nothing');
+  return [...pool.filter(fits), ...pool.filter(r => !fits(r))].slice(0, limit);
+}
 export function FortuneScreen({
   state,
   recommendations,
@@ -20,7 +38,8 @@ export function FortuneScreen({
       | 'fortune_draw'
       | 'fortune_complete'
       | 'fortune_skip'
-      | 'fortune_action_selected',
+      | 'fortune_action_selected'
+      | 'fortune_reflect',
     p?: Record<string, string | number | boolean>,
   ) => void;
   onAction: (r: Recommendation) => void;
@@ -36,6 +55,20 @@ export function FortuneScreen({
     () => drawFortune(state.profile.id, date),
     [state.profile.id, date],
   );
+  /* The answer stays on this device (not Firestore, not a reading's hit rate). Only yes/some/no is counted. */
+  const [reflect, setReflect] = useState<Reflect | undefined>(() => readReflect(date));
+  const answer = (value: Reflect) => {
+    if (value === reflect) return;
+    setReflect(value);
+    try { localStorage.setItem(reflectKey(date), value); } catch { /* the answer is optional */ }
+    onTrack('fortune_reflect', { value });
+  };
+  const actions = useMemo(
+    () => fortuneActions(draw.card, recommend(state, new Date(), undefined, 6).concat(recommendations)
+      .filter((r, i, all) => all.findIndex(x => x.action.id === r.action.id) === i)),
+    [draw.card, state, recommendations],
+  );
+  const keyword = draw.card.keywords[0];
   const choose = (status: 'drawn' | 'skipped') => {
     /* 二度押しで fortune_draw が二重に数えられないようにする。1日1枚（日本時間）。 */
     if (saved || chosen.current) return;
@@ -116,21 +149,26 @@ export function FortuneScreen({
             </p>
             <h2>{draw.card.keywords.join('・')}</h2>
             <p>{fortuneMessage(state, saved)}</p>
-            <p className="fortune-question">
-              「{draw.card.keywords[0]}」という言葉に、今日のあなたと重なるところはありますか？
-            </p>
+            <fieldset className="fortune-reflect">
+              <legend className="fortune-question">
+                「{keyword}」という言葉に、今日のあなたと重なるところはありますか？
+              </legend>
+              <div>
+                {REFLECT_CHOICES.map(([value, label]) => (
+                  <button key={value} aria-pressed={reflect === value} className={reflect === value ? 'selected' : ''} onClick={() => answer(value)}>
+                    {reflect === value && <span aria-hidden="true">✓ </span>}{label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <small>
               未来や健康状態を断定するものではありません。気になる言葉だけ受け取ってください。
             </small>
           </section>
-          <section>
-            <p className="eyebrow">今日、自分のために何する？</p>
-            <h2>小さな行動を選ぶ</h2>
+          {!!actions.length && <section className="fortune-try">
+            <h2>「{keyword}」を、小さく試すなら</h2>
             <div className="fortune-actions">
-              {recommendations
-                .filter((r) => r.action.id !== 'do-nothing')
-                .slice(0, 3)
-                .map((r) => (
+              {actions.map((r) => (
                   <button
                     key={r.action.id}
                     onClick={() => {
@@ -146,28 +184,14 @@ export function FortuneScreen({
                     }}
                   >
                     {r.action.title}
-                    <span>→</span>
+                    <span aria-hidden="true">→</span>
                   </button>
                 ))}
             </div>
-            <button
-              className="quiet-choice"
-              onClick={() => {
-                const r = recommendations.find(
-                  (x) => x.action.id === 'do-nothing',
-                );
-                if (r) {
-                  onTrack('fortune_action_selected', { actionId: r.action.id });
-                  onAction(r);
-                }
-              }}
-            >
-              今日は何もしない
-            </button>
-          </section>
+          </section>}
         </>
       )}
-      {saved && <button className="secondary-button" onClick={onDecide || onBack}>Todayで「今日どうする？」を考える</button>}
+      {saved && <button className="primary fortune-decide" onClick={onDecide || onBack}>Todayに戻って、今日どうするか決める</button>}
     </main>
   );
 }
