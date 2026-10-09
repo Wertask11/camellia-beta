@@ -21,8 +21,8 @@ out.mkdir(parents=True, exist_ok=True)
 origin = 'http://127.0.0.1:4173'
 now = datetime.datetime(2026, 10, 9, 3, 0, tzinfo=datetime.timezone.utc)
 results = []
-TERMS = 'https://schoolpark-emu.vercel.app/terms.html'
-PRIVACY = 'https://schoolpark-emu.vercel.app/privacy.html'
+TERMS = '/terms.html'
+PRIVACY = '/privacy.html'
 
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH', '/usr/bin/chromium'), args=['--no-sandbox', '--disable-dev-shm-usage'])
@@ -87,22 +87,35 @@ with sync_playwright() as p:
         for link in consent.locator('a').all():
             assert link.get_attribute('target') == '_blank'
         assert page.get_by_text('次の画面で').count() == 0, 'no second, contradicting consent line'
+        with page.expect_popup() as popup:
+            consent.get_by_role('link', name='利用規約', exact=True).click()
+        terms = popup.value
+        terms.wait_for_load_state()
+        expect(terms.get_by_role('heading', name='Camellia 利用規約', exact=True)).to_be_visible()
+        terms.close()
+        with page.expect_popup() as popup:
+            consent.get_by_role('link', name='プライバシーポリシー', exact=True).click()
+        privacy_page = popup.value
+        privacy_page.wait_for_load_state()
+        expect(privacy_page.locator('body')).to_contain_text('Camellia')
+        privacy_page.close()
+        expect(page.locator('.account-consent')).to_be_visible()
         expect(page.locator('.auth-choice').nth(1)).to_contain_text('SchoolParkを利用している方はこちら')
         for auth in page.locator('.auth-choice').all():
             assert auth.bounding_box()['height'] >= 44
-        assert len(context.pages) == 1 and page.url.startswith(origin), 'no forced navigation to Terms/Privacy'
+        assert len(context.pages) == 1 and page.url.rstrip('/') == origin, 'no forced navigation to Terms/Privacy'
         snapshot('login')
         page.get_by_role('button', name='LINEで続ける').click()
         page.get_by_role('heading', name='はじめに、少しだけ。').wait_for()
         assert len(context.pages) == 1 and page.url.startswith(origin)
-        expect(page.get_by_text('Camelliaの利用規約', exact=False)).to_be_visible()
+        assert page.get_by_text('に同意します').count() == 0, 'consent is given at login, not asked again'
+        assert page.get_by_role('checkbox').count() >= 1
         snapshot('profile')
         page.wait_for_timeout(100)
         assert events().count('profile_view') == 1
         page.get_by_label('名前／ニックネーム').fill('テスト')
         page.get_by_label('生年月日').fill('2000-01-01')
-        page.get_by_role('checkbox').nth(0).check()
-        page.get_by_role('checkbox').nth(1).check()
+        page.get_by_label('女性向けウェルビーイングサービスであることを確認しました（自己申告）').check()
         button('今日の私をCheckする').click()
         page.locator('.today--unchecked').wait_for()
         names = events()
