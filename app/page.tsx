@@ -52,10 +52,10 @@ export default function Page() {
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
   const [secondary, setSecondary] = useState<'circle' | 'place'>();
-  const [talkMenu, setTalkMenu] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [treeContext,setTreeContext]=useState<TreeLeaf>();
   const [feature, setFeature] = useState<'fortune' | 'tree'>();
+  const [returnToIntent, setReturnToIntent] = useState(false);
   const [devNight, setDevNight] = useState(false);
   const recommendationDate = useMemo(() => {
     const value = new Date(currentTime.getTime());
@@ -196,6 +196,7 @@ export default function Page() {
           state={store.state}
           recommendations={recs}
           onBack={() => setFeature(undefined)}
+          onDecide={() => { setReturnToIntent(true); setFeature(undefined); }}
           onSave={store.setFortune}
           onTrack={store.track}
           onAction={openAction}
@@ -255,7 +256,9 @@ export default function Page() {
           onCheckin={store.addCheckin}
           onOpenAction={openAction}
           onIntent={intent}
-          onTalk={() => setTalkMenu(true)}
+          onTalk={() => setTab('camellia')}
+          focusIntent={returnToIntent}
+          onIntentFocused={() => setReturnToIntent(false)}
           onFortune={() => {
             store.track('fortune_open');
             setFeature('fortune');
@@ -273,6 +276,7 @@ export default function Page() {
       {tab === 'camellia' && (
         <CamelliaScreen
           onRemember={store.remember}
+          onTrack={store.track}
           treeContext={treeContext}
           onClearTreeContext={()=>setTreeContext(undefined)}
           onTree={()=>{setTreeContext(undefined);setFeature('tree');}}
@@ -329,38 +333,6 @@ export default function Page() {
             setChosen(undefined);
           }}
         />
-      )}
-      {talkMenu && (
-        <div className="modal-backdrop" onClick={() => setTalkMenu(false)}>
-          <section
-            className="sheet compact"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button className="close" onClick={() => setTalkMenu(false)}>
-              ×
-            </button>
-            <p className="eyebrow">話す</p>
-            <h2>誰と話しますか？</h2>
-            <button
-              className="primary"
-              onClick={() => {
-                setTab('camellia');
-                setTalkMenu(false);
-              }}
-            >
-              Camelliaと話す
-            </button>
-            <button
-              className="secondary-button"
-              onClick={() => {
-                setSecondary('circle');
-                setTalkMenu(false);
-              }}
-            >
-              Circleを見る
-            </button>
-          </section>
-        </div>
       )}
     </div>
   );

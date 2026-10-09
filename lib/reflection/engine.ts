@@ -6,6 +6,7 @@ export interface DailyReflection {
   historyDays: number;
   title: string;
   messages: string[];
+  yesterdayMessages: string[];
   hasWeeklyInsight: boolean;
 }
 
@@ -77,7 +78,7 @@ function recentMessages(checks: Checkin[]) {
   const messages: string[] = [];
   const moods = checks.map((x) => x.mood);
   if (Math.max(...moods) - Math.min(...moods) <= 1)
-    messages.push('ここ数日は、気持ちが比較的安定しています。');
+    messages.push(`この${checks.length}回の記録では、気持ちは比較的安定しています。`);
   const sleep = checks.flatMap((x) => (x.sleep === undefined ? [] : [x.sleep]));
   if (
     sleep.length >= 2 &&
@@ -143,11 +144,17 @@ export function buildDailyReflection(
   const recent = checks.slice(-3);
   const weekly = checks.slice(-7);
   const messages = [todayMessage(today)];
+  const yesterdayMessages = yesterday ? [
+    compareNumber('気持ち', today.mood, yesterday.mood),
+    compareNumber('睡眠', today.sleep, yesterday.sleep, '長め'),
+    today.body && yesterday.body ? compareNumber('身体の疲れ', 5 - bodyScore[today.body], 5 - bodyScore[yesterday.body]) : undefined,
+    today.stress && yesterday.stress ? compareNumber('ストレス', stressScore[today.stress], stressScore[yesterday.stress]) : undefined,
+  ].filter((message): message is string => Boolean(message)).slice(0, 2) : [];
   let stage: ReflectionStage = 'first_day';
 
   if (!prior.length) {
     messages.push(
-      '今日が、最初の一日です。明日またCheckすると、今日との違いが少し見えてきます。',
+      '今日が、最初の一日です。今日の記録が、明日のあなたを知る手がかりになります。明日またCheckすると、今日との違いが少し見えてきます。',
     );
   } else if (weekly.length >= 7) {
     stage = 'weekly';
@@ -163,25 +170,7 @@ export function buildDailyReflection(
       messages.push(compareNumber('気持ち', today.mood, yesterday.mood)!);
   } else if (yesterday) {
     stage = 'yesterday_compare';
-    const comparisons = [
-      compareNumber('気持ち', today.mood, yesterday.mood),
-      compareNumber('睡眠', today.sleep, yesterday.sleep, '長め'),
-      today.body && yesterday.body
-        ? compareNumber(
-            '身体の疲れ',
-            5 - bodyScore[today.body],
-            5 - bodyScore[yesterday.body],
-          )
-        : undefined,
-      today.stress && yesterday.stress
-        ? compareNumber(
-            'ストレス',
-            stressScore[today.stress],
-            stressScore[yesterday.stress],
-          )
-        : undefined,
-    ].filter((x): x is string => Boolean(x));
-    messages.push(...comparisons.slice(0, 2));
+    messages.push(...yesterdayMessages);
   } else {
     messages.push(
       '前の記録はありますが、昨日のCheckはないため、昨日との比較はしていません。',
@@ -197,6 +186,7 @@ export function buildDailyReflection(
           ? '最近のあなた'
           : '今日のあなた',
     messages,
+    yesterdayMessages,
     hasWeeklyInsight: stage === 'weekly',
   };
 }

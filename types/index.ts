@@ -216,6 +216,7 @@ export type AnalyticsEventName =
   | 'login_skip'
   | 'profile_complete'
   | 'auth_method_selected'
+  | 'conversation_starter_selected'
   | 'account_link_started'
   | 'account_link_success'
   | 'check_view'

@@ -15,6 +15,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   login_skip: [],
   profile_complete: [],
   auth_method_selected: ['auth_method'],
+  conversation_starter_selected: ['starter_id'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
   check_view: [],
@@ -82,6 +83,7 @@ export function sanitizeEventProperties(
   const safe: Record<string, string | number | boolean> = {};
   for (const key of allowed) {
     const value = source[key];
+    if (event.name === 'conversation_starter_selected' && !['today', 'vent', 'organize', 'check'].includes(String(value))) continue;
     if (
       typeof value === 'string' ||
       typeof value === 'number' ||

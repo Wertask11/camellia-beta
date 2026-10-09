@@ -19,7 +19,7 @@ try{
  function Harness(){const current=useCamelliaStore();useEffect(()=>{store=current;});return current.ready&&visible?createElement(TodayScreen,{state:current.state,recommendations,onCheckView:current.viewCheck,onCheckStart:current.startCheck,onCheckin:current.addCheckin,onProposals:current.recordProposals,onTrack:current.track,onOpenAction:noop,onIntent:noop,onTalk:noop,onFortune:noop,onTree:noop,onComplete:noop,onFeedback:noop}):null;}
  const host=document.createElement('div');document.body.append(host);app=createRoot(host);
  const render=async()=>{await act(async()=>{app.render(createElement(StrictMode,null,createElement(Harness)));await new Promise(resolve=>setTimeout(resolve,20));});await act(async()=>{await new Promise(resolve=>setTimeout(resolve,20));});};
- const click=async el=>{assert.ok(el,'control exists');await act(async()=>{el.dispatchEvent(new dom.MouseEvent('click',{bubbles:true}));await new Promise(resolve=>setTimeout(resolve,5));});};
+ const click=async (el,twice=false)=>{assert.ok(el,'control exists');await act(async()=>{el.dispatchEvent(new dom.MouseEvent('click',{bubbles:true}));if(twice)el.dispatchEvent(new dom.MouseEvent('click',{bubbles:true}));await new Promise(resolve=>setTimeout(resolve,5));});};
  const button=text=>[...host.querySelectorAll('button')].find(el=>el.textContent.includes(text));
  await render();
  assert.deepEqual(__funnelCaptured.map(e=>e.name).filter(n=>['session_start','check_view','check_start','check_complete'].includes(n)),['session_start','check_view']);
@@ -30,13 +30,17 @@ try{
  await click(host.querySelector('[aria-label="良い"]'));
  assert.equal(__funnelCaptured.filter(e=>e.name==='check_start').length,1);
  assert.equal(host.querySelector('[aria-label="良い"]').getAttribute('aria-pressed'),'true');
- await click(button('今日の私を見てみる'));await click(button('保存しました'));
+ await click(button('今日の私を見てみる'),true);
  assert.equal(store.state.checkins.length,1);assert.equal(store.state.checkins[0].sleep,undefined);
  assert.deepEqual(__funnelCaptured.map(e=>e.name).filter(n=>['session_start','check_view','check_start','check_complete'].includes(n)),['session_start','check_view','check_start','check_complete']);
  assert.equal(host.querySelector('.reflection-card h2').textContent,'今日のあなた');
+ assert.equal(host.querySelectorAll('.moods button').length,0,'completed Check is folded');
  assert.equal(load().checkins.length,1);
  visible=false;await render();visible=true;await render();
  assert.equal(__funnelCaptured.filter(e=>e.name==='check_view').length,2);
+ await click(button('気分が変わったら、もう一度Check'));
+ assert.ok([...host.querySelectorAll('.moods button')].every(el=>el.getAttribute('aria-pressed')==='false'),'recheck asks for a fresh mood selection');
+ assert.equal(button('今日の私を見てみる'),undefined,'cannot resubmit the previous mood implicitly');
  await click(host.querySelector('[aria-label="普通"]'));await click(button('睡眠や身体'));
  const body=host.querySelector('.more-check select');
  await act(async()=>{body.value='疲れ気味';body.dispatchEvent(new dom.Event('change',{bubbles:true}));});

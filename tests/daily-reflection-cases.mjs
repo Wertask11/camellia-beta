@@ -50,7 +50,7 @@ const recent = reflection.buildDailyReflection(
 results.push([
   'recent non-consecutive',
   recent.stage === 'recent' &&
-    recent.messages.some((x) => x.includes('ここ数日')),
+    recent.messages.some((x) => x.includes('この3回の記録')),
   recent,
 ]);
 

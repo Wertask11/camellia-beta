@@ -39,6 +39,8 @@ export function TodayScreen({
   onFeedback,
   onProposals,
   onTrack,
+  focusIntent = false,
+  onIntentFocused,
 }: {
   state: CamelliaState;
   recommendations: Recommendation[];
@@ -66,6 +68,8 @@ export function TodayScreen({
     name: AnalyticsEventName,
     properties?: Record<string, string | number | boolean>,
   ) => void;
+  focusIntent?: boolean;
+  onIntentFocused?: () => void;
 }) {
   const checkViewSent = useRef(false);
   const currentTime=useCurrentTime(state.checkins);
@@ -85,9 +89,17 @@ export function TodayScreen({
   const [stress, setStress] = useState<Checkin['stress']>();
   const [period, setPeriod] = useState('');
   const [saved, setSaved] = useState(false);
+  const [editingCheck, setEditingCheck] = useState(false);
   const [inputError,setInputError] = useState('');
   const saveLocked = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  const intentHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!focusIntent) return;
+    intentHeading.current?.focus({ preventScroll: true });
+    intentHeading.current?.scrollIntoView({ block: 'start' });
+    onIntentFocused?.();
+  }, [focusIntent, onIntentFocused]);
   const resultFocused=useRef(false);
   useEffect(() => {
     if (!saved)resultFocused.current=false;
@@ -170,10 +182,11 @@ export function TodayScreen({
       periodDays: period ? Number(period) : undefined,
     });
     setSaved(true);
+    setEditingCheck(false);
     setMore(false);
   };
   return (
-    <main className="screen today">
+    <main className={`screen today ${dailyReflection ? 'today--checked' : 'today--unchecked'}`}>
       <header>
         <div>
           <p className="date">{date}</p>
@@ -187,8 +200,12 @@ export function TodayScreen({
       </header>
       <section className="check-card">
         <p className="eyebrow">今日のCheck</p>
+        {dailyReflection && !editingCheck ? <div className="check-done">
+          <p>今日の記録から、過ごし方を考えてみましょう。</p>
+          <button className="text-button" onClick={() => { saveLocked.current = false; setMood(undefined); setMore(false); setEditingCheck(true); setSaved(false); }}>気分が変わったら、もう一度Check</button>
+        </div> : <>
         <h2>{entryCopy.title}</h2>
-        <p className="check-intro">{entryCopy.prompt}</p>
+        <p className="check-intro">{!dailyReflection && !state.checkins.length && <>まずは、今日のあなたを教えてください。<br/></>}{entryCopy.prompt} <span>1分くらいで、気分だけでも。</span></p>
         <fieldset className="mood-choice">
         <legend className="mood-question">今の気分は？ <span>近いものをひとつ。気分だけでも大丈夫。</span></legend>
         <div className="moods">
@@ -234,8 +251,9 @@ export function TodayScreen({
               />
             </label>
             <label>
-              身体
+              <span id="check-body-label">身体</span>
               <select
+                aria-labelledby="check-body-label"
                 value={body ?? ''}
                 onChange={(e) => setBody(e.target.value as Checkin['body'])}
               >
@@ -247,8 +265,9 @@ export function TodayScreen({
               </select>
             </label>
             <label>
-              ストレス
+              <span id="check-stress-label">ストレス</span>
               <select
+                aria-labelledby="check-stress-label"
                 value={stress ?? ''}
                 onChange={(e) => setStress(e.target.value as Checkin['stress'])}
               >
@@ -277,23 +296,28 @@ export function TodayScreen({
           {saved ? '保存しました' : '今日の私を見てみる'}
         </button>
         </>}
+        </>}
+        <a className="check-privacy" href="/privacy.html" target="_blank" rel="noopener">記録の取り扱いについて（別タブ）</a>
       </section>
+      {dailyReflection && <nav className="daily-path" aria-label="Checkのあとの過ごし方">
+        <a href="#today-result">1 今日のあなた</a>
+        <a href="#today-plans">2 今日の過ごし方</a>
+        <button onClick={onFortune}>3 今日の一枚</button>
+        <a href="#today-intent">4 今日どうする？</a>
+      </nav>}
       {dailyReflection ? (
         <section className="summary-card reflection-card">
           <div className="section-title">
             <Sparkles size={18} />
-            <h2 ref={resultHeading} tabIndex={-1}>{dailyReflection.title}</h2>
+            <h2 id="today-result" ref={resultHeading} tabIndex={-1}>{dailyReflection.title}</h2>
           </div>
-          {dailyReflection.messages.map((message, index) => (
+          {!!dailyReflection.yesterdayMessages.length && <div className="yesterday-difference">
+            <p className="eyebrow">昨日との違い</p>
+            {dailyReflection.yesterdayMessages.map(message => <p key={message}>{message}</p>)}
+          </div>}
+          {dailyReflection.messages.filter(message => !dailyReflection.yesterdayMessages.includes(message)).map((message, index) => (
             <p key={index}>{message}</p>
           ))}
-          {gentleInsight && !dailyReflection.messages.includes(gentleInsight.text) && (
-            <div className="insight-card">
-              <p className="eyebrow">最近のあなたから</p>
-              <p>{gentleInsight.text}</p>
-              <small>{gentleInsight.observations}件の記録から見えた傾向です。決めつけではありません。</small>
-            </div>
-          )}
           <span className="meta">Checkとこれまでの行動記録をもとにしています</span>
         </section>
       ) : (
@@ -308,32 +332,17 @@ export function TodayScreen({
           </span>
         </section>
       )}
-      {active.length > 0 && (
-        <section>
-          <div className="section-title">
-            <h2>やってみていること</h2>
-          </div>
-          {active.map((a) => (
-            <div className="active-action" key={a.id}>
-              <span>{a.title}</span>
-              <button className="small-button" onClick={() => onComplete(a.id)}>
-                できた
-              </button>
-            </div>
-          ))}
-        </section>
-      )}
       <section>
         <div className="section-title">
           <div>
             <p className="eyebrow">無理に選ばなくても大丈夫</p>
-            <h2>今日の過ごし方</h2>
+            <h2 id="today-plans" tabIndex={-1}>今日の過ごし方</h2>
           </div>
         </div>
         {dailyReflection ? (
           <>
             <p className="gentle-copy">
-              今のあなたには、こんな過ごし方もよさそうです。
+              今日のCheckを手がかりに、こんな過ごし方も。ひとつだけでも、選ばなくても大丈夫。
             </p>
             <div className="action-list">
               {recommendations
@@ -364,12 +373,14 @@ export function TodayScreen({
         <section className="daily-bridges">
           <button onClick={onFortune}>
             <b>今日の一枚</b>
-            <span>Checkを別の角度から見てみる →</span>
+            <span>過ごし方に迷ったら、今の自分を別の角度から →</span>
           </button>
         </section>
       )}
       <section>
         <p className="eyebrow">今日は、自分のために何する？</p>
+        <h2 id="today-intent" ref={intentHeading} tabIndex={-1}>今日どうする？</h2>
+        {dailyReflection && <p className="gentle-copy">気になることをひとつ。選んだら、あなたの生活へ。必要ならCamelliaに話しても。</p>}
         <div className="intent-grid">
           {['整える', '楽しむ', '学ぶ', '休む'].map((x, i) => (
             <button key={x} onClick={() => onIntent(x)}>
@@ -381,13 +392,24 @@ export function TodayScreen({
             <b>
               <MessageCircle size={23} />
             </b>
-            話す
+            Camelliaに話す
           </button>
           <button className="do-nothing" onClick={() => onIntent('何もしない')}>
             <b>○</b>今日は何もしない
           </button>
         </div>
       </section>
+      {active.length > 0 && (
+        <section>
+          <div className="section-title"><h2>やってみていること</h2></div>
+          {active.map((a) => (
+            <div className="active-action" key={a.id}>
+              <span>{a.title}</span>
+              <button className="small-button" onClick={() => onComplete(a.id)}>できた</button>
+            </div>
+          ))}
+        </section>
+      )}
       {dailyReflection && (
         <section className="daily-bridges secondary-bridge">
           <button onClick={onTree}>
@@ -395,6 +417,13 @@ export function TodayScreen({
             <span>My Treeに一言を残す（スキップできます） →</span>
           </button>
         </section>
+      )}
+      {dailyReflection && gentleInsight && !dailyReflection.messages.includes(gentleInsight.text) && (
+        <div className="insight-card">
+          <p className="eyebrow">最近のあなたから</p>
+          <p>{gentleInsight.text}</p>
+          <small>{gentleInsight.observations}件の記録から見えた傾向です。決めつけではありません。</small>
+        </div>
       )}
       {/* 「できた」を押したら、その場で「どうだった？」に答えられる。
           前は夜にしか出ず、朝や昼に終えた行動は夜まで答えられなかった。
