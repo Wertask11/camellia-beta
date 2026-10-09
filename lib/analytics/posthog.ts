@@ -13,6 +13,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   login_view: ['authenticated'],
   login_success: ['method'],
   login_skip: [],
+  profile_view: [],
   profile_complete: [],
   auth_method_selected: ['auth_method'],
   conversation_starter_selected: ['starter_id'],
@@ -28,6 +29,8 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   fortune_complete: ['cardId'],
   fortune_action_selected: ['actionId'],
   fortune_skip: ['cardId'],
+  /** yes / some / no only. The person's own words never leave the device. */
+  fortune_reflect: ['value'],
   tree_open: [],
   tree_add_start: [],
   tree_add_complete: ['category', 'tagCount'],

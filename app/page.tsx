@@ -18,6 +18,8 @@ import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { TodayScreen } from '@/screens/TodayScreen';
+import { applyLessExplain, readLessExplain } from '@/lib/today/display';
+import { firstInSession } from '@/lib/analytics/once';
 import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
@@ -57,6 +59,7 @@ export default function Page() {
   const [feature, setFeature] = useState<'fortune' | 'tree'>();
   const [returnToIntent, setReturnToIntent] = useState(false);
   const [devNight, setDevNight] = useState(false);
+  useEffect(() => { applyLessExplain(readLessExplain()); }, []);
   const recommendationDate = useMemo(() => {
     const value = new Date(currentTime.getTime());
     if (devNight) value.setHours(21, 0, 0, 0);
@@ -83,6 +86,13 @@ export default function Page() {
       store.track('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) });
     }
   }, [showWelcome, showAccount, accountReady, store.ready, store.storageError, store.track]);
+  /* profile_view：はじめてのプロフィール入力が実際に表示されたとき、1回だけ。
+     login_success → profile_view → profile_complete で、入力の手前で止まった人が分かる。
+     My からの編集は数えない。StrictMode の二重実行と再読み込みは sessionStorage で防ぐ。 */
+  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !editingProfile && !profileComplete(store.state.profile));
+  useEffect(() => {
+    if (showingFirstProfile && firstInSession('camellia-profile-view')) store.track('profile_view');
+  }, [showingFirstProfile, store.track]);
   /* Which user the screens were last prepared for ("uid:anonymous?"). A β guest that logs in keeps its
      uid, and onAuthStateChanged only fires when the uid changes, so the login return applies it itself. */
   const appliedUser=useRef<string|null>(null);
@@ -217,6 +227,10 @@ export default function Page() {
               store.skipAction(chosen.action, reason);
               setChosen(undefined);
             }}
+            onDone={() => {
+              store.doneAction(chosen.action);
+              setChosen(undefined);
+            }}
           />
         )}
       </div>
@@ -255,6 +269,8 @@ export default function Page() {
           onCheckStart={store.startCheck}
           onCheckin={store.addCheckin}
           onOpenAction={openAction}
+          onChoose={(r) => store.startAction(r.action)}
+          onMy={() => setTab('my')}
           onIntent={intent}
           onTalk={() => setTab('camellia')}
           focusIntent={returnToIntent}
@@ -313,6 +329,7 @@ export default function Page() {
             setFeature('tree');
           }}
           onDevNight={setDevNight}
+          onComplete={store.completeAction}
         />
       )}
       <BottomNav active={tab} onChange={setTab} />
@@ -330,6 +347,10 @@ export default function Page() {
           }}
           onSkip={(reason) => {
             store.skipAction(chosen.action, reason);
+            setChosen(undefined);
+          }}
+          onDone={() => {
+            store.doneAction(chosen.action);
             setChosen(undefined);
           }}
         />
