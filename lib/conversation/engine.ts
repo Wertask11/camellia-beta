@@ -39,7 +39,8 @@ function buildRuleResponse(input:string,recs:Recommendation[],context:CamelliaCo
   const action=(intent==='ADVICE'||intent==='ACTION')&&!topics.includes('FOOD')?recs[0]?.action:undefined;
   const showAction=Boolean(action);
   const asksAboutPattern=/最近|傾向|前と比|変化/.test(input);
-  if(/覚えてる|覚えている/.test(input))text=context.remembered.length?`あなたが覚えておくことを選んだ一言は「${context.remembered.at(-1)}」です。変わったらMyから外せます。`:'まだ、覚えておくことを選んだ一言はありません。';
+  if(/^今日のCheckについて話したい$/.test(input))text=context.today?`今日のCheckでは「${['','つらい','少しつらい','普通','良い','とても良い'][context.today.mood]}」を選んでいましたね。今の気持ちに近いですか？気になったところから話してみて。`:'今日はまだCheckの記録がありません。今の気持ちから話しても大丈夫です。';
+  else if(/覚えてる|覚えている/.test(input))text=context.remembered.length?`あなたが覚えておくことを選んだ一言は「${context.remembered.at(-1)}」です。変わったらMyから外せます。`:'まだ、覚えておくことを選んだ一言はありません。';
   else if(asksAboutPattern&&context.recentPatterns[0]) text=`記録からは、${context.recentPatterns[0].text} そういう日もある、という傾向として受け取ってください。`;
   else if(context.relationship&&/この人|前は|以前|関係/.test(input)&&context.relationship.reflections.at(-1))text=`この人について、あなたは最近「${context.relationship.reflections.at(-1)}」と残していました。今の気持ちと重なるところはありますか？`;
   else if(intent==='LISTEN') text=listen(topics,input,previous);

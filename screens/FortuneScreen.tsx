@@ -9,6 +9,7 @@ export function FortuneScreen({
   onSave,
   onTrack,
   onAction,
+  onDecide,
 }: {
   state: CamelliaState;
   recommendations: Recommendation[];
@@ -23,6 +24,7 @@ export function FortuneScreen({
     p?: Record<string, string | number | boolean>,
   ) => void;
   onAction: (r: Recommendation) => void;
+  onDecide?: () => void;
 }) {
   const date = jstDate();
   const saved = state.fortunes.find((f) => f.date === date);
@@ -81,7 +83,7 @@ export function FortuneScreen({
       {!saved && checkedToday && (
         <section className="fortune-intro">
           <div className="tarot-back">✿</div>
-          <h2>今日、占ってみる？</h2>
+          <h2>今の自分を、別の角度から。</h2>
           <p>
             占いは、未来を決めるものじゃない。
             <br />
@@ -91,7 +93,7 @@ export function FortuneScreen({
             一枚引く
           </button>
           <button className="text-button" onClick={() => choose('skipped')}>
-            今日は占わない
+            今日は引かない
           </button>
         </section>
       )}
@@ -165,6 +167,7 @@ export function FortuneScreen({
           </section>
         </>
       )}
+      {saved && <button className="secondary-button" onClick={onDecide || onBack}>Todayで「今日どうする？」を考える</button>}
     </main>
   );
 }
