@@ -11,11 +11,13 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   welcome_view: ['period'],
   welcome_continue: ['period'],
   login_view: ['authenticated'],
-  login_success: ['method'],
+  login_success: ['method', 'needs_profile'],
   login_skip: [],
   profile_view: [],
   profile_complete: [],
-  auth_method_selected: ['auth_method'],
+  auth_method_selected: ['method', 'auth_method'],
+  auth_returned: ['method', 'auth_flow'],
+  login_failure: ['method', 'stage', 'reason'],
   conversation_starter_selected: ['starter_id'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
@@ -130,4 +132,54 @@ export function forwardEvent(event: AnalyticsEvent, state: CamelliaState) {
       send_instantly: true,
     }),
   );
+}
+
+const AUTH_EVENT_PROPERTIES = {
+  login_view: ['authenticated'],
+  auth_method_selected: ['method', 'auth_method'],
+  auth_returned: ['method', 'auth_flow'],
+  login_success: ['method', 'needs_profile'],
+  login_failure: ['method', 'stage', 'reason'],
+  account_link_started: ['auth_method'],
+  account_link_success: ['auth_method'],
+} as const;
+
+const AUTH_METHODS = ['line', 'google', 'schoolpark'] as const;
+const AUTH_FLOWS = ['redirect', 'popup'] as const;
+const AUTH_STAGES = ['provider_open', 'provider_return', 'firebase_signin', 'callback', 'account_conflict', 'cancelled'] as const;
+const AUTH_REASONS = ['user_cancelled', 'popup_blocked', 'provider_error', 'account_conflict', 'network', 'unknown'] as const;
+
+export function sanitizeAuthEventProperties(
+  name: keyof typeof AUTH_EVENT_PROPERTIES,
+  properties: Record<string, string | number | boolean>,
+) {
+  const safe: Record<string, string | number | boolean> = {};
+  for (const key of AUTH_EVENT_PROPERTIES[name]) {
+    const value = properties[key];
+    if (typeof value === 'boolean' && (key === 'authenticated' || key === 'needs_profile')) safe[key] = value;
+    if (typeof value !== 'string') continue;
+    if ((key === 'method' || key === 'auth_method') && AUTH_METHODS.includes(value as (typeof AUTH_METHODS)[number])) safe[key] = value;
+    if (key === 'auth_flow' && AUTH_FLOWS.includes(value as (typeof AUTH_FLOWS)[number])) safe[key] = value;
+    if (key === 'stage' && AUTH_STAGES.includes(value as (typeof AUTH_STAGES)[number])) safe[key] = value;
+    if (key === 'reason' && AUTH_REASONS.includes(value as (typeof AUTH_REASONS)[number])) safe[key] = value;
+  }
+  return safe;
+}
+
+export function captureAuthEvent(
+  name: keyof typeof AUTH_EVENT_PROPERTIES,
+  properties: Record<string, string | number | boolean>,
+  distinctId: string,
+) {
+  if (!initAnalytics(distinctId)) return false;
+  const safe = sanitizeAuthEventProperties(name, properties);
+  posthog.capture(name, {
+    ...safe,
+    ...sanitizeAttribution(properties),
+    $insert_id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    event_schema: 1,
+    app_version: 'beta-v3',
+    $process_person_profile: false,
+  }, { send_instantly: true });
+  return true;
 }
