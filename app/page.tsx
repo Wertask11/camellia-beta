@@ -24,7 +24,8 @@ import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
-import { finishAuthCallback, logoutCamellia } from '@/lib/auth/camellia';
+import { AuthFlowError, finishAuthCallback, logoutCamellia } from '@/lib/auth/camellia';
+import { captureAuthEvent } from '@/lib/analytics/posthog';
 import { LIVE_DESTINATIONS } from '@/lib/features';
 import type { Category, Recommendation, TreeLeaf } from '@/types';
 
@@ -83,7 +84,7 @@ export default function Page() {
     }
     if (showAccount && sessionStorage.getItem('camellia-login-view') !== '1') {
       sessionStorage.setItem('camellia-login-view', '1');
-      store.track('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) });
+      captureAuthEvent('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) }, store.state.profile.id);
     }
   }, [showWelcome, showAccount, accountReady, store.ready, store.storageError, store.track]);
   /* profile_view：はじめてのプロフィール入力が実際に表示されたとき、1回だけ。
@@ -115,15 +116,24 @@ export default function Page() {
     return ()=>{generation++;unsubscribe();applyUser.current=()=>{};};
   },[store.ready,store.prepareAccount]);
   useEffect(() => {
+    if(!store.ready||!accountReady||callbackHandled.current)return;
+    callbackHandled.current=true;
     void finishAuthCallback().then(result=>{
-      if(!result||callbackHandled.current)return;
-      callbackHandled.current=true;
-      store.track('login_success',{method:result.linked?'account_link':'login'});
+      if(!result)return;
+      captureAuthEvent('auth_returned',{method:result.method,auth_flow:'redirect'},store.state.profile.id);
+      if(result.linked)captureAuthEvent('account_link_success',{auth_method:result.method},store.state.profile.id);
+      else captureAuthEvent('login_success',{method:result.method,needs_profile:!profileComplete(store.state.profile)},store.state.profile.id);
       setEntry('app');
       const user=schoolParkAuth.currentUser;
       if(user&&appliedUser.current!==null&&appliedUser.current!==`${user.uid}:${user.isAnonymous}`)applyUser.current(user);
-    }).catch(error=>{const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry('account');});
-  },[store.track]);
+    }).catch(error=>{
+      if(error instanceof AuthFlowError){
+        if(error.returned)captureAuthEvent('auth_returned',{method:error.method,auth_flow:'redirect'},store.state.profile.id);
+        captureAuthEvent('login_failure',{method:error.method,stage:error.stage,reason:error.reason},store.state.profile.id);
+      }
+      const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry('account');
+    });
+  },[store.ready,accountReady,store.state.profile.id,store.state.profile,store.state.onboardingComplete]);
   if(store.storageError)return <main className="screen"><h1>端末の記録を読み込めませんでした</h1><p>保存データを上書きせず、そのまま残しています。別の端末やアカウントへ切り替える前に、運営へお問い合わせください。</p></main>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accountError&&accountUser){
@@ -147,7 +157,7 @@ export default function Page() {
     </main>;
   }
   if(showWelcome)return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
-  if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');store.track('auth_method_selected',{auth_method:method});}} onContinue={()=>setEntry('app')}/>;
+  if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');captureAuthEvent('auth_method_selected',{method,auth_method:method},store.state.profile.id);}} onAuthReturned={method=>captureAuthEvent('auth_returned',{method,auth_flow:'popup'},store.state.profile.id)} onLoginSuccess={method=>captureAuthEvent('login_success',{method,needs_profile:!profileComplete(store.state.profile)},store.state.profile.id)} onLoginFailure={(method,reason,stage)=>captureAuthEvent('login_failure',{method,reason,stage},store.state.profile.id)} onContinue={()=>setEntry('app')}/>;
   if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!profileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.opens === 'camellia') {

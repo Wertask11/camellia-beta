@@ -1,6 +1,170 @@
 'use client';
-import{useEffect,useState}from'react';import{onAuthStateChanged,type User}from'firebase/auth';import{schoolParkAuth}from'@/lib/schoolpark/firebase';import{startLineLogin,startSchoolParkLogin}from'@/lib/auth/camellia';import{welcomeTheme}from'@/lib/welcome/time';
-/* Camellia の利用規約・プライバシーポリシーへの同意は、ここでのログイン・登録で得る（一文で示す）。
-   リンクは押したときだけ別タブで開き、ログインの途中で規約へ移動させることはない。
-   次の Profile では同意のチェックを重ねて求めない（同意した時刻は Profile の保存時に agreedAt へ残す）。 */
-export function AccountScreen({onContinue,onBack,onSelect,returning=false,notice=''}:{onContinue:()=>void;onBack?:()=>void;onSelect:(m:'line'|'schoolpark')=>void;returning?:boolean;notice?:string}){const[user,setUser]=useState<User|null>(schoolParkAuth.currentUser?.isAnonymous ? null : schoolParkAuth.currentUser),[error,setError]=useState(''),theme=welcomeTheme();useEffect(()=>onAuthStateChanged(schoolParkAuth,u=>setUser(u?.isAnonymous?null:u)),[]);const begin=(m:'line'|'schoolpark')=>{setError('');onSelect(m);try{if(m==='line')startLineLogin();else startSchoolParkLogin()}catch(e){setError(e instanceof Error&&e.message==='LINE_NOT_CONFIGURED'?'LINEログインは現在準備中です。':'うまくつながりませんでした。もう一度試してみてください。')}};return <main className={`account-screen welcome--${theme.period}`}>{onBack&&<button className="account-back" onClick={onBack} aria-label="前へ戻る">←</button>}<section className="account-card"><div className="account-flower">✿</div><p className="welcome-brand">Camellia</p><h1>{user||returning?'おかえりなさい。':<>今日の記録を、<br/>明日のあなたへ。</>}</h1>{user?<><div className="account-status"><span>✓</span><div><b>アカウント接続済み</b><small>今日のあなたの続きを、ここから。</small></div></div><button className="welcome-primary" onClick={onContinue}>Todayへ</button></>:<><p className="account-reason">昨日と今日の変化を振り返れるよう、<br/>あなたの記録をアカウントにつなぎます。</p>{returning&&<p className="account-policy">続けるには、前に使ったLINEまたはSchoolPark Passportでログインしてください。この端末の記録は消えずに残っています。</p>}<button className="auth-choice line" onClick={()=>begin('line')}><b>LINEで続ける</b><span>LINEでアカウントを作成、またはログインします。</span></button><button className="auth-choice schoolpark" onClick={()=>begin('schoolpark')}><b>SchoolPark Passportで続ける</b><span>SchoolParkを利用している方はこちら</span></button><p className="account-policy account-consent">ログインまたは登録することで、<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したものとみなします。</p>{(notice||error)&&<p className="auth-error" role="alert">{notice||error}</p>}</>}</section></main>}
+
+import { useEffect, useRef, useState } from 'react';
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  type User,
+} from 'firebase/auth';
+import { schoolParkAuth } from '@/lib/schoolpark/firebase';
+import { startLineLogin, startSchoolParkLogin } from '@/lib/auth/camellia';
+import { welcomeTheme } from '@/lib/welcome/time';
+
+export type AuthMethod = 'line' | 'google' | 'schoolpark';
+
+function googleError(error: unknown) {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+  if (code === 'auth/account-exists-with-different-credential' || code === 'auth/credential-already-in-use' || code === 'auth/email-already-in-use') {
+    return { reason: 'account_conflict', stage: 'account_conflict', message: 'このGoogleアカウントは別のログイン方法ですでに使われています。以前の方法でログインし、アカウント設定からGoogleを連携してください。' };
+  }
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return { reason: 'user_cancelled', stage: 'cancelled', message: 'Googleログインをキャンセルしました。' };
+  }
+  if (code === 'auth/popup-blocked') {
+    return { reason: 'popup_blocked', stage: 'provider_open', message: 'ポップアップがブロックされました。このサイトのポップアップを許可して、もう一度お試しください。' };
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return { reason: 'provider_error', stage: 'provider_open', message: 'Googleログインは現在準備中です。LINEでログインしてください。' };
+  }
+  if (code === 'auth/network-request-failed') {
+    return { reason: 'network', stage: 'provider_return', message: '通信を確認して、もう一度お試しください。' };
+  }
+  return { reason: 'provider_error', stage: 'provider_return', message: 'Googleにつながりませんでした。もう一度お試しください。' };
+}
+
+export function AccountScreen({
+  onContinue,
+  onBack,
+  onSelect,
+  onAuthReturned,
+  onLoginSuccess,
+  onLoginFailure,
+  returning = false,
+  notice = '',
+}: {
+  onContinue: () => void;
+  onBack?: () => void;
+  onSelect: (method: AuthMethod) => void;
+  onAuthReturned: (method: AuthMethod) => void;
+  onLoginSuccess: (method: AuthMethod) => void;
+  onLoginFailure: (method: AuthMethod, reason: string, stage: string) => void;
+  returning?: boolean;
+  notice?: string;
+}) {
+  const [user, setUser] = useState<User | null>(schoolParkAuth.currentUser?.isAnonymous ? null : schoolParkAuth.currentUser);
+  const [error, setError] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [showSchoolParkInfo, setShowSchoolParkInfo] = useState(false);
+  const authStarted = useRef(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const theme = welcomeTheme();
+
+  useEffect(() => onAuthStateChanged(schoolParkAuth, (next) => setUser(next?.isAnonymous ? null : next)), []);
+  useEffect(() => {
+    if (showSchoolParkInfo && dialog.current && !dialog.current.open) dialog.current.showModal();
+    if (!showSchoolParkInfo && dialog.current?.open) dialog.current.close();
+  }, [showSchoolParkInfo]);
+
+  const beginLine = () => {
+    if (authStarted.current) return;
+    authStarted.current = true;
+    setConnecting(true);
+    setError('');
+    onSelect('line');
+    try {
+      startLineLogin();
+    } catch {
+      authStarted.current = false;
+      setConnecting(false);
+      onLoginFailure('line', 'provider_error', 'provider_open');
+      setError('LINEログインを開始できませんでした。もう一度お試しください。');
+    }
+  };
+
+  const beginSchoolPark = () => {
+    if (authStarted.current) return;
+    authStarted.current = true;
+    setConnecting(true);
+    setError('');
+    onSelect('schoolpark');
+    try {
+      startSchoolParkLogin();
+    } catch {
+      authStarted.current = false;
+      setConnecting(false);
+      onLoginFailure('schoolpark', 'provider_error', 'provider_open');
+      setError('SchoolPark Passportにつながりませんでした。もう一度お試しください。');
+    }
+  };
+
+  const beginGoogle = async () => {
+    if (authStarted.current) return;
+    authStarted.current = true;
+    setError('');
+    setConnecting(true);
+    onSelect('google');
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(schoolParkAuth, provider);
+      onAuthReturned('google');
+      onLoginSuccess('google');
+      setUser(result.user);
+    } catch (cause) {
+      const failure = googleError(cause);
+      const returned = failure.stage === 'provider_return' || failure.stage === 'cancelled' || failure.stage === 'account_conflict';
+      if (returned) onAuthReturned('google');
+      onLoginFailure('google', failure.reason, failure.stage);
+      setError(failure.message);
+    } finally {
+      authStarted.current = false;
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <main className={`account-screen welcome--${theme.period}`}>
+      {onBack && <button className="account-back" onClick={onBack} aria-label="前へ戻る">←</button>}
+      <section className="account-card">
+        <div className="account-flower" aria-hidden="true">✿</div>
+        <p className="welcome-brand">Camellia</p>
+        <h1>{user || returning ? 'おかえりなさい。' : <>今日の記録を、<br />明日のあなたへ。</>}</h1>
+        {user ? (
+          <>
+            <div className="account-status"><span>✓</span><div><b>アカウント接続済み</b><small>今日のあなたの続きを、ここから。</small></div></div>
+            <button className="welcome-primary" onClick={onContinue}>Todayへ</button>
+          </>
+        ) : (
+          <>
+            <p className="account-reason">昨日と今日の変化を振り返れるよう、<br />あなたの記録をアカウントにつなぎます。</p>
+            {returning && <p className="account-policy">続けるには、前に使ったLINEまたはSchoolPark Passportでログインしてください。この端末の記録は消えずに残っています。</p>}
+            <button className="auth-primary auth-line" onClick={beginLine} disabled={connecting}>
+              <span className="auth-brand-icon line-icon" aria-hidden="true">L</span>{connecting ? '認証画面へ移動しています…' : 'LINEで続ける'}
+            </button>
+            <button className="auth-primary auth-google" onClick={() => void beginGoogle()} disabled={connecting}>
+              <span className="auth-brand-icon google-icon" aria-hidden="true">G</span>{connecting ? 'Googleに接続しています…' : 'Googleで続ける'}
+            </button>
+            <button className="schoolpark-help" onClick={() => setShowSchoolParkInfo(true)}>
+              SchoolParkを利用している方はこちら <span>→ 連携について</span>
+            </button>
+            <p className="account-policy account-consent">ログインまたは登録することで、<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したものとみなします。</p>
+            {(notice || error) && <p className="auth-error" role="alert">{notice || error}</p>}
+          </>
+        )}
+        <p className="account-note">今日の記録を、明日のあなたへ。</p>
+      </section>
+      {showSchoolParkInfo && (
+        <dialog ref={dialog} className="sheet schoolpark-info" aria-labelledby="schoolpark-info-title" onCancel={(event) => { event.preventDefault(); setShowSchoolParkInfo(false); }}>
+          <button className="close" onClick={() => setShowSchoolParkInfo(false)} aria-label="閉じる">×</button>
+          <p className="eyebrow">SchoolParkを利用している方へ</p>
+          <h2 id="schoolpark-info-title">Camelliaとの連携について</h2>
+          <p>LINEでログインしたあと、Myの「アカウントと記録」からSchoolPark Passportを連携できます。</p>
+          <p className="schoolpark-legacy-note">以前からSchoolPark PassportだけでCamelliaを利用している方は、新しく登録せず、こちらからお入りください。</p>
+          <button className="secondary-button schoolpark-legacy" onClick={beginSchoolPark} disabled={connecting}>{connecting ? '認証画面へ移動しています…' : '既存アカウントでログイン'}</button>
+          <button className="text-button" onClick={() => setShowSchoolParkInfo(false)}>閉じる</button>
+        </dialog>
+      )}
+    </main>
+  );
+}

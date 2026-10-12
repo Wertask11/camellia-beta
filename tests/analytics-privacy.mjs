@@ -37,5 +37,27 @@ const captured = { event: 'login_view', properties: { $current_url: 'https://cam
 const scrubbed = JSON.stringify(analytics.scrubUrlProperties(captured));
 const urlsOk = !/LINE_CODE|STATE|TICKET/.test(scrubbed) && scrubbed.includes('"$current_url":"https://camellia-beta.vercel.app/"') && scrubbed.includes('"$referrer":"$direct"') && scrubbed.includes('"period":"morning"') && analytics.scrubUrlProperties(null) === null;
 console.log(`analytics URL scrub: ${urlsOk ? 'PASS' : 'FAIL'}`, scrubbed);
+const authCases = [
+  {
+    name: 'login_success',
+    properties: { method: 'google', needs_profile: true, email: 'private@example.com', name: '秘密', uid: 'firebase-uid', token: 'secret-token', code: 'one-time-code' },
+    expected: { method: 'google', needs_profile: true },
+  },
+  {
+    name: 'auth_method_selected',
+    properties: { method: 'line', auth_method: 'line', email: 'private@example.com', raw_message: '認証エラー秘密' },
+    expected: { method: 'line', auth_method: 'line' },
+  },
+  {
+    name: 'login_failure',
+    properties: { method: 'google', stage: 'cancelled', reason: 'user_cancelled', token: 'secret-token', raw_message: 'private' },
+    expected: { method: 'google', stage: 'cancelled', reason: 'user_cancelled' },
+  },
+];
+const authOk = authCases.every(({ name, properties, expected }) => {
+  const sanitized = analytics.sanitizeAuthEventProperties(name, properties);
+  return JSON.stringify(sanitized) === JSON.stringify(expected) && !/private|秘密|firebase-uid|secret-token|one-time-code/.test(JSON.stringify(sanitized));
+});
+console.log(`auth analytics privacy: ${authOk ? 'PASS' : 'FAIL'}`);
 await server.close();
-if (!ok || !urlsOk) process.exitCode = 1;
+if (!ok || !urlsOk || !authOk) process.exitCode = 1;

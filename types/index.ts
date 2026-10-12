@@ -217,6 +217,8 @@ export type AnalyticsEventName =
   | 'profile_view'
   | 'profile_complete'
   | 'auth_method_selected'
+  | 'auth_returned'
+  | 'login_failure'
   | 'conversation_starter_selected'
   | 'account_link_started'
   | 'account_link_success'
