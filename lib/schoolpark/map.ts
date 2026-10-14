@@ -73,6 +73,7 @@ function mapChat(state: CamelliaState) {
       role: message.role,
       text: message.text,
       at: message.createdAt,
+      ...(message.provider ? { provider: message.provider } : {}),
     }));
   return { messages, total: messages.length };
 }
@@ -140,6 +141,7 @@ export function mapCamelliaState(
   state: CamelliaState,
   passport?: string,
 ): SchoolParkDocument[] {
+  const usedGemini = state.aiConversations.some((conversation) => conversation.messages.some((message) => message.provider === 'gemini'));
   const timestamps = [
     state.updatedAt,
     state.profile.updatedAt,
@@ -194,8 +196,8 @@ export function mapCamelliaState(
         saveData: true,
         allowLocation: false,
         useImported: false,
-        externalLlm: false,
-        aiModel: 'camellia-beta-rule-based',
+        externalLlm: usedGemini,
+        aiModel: usedGemini ? 'gemini' : 'camellia-beta-rule-based',
       },
     },
     { path: 'profile/chat', data: mapChat(state) },

@@ -105,6 +105,7 @@ export interface AIMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+  provider?: 'gemini' | 'fallback';
   intent?: ConversationIntent;
   topics?: ConversationTopic[];
   createdAt: string;
@@ -220,6 +221,10 @@ export type AnalyticsEventName =
   | 'auth_returned'
   | 'login_failure'
   | 'conversation_starter_selected'
+  | 'conversation_open'
+  | 'conversation_message_sent'
+  | 'conversation_response_received'
+  | 'conversation_error'
   | 'account_link_started'
   | 'account_link_success'
   | 'check_view'

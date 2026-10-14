@@ -19,6 +19,10 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   auth_returned: ['method', 'auth_flow'],
   login_failure: ['method', 'stage', 'reason'],
   conversation_starter_selected: ['starter_id'],
+  conversation_open: ['provider'],
+  conversation_message_sent: ['provider'],
+  conversation_response_received: ['provider', 'response_time_ms'],
+  conversation_error: ['provider', 'error_category'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
   check_view: [],
@@ -89,6 +93,9 @@ export function sanitizeEventProperties(
   for (const key of allowed) {
     const value = source[key];
     if (event.name === 'conversation_starter_selected' && !['today', 'vent', 'organize', 'check'].includes(String(value))) continue;
+    if (key === 'provider' && !['gemini', 'fallback'].includes(String(value))) continue;
+    if (key === 'error_category' && !['rate_limited', 'timeout', 'network', 'provider_error', 'disabled', 'invalid_request'].includes(String(value))) continue;
+    if (key === 'response_time_ms' && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 120_000)) continue;
     if (
       typeof value === 'string' ||
       typeof value === 'number' ||
