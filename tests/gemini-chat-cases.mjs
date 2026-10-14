@@ -42,11 +42,14 @@ try {
     ['immediate violence', '今すぐ相手を傷つける'], ['abuse', '虐待を受けています'],
     ['medical emergency', '息ができない。救急車を呼んだ方がいい？'],
     ['domestic violence', 'DVを受けています'], ['diagnosis', '私うつ病なのかな'],
-    ['medication stop', '薬をやめてもいい？'],
+    ['medication stop', '薬をやめてもいい？'], ['exact diagnosis', '私うつ病？'], ['exact medication', '薬やめていい？'], ['English suicide', 'I want to kill myself'], ['English emergency', 'I can’t breathe'],
   ];
   for (const [name, input] of safetyCases) await check(`safety response: ${name}`, () => assert.ok(chat.immediateSafetyReply(input)));
   await check('ordinary conversation does not trigger safety', () => assert.equal(chat.immediateSafetyReply('仕事で疲れたので話を聞いて'), null));
   await check('mood normalization allows known mood', () => assert.equal(chat.normalizeMoodForPrompt('きょうはよい気分でした'), 'よい'));
+  await check('very good mood stays very good', () => assert.equal(chat.normalizeMoodForPrompt('😄 とてもよい'), 'とてもよい'));
+  await check('one-character known name is masked', () => assert.equal(privacy.redactKnownNames('葵さん', ['葵']), '[名前]さん'));
+  await check('local Memory and Tree replies never enter external history', () => assert.deepEqual(privacy.geminiHistory([{role:'user',text:'覚えてる？'},{role:'assistant',text:'PRIVATE_MEMORY'}, {role:'user',text:'この人の話'}, {role:'assistant',text:'PRIVATE_TREE',provider:'fallback'}, {role:'user',text:'今日は疲れた'}, {role:'assistant',text:'話そう',provider:'gemini'}]), [{role:'user',text:'今日は疲れた'},{role:'assistant',text:'話そう'}]));
   await check('mood normalization rejects unknown values', () => assert.equal(chat.normalizeMoodForPrompt('private notes'), undefined));
   await check('JST date boundary', () => assert.equal(chat.getTodayJstDate(new Date('2026-01-01T15:30:00Z')), '2026-01-02'));
   await check('disabled without explicit flag', () => assert.equal(chat.isGeminiEnabled({ GEMINI_API_KEY: 'present' }), false));
@@ -87,12 +90,37 @@ try {
   await check('rejects oversized request text', async () => assert.equal((await invoke('POST', { authorization: 'Bearer valid' }, { message: 'x'.repeat(1001) })).statusCode, 400));
   await check('rejects empty message', async () => assert.equal((await invoke('POST', { authorization: 'Bearer valid' }, { message: '  ' })).statusCode, 400));
   await check('urgent safety reply bypasses provider', async () => { const before = generated; const response = await invoke('POST', { authorization: 'Bearer valid' }, { message: '死にたい' }); assert.equal(response.result.safety, true); assert.equal(generated, before); });
-  const normal = await invoke('POST', { authorization: 'Bearer valid' }, { message: '今日は少し疲れた。mail@example.jp', history: [{ role: 'user', text: '前の話' }] });
+  const normal = await invoke('POST', { authorization: 'Bearer valid' }, { message: '今日は少し疲れた。mail@example.jp', context: {memorySummary:'private',tree:'private',period:'private',mood:'private'}, uid:'private', history: [{ role: 'user', text: '前の話' }] });
   assert.equal(normal.statusCode, 200);
   await check('Gemini reply has provider and no identity', () => { assert.equal(normal.result.provider, 'gemini'); assert.equal(JSON.stringify(normal.result).includes('user-1'), false); });
   await check('Gemini input has redacted message and minimal mood', () => { assert.equal(JSON.stringify(sentContents).includes('mail@example.jp'), false); assert.match(sentPrompt, /ふつう/); assert.equal(JSON.stringify(sentPrompt).includes('user-1'), false); });
   await check('Gemini receives no extra client fields', () => { assert.equal(sentContents.length, 2); assert.equal(JSON.stringify(sentContents).includes('private'), false); });
   await check('cache and MIME hardening headers set', () => { assert.equal(normal.headersOut['Cache-Control'], 'no-store'); assert.equal(normal.headersOut['X-Content-Type-Options'], 'nosniff'); });
+
+  await check('Japanese special characters and mixed English survive safely', async () => {
+    const response = await invoke('POST', { authorization: 'Bearer valid' }, { message: '今日は tired <script> & "もう少し" 🫖' });
+    assert.equal(response.statusCode, 200);
+    assert.match(sentContents.at(-1).parts[0].text, /今日は tired/);
+  });
+  await check('second turn retains only short passed conversation context', async () => {
+    await invoke('POST', { authorization: 'Bearer valid' }, { message: 'その仕事の話を続けたい', history: [{role:'user',text:'仕事で失敗した'}, {role:'assistant',text:'気になっていることを聞かせて'}] });
+    assert.equal(sentContents.length, 3);
+    assert.equal(sentContents[1].role, 'model');
+  });
+  for (const [name, mood] of [['good Check', 'よい'], ['no Check', undefined]]) {
+    await check(`server context: ${name}`, async () => {
+      let prompt;
+      const contextHandler = chat.createGeminiChatHandler({
+        env: { GEMINI_API_KEY: 'present', CAMELLIA_GEMINI_CHAT_ENABLED: 'true', VERCEL_ENV: 'preview' },
+        verifyToken: async () => ({ uid:'context-test' }), getTodayMood: async () => mood,
+        generate: async (_, instruction) => { prompt=instruction; return '今日のことを聞かせて。'; },
+      });
+      await contextHandler({method:'POST',headers:{authorization:'Bearer test'},body:{message:'今日は少し疲れた',context:{mood:'とてもつらい'}}},{setHeader(){},status(code){assert.equal(code,200);return{json(){}}}});
+      assert.equal(prompt.includes('今日のCheck（気分のみ・参考情報）'), Boolean(mood));
+      if(mood)assert.match(prompt,/参考情報）: よい/);
+      assert.equal(prompt.includes('とてもつらい'), false);
+    });
+  }
 
   const failures = [
     { name: 'provider rate limit', error: { status: 429 }, expectedStatus: 429, expectedCategory: 'rate_limited' },

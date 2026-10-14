@@ -8,7 +8,7 @@ import {
   getTodayJstDate,
   normalizeMoodForPrompt,
   verifyFirebaseIdToken,
-} from '@/lib/conversation/gemini-server';
+} from '../../lib/conversation/gemini-server.js';
 
 type ApiRequest = {
   method?: string;

@@ -1,7 +1,7 @@
 import { createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto';
-import { immediateSafetyReply } from './safety';
+import { immediateSafetyReply } from './safety.js';
 
-export { immediateSafetyReply } from './safety';
+export { immediateSafetyReply } from './safety.js';
 
 export type SafeHistoryMessage = { role: 'user' | 'assistant'; text: string };
 export type ChatErrorCategory = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request';
@@ -111,7 +111,7 @@ export function redactContactDetails(value: string) {
 
 export function normalizeMoodForPrompt(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const mood = value.match(/とてもつらい|すこしつらい|ふつう|よい|とてもよい/)?.[0];
+  const mood = value.match(/とてもつらい|すこしつらい|ふつう|とてもよい|よい/)?.[0];
   return mood;
 }
 
