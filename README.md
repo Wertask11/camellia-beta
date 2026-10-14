@@ -69,3 +69,5 @@ API Functionの依存にはNode ESMで解決できる相対 `.js` パスを使�
 - AI会話の安全設計と専門家監修
 - 実店舗・イベントの予約連携
 - アクセシビリティと実ユーザーテストの拡充
+
+生成APIが5xxの場合に限り、同じGoogleの `GEMINI_FALLBACK_MODEL`（default `gemini-3.6-flash`）へ1度切り替えます。SDK内の自動retryは無効、全体16秒・各試行8秒まで。400/401/403/429やSafety blockでは切り替えません。

@@ -11,6 +11,8 @@ import {
   verifyFirebaseIdToken,
 } from '../../lib/conversation/gemini-server.js';
 
+import { generateWithModelRecovery } from '../../lib/conversation/provider-recovery.js';
+
 type ApiRequest = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -42,11 +44,16 @@ const handler = createGeminiChatHandler({
   generate: async (contents, systemInstruction) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY_NOT_CONFIGURED');
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { retryOptions: { attempts: 1 } } });
     let response;
     try {
-      response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      response = await generateWithModelRecovery({
+      primary: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+      fallback: process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.6-flash',
+      signal: AbortSignal.timeout(16_000),
+      onFailure: (metadata) => console.warn('camellia_provider_attempt_failed', metadata),
+      request: (model, signal) => ai.models.generateContent({
+      model,
       contents,
       config: {
         systemInstruction,
@@ -55,7 +62,7 @@ const handler = createGeminiChatHandler({
         maxOutputTokens: 2048,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         automaticContinuation: false,
-        abortSignal: AbortSignal.timeout(18_000),
+        abortSignal: signal,
         safetySettings: [
           { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
           { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
@@ -63,6 +70,7 @@ const handler = createGeminiChatHandler({
           { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         ],
       },
+    }),
     });
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error && typeof error.status === 'number' ? error.status : undefined;

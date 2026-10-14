@@ -78,3 +78,7 @@ At the user’s explicit request, all inline Gemini/provider/Free Tier explanati
 Production availability GET succeeded but the user supplied evidence of POST 502. Availability does not establish generation success. Google’s current docs confirm maxOutputTokens includes thought tokens; the old 256 cap could end reasoning before visible text. Use LOW thinking and a 2048 total cap while retaining short-answer instructions. Exact production failure is not proven without metadata. Provider exceptions and empty results now log only stage/status/finishReason/blockReason, never user text/identity/SDK raw message/key. Failed generation displays a truthful temporary failure instead of unrelated local conversation/choices. Actual authenticated generation remains a required live check.
 
 Reference: https://ai.google.dev/gemini-api/docs/generate-content/thinking
+
+## Confirmed Google 503 and model recovery
+
+User-provided Vercel logs show provider_request status 503 at 19:59:58 and 20:00:23 JST on October 14. This establishes upstream unavailability, not invalid credentials or empty output. After primary model 5xx only, try Gemini 3.6 Flash once using the same minimal payload and safety prompt. GEMINI_FALLBACK_MODEL is configurable (empty disables recovery). SDK retries disabled; two attempts maximum, eight seconds per attempt and sixteen seconds total. No retry for invalid auth/key/quota or blocked output. The duplicate visible error paragraph is removed. Live alternate-model success still requires an authenticated request.
