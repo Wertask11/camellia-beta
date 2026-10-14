@@ -50,7 +50,7 @@ const handler = createGeminiChatHandler({
       response = await generateWithModelRecovery({
       primary: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
       fallback: process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.6-flash',
-      signal: AbortSignal.timeout(16_000),
+      signal: AbortSignal.timeout(28_000),
       onFailure: (metadata) => console.warn('camellia_provider_attempt_failed', metadata),
       request: (model, signal) => ai.models.generateContent({
       model,

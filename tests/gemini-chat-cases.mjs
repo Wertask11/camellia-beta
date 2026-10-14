@@ -32,7 +32,18 @@ try {
     const controller=new AbortController();controller.abort();let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:controller.signal,request:async()=>{count++;return 'reply';}}));assert.equal(count,0);
   });
   await check('each model attempt has an enforced timeout',async()=>{
-    let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,attemptTimeoutMs:5,request:async(_,signal)=>{count++;return new Promise((resolve,reject)=>{const keepAlive=setTimeout(()=>resolve('too late'),100);signal.addEventListener('abort',()=>{clearTimeout(keepAlive);reject(signal.reason)},{once:true});});}}),{name:'TimeoutError'});assert.equal(count,1);
+    let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,attemptTimeoutMs:5,request:async(_,signal)=>{count++;return new Promise((resolve,reject)=>{const keepAlive=setTimeout(()=>resolve('too late'),100);signal.addEventListener('abort',()=>{clearTimeout(keepAlive);reject(signal.reason)},{once:true});});}}),{name:'TimeoutError'});assert.equal(count,2);
+  });
+
+  await check('primary attempt timeout recovers using alternate model',async()=>{
+    const calls=[];
+    const reply=await generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,attemptTimeoutMs:5,request:async(model,signal)=>{
+      calls.push(model);if(model==='alternate')return 'ゆっくり肩を回してみるのはどうかな。';
+      return new Promise((resolve,reject)=>{const timer=setTimeout(()=>resolve('late'),100);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason)},{once:true});});
+    }});assert.deepEqual(calls,['primary','alternate']);assert.match(reply,/肩/);
+  });
+  await check('overall timeout never starts another attempt',async()=>{
+    let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:AbortSignal.timeout(5),attemptTimeoutMs:100,request:async(_,signal)=>{calls++;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>resolve('late'),200);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason)},{once:true});});}}),{name:'TimeoutError'});assert.equal(calls,1);
   });
 
   const redactCases = [
