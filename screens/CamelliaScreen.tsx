@@ -204,7 +204,7 @@ export function CamelliaScreen({
         {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
       </div>
-      {chatError && <output className="chat-error" aria-live="polite"><p>{errorCopy[chatError]}</p>{retryState && !treeContext && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>}</output>}
+      {chatError && <output className="chat-error" aria-live="polite"><span className="sr-only">{errorCopy[chatError]}</span>{retryState && !treeContext && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
       {!!last?.choices?.length && <div className="quick-inputs conversation-choices">{last.choices.map((choice) => <button type="button" key={choice} onClick={() => void send(choice)}>{choice}</button>)}</div>}

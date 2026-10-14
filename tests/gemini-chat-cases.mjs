@@ -6,10 +6,35 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const server = await createServer({ configFile: false, root, resolve: { alias: { '@': root } }, server: { middlewareMode: true }, appType: 'custom' });
 const chat = await server.ssrLoadModule('/lib/conversation/gemini-server.ts');
 const privacy = await server.ssrLoadModule('/lib/conversation/privacy.ts');
+const { generateWithModelRecovery } = await server.ssrLoadModule('/lib/conversation/provider-recovery.ts');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed += 1; console.log(`PASS ${name}`); };
 
 try {
+  await check('provider 503 switches once to alternate model', async () => {
+    const calls=[];
+    const result=await generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async model=>{calls.push(model);if(model==='primary')throw {status:503};return 'カレーが食べたいんだね。';}});
+    assert.deepEqual(calls,['primary','alternate']);assert.match(result,/カレー/);
+  });
+  await check('successful primary never uses alternate', async () => {
+    let count=0;assert.equal(await generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{count++;return 'reply';}}),'reply');assert.equal(count,1);
+  });
+  for(const status of [400,401,403,429])await check(`provider ${status} is never retried`,async()=>{
+    let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{count++;throw {status};}}));assert.equal(count,1);
+  });
+  await check('two unavailable models stop after two calls',async()=>{
+    let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{count++;throw {status:503};}}));assert.equal(count,2);
+  });
+  await check('same model or disabled fallback never duplicates call',async()=>{
+    for(const fallback of ['primary','']){let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback,signal:new AbortController().signal,request:async()=>{count++;throw {status:503};}}));assert.equal(count,1);}
+  });
+  await check('aborted total deadline never invokes provider',async()=>{
+    const controller=new AbortController();controller.abort();let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:controller.signal,request:async()=>{count++;return 'reply';}}));assert.equal(count,0);
+  });
+  await check('each model attempt has an enforced timeout',async()=>{
+    let count=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,attemptTimeoutMs:5,request:async(_,signal)=>{count++;return new Promise((resolve,reject)=>{const keepAlive=setTimeout(()=>resolve('too late'),100);signal.addEventListener('abort',()=>{clearTimeout(keepAlive);reject(signal.reason)},{once:true});});}}),{name:'TimeoutError'});assert.equal(count,1);
+  });
+
   const redactCases = [
     ['email', '連絡先は hana@example.jp です', '連絡先は [メールアドレス] です'],
     ['URL', 'ここを見て https://example.com/a', 'ここを見て [URL]'],
