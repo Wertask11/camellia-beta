@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import { firstInSession } from '@/lib/analytics/once';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
 import { immediateSafetyReply } from '@/lib/conversation/safety';
-import { redactKnownNames } from '@/lib/conversation/privacy';
+import { geminiHistory, redactKnownNames } from '@/lib/conversation/privacy';
 import { conversationStarters } from '@/lib/conversation/starters';
 import { moodMeta, todayCheck } from '@/lib/today/flow';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
@@ -16,7 +16,7 @@ type Provider = 'gemini' | 'fallback';
 type Consent = 'unknown' | 'accepted' | 'declined';
 type ChatError = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request';
 type ChatResponse = { reply: string; provider: Provider; responseTimeMs?: number; safety?: boolean };
-type RetryState = { userId: string; message: string; history: Array<{ role: 'user' | 'assistant'; text: string }> };
+type RetryState = { originalMessage: string; userId: string; message: string; history: Array<{ role: 'user' | 'assistant'; text: string }> };
 const CONSENT_KEY = 'camellia-gemini-chat-consent-v1';
 const wallClockNow = () => Date.now();
 const createMessageId = () => globalThis.crypto.randomUUID();
@@ -91,6 +91,7 @@ export function CamelliaScreen({
   const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled'>('checking');
   const [freeTier, setFreeTier] = useState(false);
   const [consent, setConsent] = useState<Consent>(readConsent);
+  const requestInFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [retryState, setRetryState] = useState<RetryState | null>(null);
@@ -124,13 +125,16 @@ export function CamelliaScreen({
 
   const send = async (value = input) => {
     const clean = value.trim();
-    if (!clean || sending || availability === 'checking' || (availability === 'enabled' && consent === 'unknown')) return;
-    const previousHistory = messages.slice(-8).map(({ role, text }) => ({ role, text: redactKnownNamesForState(text, state) }));
+    if (!clean || requestInFlight.current || availability === 'checking' || (availability === 'enabled' && consent === 'unknown' && !treeContext)) return;
+    // Only exchanges generated in this Gemini session can leave the device.
+    // Legacy/fallback replies may quote Memory or My Tree notes.
+    const previousHistory = geminiHistory(messages).map(({ role, text }) => ({ role, text: redactKnownNamesForState(text, state) }));
     const geminiMessage = redactKnownNamesForState(clean, state);
     const userId = createMessageId();
     const local = respond(state, recommendations, clean, messages, treeContext);
     const urgentReply = immediateSafetyReply(clean);
-    const useGemini = availability === 'enabled' && consent === 'accepted';
+    const useGemini = availability === 'enabled' && consent === 'accepted' && !treeContext;
+    requestInFlight.current = true;
     setSending(true);
     setInput('');
     setChatError(null);
@@ -153,7 +157,7 @@ export function CamelliaScreen({
       } catch (error) {
         failedCategory = (error && typeof error === 'object' && 'category' in error ? (error as { category?: ChatError }).category : undefined) || 'provider_error';
         setChatError(failedCategory);
-        if (failedCategory !== 'disabled') setRetryState({ userId, message: geminiMessage, history: previousHistory });
+        if (failedCategory !== 'disabled') setRetryState({ originalMessage: clean, userId, message: geminiMessage, history: previousHistory });
         onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory });
       }
     }
@@ -163,26 +167,28 @@ export function CamelliaScreen({
     const assistantMessage: AIMessage = { id: `${userId}-a`, role: 'assistant', text: reply, provider, intent: local.intent, topics: local.topics, createdAt: now };
     setMessages((current) => [...current, userMessage, assistantMessage]);
     const { intent, topics } = savePair(clean, reply, provider);
-    setLast({ ...local, text: reply, intent, topics });
+    setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
     if (provider === 'gemini' || safety) {
       onTrack('conversation_response_received', { provider, ...(responseTimeMs !== undefined ? { response_time_ms: responseTimeMs } : {}) });
     }
+    requestInFlight.current = false;
     setSending(false);
   };
 
   const retryLast = async () => {
-    if (!retryState || retrying || consent !== 'accepted' || availability !== 'enabled') return;
+    if (!retryState || requestInFlight.current || treeContext || consent !== 'accepted' || availability !== 'enabled') return;
+    requestInFlight.current = true;
     setRetrying(true);
     setChatError(null);
     try {
       const result = await requestGemini(retryState.message, retryState.history);
       const now = new Date().toISOString();
       setMessages((current) => current.map((message) => message.id === `${retryState.userId}-a` ? { ...message, text: result.reply, provider: result.provider, createdAt: now } : message));
-      onReplaceConversationAssistant(retryState.message, result.reply, result.provider);
-      setLast((current) => current ? { ...current, text: result.reply } : current);
-      setLastSafety(false);
+      onReplaceConversationAssistant(retryState.originalMessage, result.reply, result.provider);
+      setLast((current) => current ? { ...current, text: result.reply, choices: [], showAction: false, showCircle: false } : current);
+      setLastSafety(result.safety === true);
       setRetryState(null);
       setChatError(null);
       onTrack('conversation_response_received', { provider: result.provider, ...(result.responseTimeMs !== undefined ? { response_time_ms: result.responseTimeMs } : {}) });
@@ -191,11 +197,12 @@ export function CamelliaScreen({
       setChatError(category);
       onTrack('conversation_error', { provider: 'gemini', error_category: category });
     } finally {
+      requestInFlight.current = false;
       setRetrying(false);
     }
   };
 
-  const consentNeeded = availability === 'enabled' && consent === 'unknown';
+  const consentNeeded = availability === 'enabled' && consent === 'unknown' && !treeContext;
   const errorCopy: Record<ChatError, string> = {
     rate_limited: '今は利用が集中しているみたい。従来の返答を表示しました。少し時間をおいてから再試行できます。',
     timeout: '返答に時間がかかったため、従来の返答を表示しました。少し時間をおいてから再試行できます。',
@@ -209,10 +216,10 @@ export function CamelliaScreen({
     <main className="screen camellia">
       <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>Camellia</h1></div><span className="avatar-flower">✿</span></header>
       {!messages.length && <section className="ai-context"><p>今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。</p></section>}
-      {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。My Treeの記録はGeminiへ送信しません。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
+      {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話は端末内で行い、Geminiへ送信しません。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
       {consentNeeded && <dialog open className="panel gemini-consent" aria-labelledby="gemini-consent-title" aria-describedby="gemini-consent-copy">
         <p className="eyebrow">会話の外部送信について</p><h2 id="gemini-consent-title">Geminiを使って話す</h2>
-        <p id="gemini-consent-copy">返答を作るため、今回のメッセージと直近最大8件の会話、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。プロフィール名とMy Treeに登録した名前は送信前に伏字にし、メール・電話番号・郵便番号・URLも伏字にします。Memoryや生理情報は送りません。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。</p>
+        <p id="gemini-consent-copy">返答を作るため、今回のメッセージとGeminiで返答した会話の直近最大8件、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。プロフィール名とMy Treeに登録した名前は送信前に伏字にし、メール・電話番号・郵便番号・URLも伏字にします。保存されたMemoryや生理情報は参照しません。会話本文に入力した内容は送信対象になるので、個人情報や生理情報は入力しないでください。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。</p>
         {freeTier && <p className="gemini-free-tier">PreviewではGemini API Free Tierを使います。Google側で送信内容がサービス改善に利用される可能性があります。</p>}
         <div className="sheet-actions"><button className="secondary-button" onClick={() => setConsentChoice('declined')}>Geminiを使わない</button><button className="primary" onClick={() => setConsentChoice('accepted')}>内容を確認して使う</button></div>
       </dialog>}
@@ -220,7 +227,7 @@ export function CamelliaScreen({
         {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
       </div>
-      {chatError && <output className="chat-error" aria-live="polite"><p>{errorCopy[chatError]}</p>{retryState && consent === 'accepted' && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'Geminiでもう一度試す'}</button>}</output>}
+      {chatError && <output className="chat-error" aria-live="polite"><p>{errorCopy[chatError]}</p>{retryState && !treeContext && consent === 'accepted' && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'Geminiでもう一度試す'}</button>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
       {!!last?.choices?.length && <div className="quick-inputs conversation-choices">{last.choices.map((choice) => <button type="button" key={choice} onClick={() => void send(choice)}>{choice}</button>)}</div>}

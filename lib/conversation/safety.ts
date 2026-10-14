@@ -1,7 +1,8 @@
 /** Deterministic safety boundaries shared by the server route and the local fallback. */
 export function immediateSafetyReply(message: string): string | null {
-  const text = message.replace(/\s/g, '');
-  if (/(死にたい|自殺したい|消えてしまいたい|自分を(傷つけ|殺し)|首をつり|飛び降り|薬を大量に|今すぐ.{0,8}(殺す|傷つける))/.test(text)) {
+  const text = message.normalize('NFKC').replace(/\s/g, '');
+  if (/kill\s*myself|want\s*to\s*die|suicid|self[ -]?harm|overdos|can.?t\s*breathe/i.test(message)) return '今すぐ危険がある場合は、近くの信頼できる人と地域の緊急窓口につながってください。日本で救急は119、暴力などの危険は110です。いま安全な場所に移れそうですか？';
+  if (/(死にたい|自殺したい|消えてしまいたい|消えたい|自殺(する|しそう|を考え)|リストカット|首を吊|首をつる|自分を(傷つけ|殺し)|首をつり|飛び降り|薬を大量に|今すぐ.{0,8}(殺す|傷つける))/.test(text)) {
     return '今すぐ自分や誰かを傷つける危険があるなら、ひとりにならず近くの信頼できる人に伝えて、地域の緊急窓口へ連絡してください。日本で緊急の危険がある場合は119または110です。ここだけで抱えず、いま安全な場所に移れそうですか？';
   }
   if (/(虐待|DV|暴力を受け|殴られ|脅されている)/.test(text)) {
@@ -10,7 +11,7 @@ export function immediateSafetyReply(message: string): string | null {
   if (/(息ができない|呼吸できない|意識がない|意識を失った|胸が.{0,5}(激痛|締め付け)|大量に出血|救急車を呼んだ方がいい)/.test(text)) {
     return '緊急の症状かもしれません。今すぐ119へ連絡し、ひとりなら近くの人にも助けを求めてください。ここでの会話より、緊急の医療につながることを優先してください。';
   }
-  if (/(私|自分).{0,8}(うつ病|病気|精神疾患).{0,5}(かな|ですか|なの|でしょう)/.test(text) || /(うつ病|病気)か(診断|どうか)/.test(text)) {
+  if (/(私|自分).{0,8}(うつ病|病気|精神疾患).{0,5}(かな|ですか|なの|でしょう|[？?])/.test(text) || /(うつ病|病気)か(診断|どうか)/.test(text)) {
     return 'ここでは診断はできないよ。つらさが続いているなら、医療機関など専門家に相談してね。今いちばん困っていることを、話せる範囲で一緒に整理することはできるよ。';
   }
   if (/(薬|くすり|服薬).{0,12}(やめ|中止|止め|減らし|飲まなく|抜いて)/.test(text)) {

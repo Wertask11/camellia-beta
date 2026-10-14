@@ -19,6 +19,10 @@ npm run dev
 
 PreviewでFree Tierを使う場合、Google側で送信内容が製品改善に利用される可能性があります。会話画面は初回に送信内容を説明し、本人がGemini利用を選ぶまで会話本文をAPIへ送信しません。Flag OFFまたは鍵未設定の場合は従来の端末内会話へフォールバックします。
 
+Geminiへ渡す履歴は、Geminiで返答した会話だけの最大8件です。端末内の返答はMemoryやMy Treeを引用する場合があるため除外します。My Treeから開く会話は端末内処理のみです。保存されたMemoryや生理情報は参照しませんが、本人が本文に入力した内容は送信対象になります。未知の個人名・住所などの完全な自動検出はできません。
+
+API Functionの依存にはNode ESMで解決できる相対 `.js` パスを使用します。Viteのalias解決に依存しません。ローカル `npm run dev` はVercelの `api/` を実行しないため、実APIの検証にはVercel Previewが必要です。`npm run test:gemini` と `npm run typecheck` で境界処理を確認できます。Rate LimitはFunctionインスタンスごとに10件/5分で、複数インスタンスを横断する厳密な制限ではありません。Production有効化前に共有ストアによる制限と運用監視を検討してください。
+
 ## 使用技術
 
 - Next.js互換 App Router（Vinext / Vite）
