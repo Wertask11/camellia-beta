@@ -97,7 +97,7 @@ export function CamelliaScreen({
   const [retryState, setRetryState] = useState<RetryState | null>(null);
   const [chatError, setChatError] = useState<ChatError | null>(null);
   useEffect(() => {
-    void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin' })
+    void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
       .then(async (response): Promise<{ enabled?: boolean; freeTier?: boolean }> => response.ok ? await response.json() : {})
       .then((status) => {
         setAvailability(status.enabled ? 'enabled' : 'disabled');
@@ -217,12 +217,7 @@ export function CamelliaScreen({
       <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>Camellia</h1></div><span className="avatar-flower">✿</span></header>
       {!messages.length && <section className="ai-context"><p>今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話は端末内で行い、Geminiへ送信しません。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
-      {consentNeeded && <dialog open className="panel gemini-consent" aria-labelledby="gemini-consent-title" aria-describedby="gemini-consent-copy">
-        <p className="eyebrow">会話の外部送信について</p><h2 id="gemini-consent-title">Geminiを使って話す</h2>
-        <p id="gemini-consent-copy">返答を作るため、今回のメッセージとGeminiで返答した会話の直近最大8件、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。プロフィール名とMy Treeに登録した名前は送信前に伏字にし、メール・電話番号・郵便番号・URLも伏字にします。保存されたMemoryや生理情報は参照しません。会話本文に入力した内容は送信対象になるので、個人情報や生理情報は入力しないでください。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。</p>
-        {freeTier && <p className="gemini-free-tier">PreviewではGemini API Free Tierを使います。Google側で送信内容がサービス改善に利用される可能性があります。</p>}
-        <div className="sheet-actions"><button className="secondary-button" onClick={() => setConsentChoice('declined')}>Geminiを使わない</button><button className="primary" onClick={() => setConsentChoice('accepted')}>内容を確認して使う</button></div>
-      </dialog>}
+
       <div className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
@@ -235,6 +230,12 @@ export function CamelliaScreen({
       {last?.topics.some((topic) => ['RELATIONSHIP', 'FAMILY', 'FRIEND', 'LOVE'].includes(topic)) && <button className="text-button" onClick={onTree}>この人とのこと、My Treeに残しておく？</button>}
       {memoryCandidate && <section className="panel"><h2>次の会話のために覚えておく？</h2><p>{memoryCandidate}</p><p className="meta">Myから確認・削除できます。会話のすべてをMemoryにはしません。</p><button className="secondary-button" onClick={() => { onRemember(memoryCandidate); setMemoryCandidate(''); }}>この一言を覚えておく</button><button className="text-button" onClick={() => setMemoryCandidate('')}>今は保存しない</button></section>}
       <div className="conversation-entry">
+      {consentNeeded && <section className="panel gemini-consent" aria-labelledby="gemini-consent-title" aria-describedby="gemini-consent-copy">
+        <p className="eyebrow">会話の外部送信について</p><h2 id="gemini-consent-title">Geminiを使って話す</h2>
+        <p id="gemini-consent-copy">返答を作るため、今回のメッセージとGeminiで返答した会話の直近最大8件、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。プロフィール名とMy Treeに登録した名前は送信前に伏字にし、メール・電話番号・郵便番号・URLも伏字にします。保存されたMemoryや生理情報は参照しません。会話本文に入力した内容は送信対象になるので、個人情報や生理情報は入力しないでください。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。</p>
+        {freeTier && <p className="gemini-free-tier">PreviewではGemini API Free Tierを使います。Google側で送信内容がサービス改善に利用される可能性があります。</p>}
+        <div className="sheet-actions"><button className="secondary-button" onClick={() => setConsentChoice('declined')}>Geminiを使わない</button><button className="primary" onClick={() => setConsentChoice('accepted')}>内容を確認して使う</button></div>
+      </section>}
         <p className="meta">話し始めに迷ったら、ここから。</p>
         <div className="quick-inputs" aria-label="会話のきっかけ">{starters.map((starter) => <button type="button" key={starter.id} disabled={sending || retrying || consentNeeded || availability === 'checking'} onClick={() => { onTrack('conversation_starter_selected', { starter_id: starter.id }); void send(starter.text); }}>{starter.text}</button>)}</div>
         {check && <p className="today-check-chip">今日のCheck：<span aria-hidden="true">{moodMeta(check.mood).emoji}</span> {moodMeta(check.mood).label}</p>}
