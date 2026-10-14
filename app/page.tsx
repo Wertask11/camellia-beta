@@ -309,6 +309,7 @@ export default function Page() {
           state={store.state}
           recommendations={recs}
           onSaveConversation={store.addConversation}
+          onReplaceConversationAssistant={store.replaceConversationAssistant}
           onOpenAction={openAction}
           onNavigate={(x) => {
             if (x === 'discover') setTab('discover');

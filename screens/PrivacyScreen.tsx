@@ -23,7 +23,8 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
           同期対象には、プロフィール、Check（気分・任意の睡眠/体調/ストレス/生理関連入力）、Action、Reflection、Fortune、My Tree、Insight、Camelliaとの会話が含まれます。同期データはSchoolParkの運営管理機能から確認できる場合があります。
         </p>
         <p>
-          Camelliaとの会話は現在、入力内容を端末内のルールベース処理で扱い、外部の生成AI APIには送信しません。サービス改善のための操作イベントはPostHogへ送信されます。イベント送信では許可した計測項目だけを使い、会話本文やCheckの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
+          Gemini会話が無効な環境では、会話は端末内のルールベース処理で扱い、外部の生成AI APIへ送りません。Geminiが有効な環境では、初回に説明を確認して利用を選んだ場合に限り、今回のメッセージ、直近最大8件の会話、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送信します。Memory、プロフィール、My Treeの人物情報、生理情報、その他のCheck項目はGeminiへ送りません。現在、Memoryの内容も会話生成には使いません。PreviewでGemini API Free Tierを利用する場合、Google側で送信内容がサービス改善に利用される可能性があります。
+          サービス改善のための操作イベントはPostHogへ送信されます。許可した計測項目だけを使い、会話本文、返答本文、Memory本文、Checkの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
         </p>
       </section>
       <section className="panel">

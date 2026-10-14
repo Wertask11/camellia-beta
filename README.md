@@ -13,6 +13,12 @@ npm run dev
 
 表示されたローカルURL（通常は `http://localhost:3000`）をブラウザで開きます。初回はオンボーディングが表示されます。初期状態に戻す場合は、ブラウザのlocalStorageにある `camellia-prototype-v1` を削除してください。
 
+## Gemini会話（Preview検証）
+
+`api/camellia/chat.ts` はVercel Node Functionです。Geminiの鍵はサーバー環境変数 `GEMINI_API_KEY` のみで読み込み、ブラウザへ渡しません。`GEMINI_MODEL` の初期値は `gemini-3.8-flash`、`CAMELLIA_GEMINI_CHAT_ENABLED` が `true` のときだけ会話画面から利用できます。Previewではこのフラグと鍵を設定してください。Productionはさらに `CAMELLIA_GEMINI_CHAT_PRODUCTION_APPROVED=true` が必要で、初期値ではOFFです。
+
+PreviewでFree Tierを使う場合、Google側で送信内容が製品改善に利用される可能性があります。会話画面は初回に送信内容を説明し、本人がGemini利用を選ぶまで会話本文をAPIへ送信しません。Flag OFFまたは鍵未設定の場合は従来の端末内会話へフォールバックします。
+
 ## 使用技術
 
 - Next.js互換 App Router（Vinext / Vite）
