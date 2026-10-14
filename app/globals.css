@@ -1241,3 +1241,5 @@ details {
 .fortune-reflect legend{width:100%;box-sizing:border-box}
 .plan-chosen{display:block}
 .check-folded b{word-break:keep-all}
+
+.gemini-disclosure{margin:0 0 12px;color:#77606b;font-size:12px;line-height:1.6}.gemini-disclosure a{margin-left:6px;color:#92334f;text-decoration:underline}.gemini-disclosure span{display:block}

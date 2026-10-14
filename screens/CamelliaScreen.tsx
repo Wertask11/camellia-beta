@@ -13,21 +13,11 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import type { AIMessage, AnalyticsEventName, CamelliaState, ConversationIntent, ConversationTopic, Recommendation, TreeLeaf } from '@/types';
 
 type Provider = 'gemini' | 'fallback';
-type Consent = 'unknown' | 'accepted' | 'declined';
 type ChatError = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request';
 type ChatResponse = { reply: string; provider: Provider; responseTimeMs?: number; safety?: boolean };
 type RetryState = { originalMessage: string; userId: string; message: string; history: Array<{ role: 'user' | 'assistant'; text: string }> };
-const CONSENT_KEY = 'camellia-gemini-chat-consent-v1';
 const wallClockNow = () => Date.now();
 const createMessageId = () => globalThis.crypto.randomUUID();
-
-function readConsent(): Consent {
-  if (typeof window === 'undefined') return 'unknown';
-  try {
-    const saved = localStorage.getItem(CONSENT_KEY);
-    return saved === 'accepted' || saved === 'declined' ? saved : 'unknown';
-  } catch { return 'unknown'; }
-}
 
 async function requestGemini(message: string, history: RetryState['history']): Promise<ChatResponse> {
   const user = schoolParkAuth.currentUser;
@@ -90,7 +80,6 @@ export function CamelliaScreen({
   const [lastSafety, setLastSafety] = useState(false);
   const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled'>('checking');
   const [freeTier, setFreeTier] = useState(false);
-  const [consent, setConsent] = useState<Consent>(readConsent);
   const requestInFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -108,13 +97,8 @@ export function CamelliaScreen({
 
   useEffect(() => {
     if (availability === 'checking' || !firstInSession('camellia-conversation-open')) return;
-    onTrack('conversation_open', { provider: availability === 'enabled' && consent === 'accepted' ? 'gemini' : 'fallback' });
-  }, [availability, consent, onTrack]);
-
-  const setConsentChoice = (choice: Exclude<Consent, 'unknown'>) => {
-    setConsent(choice);
-    try { localStorage.setItem(CONSENT_KEY, choice); } catch { /* A failed local write keeps this choice in memory only. */ }
-  };
+    onTrack('conversation_open', { provider: availability === 'enabled' ? 'gemini' : 'fallback' });
+  }, [availability, onTrack]);
 
   const savePair = (userText: string, assistantText: string, provider: Provider) => {
     const intent = classifyIntent(userText);
@@ -125,7 +109,7 @@ export function CamelliaScreen({
 
   const send = async (value = input) => {
     const clean = value.trim();
-    if (!clean || requestInFlight.current || availability === 'checking' || (availability === 'enabled' && consent === 'unknown' && !treeContext)) return;
+    if (!clean || requestInFlight.current || availability === 'checking') return;
     // Only exchanges generated in this Gemini session can leave the device.
     // Legacy/fallback replies may quote Memory or My Tree notes.
     const previousHistory = geminiHistory(messages).map(({ role, text }) => ({ role, text: redactKnownNamesForState(text, state) }));
@@ -133,7 +117,7 @@ export function CamelliaScreen({
     const userId = createMessageId();
     const local = respond(state, recommendations, clean, messages, treeContext);
     const urgentReply = immediateSafetyReply(clean);
-    const useGemini = availability === 'enabled' && consent === 'accepted' && !treeContext;
+    const useGemini = availability === 'enabled' && !treeContext;
     requestInFlight.current = true;
     setSending(true);
     setInput('');
@@ -178,7 +162,7 @@ export function CamelliaScreen({
   };
 
   const retryLast = async () => {
-    if (!retryState || requestInFlight.current || treeContext || consent !== 'accepted' || availability !== 'enabled') return;
+    if (!retryState || requestInFlight.current || treeContext || availability !== 'enabled') return;
     requestInFlight.current = true;
     setRetrying(true);
     setChatError(null);
@@ -202,7 +186,6 @@ export function CamelliaScreen({
     }
   };
 
-  const consentNeeded = availability === 'enabled' && consent === 'unknown' && !treeContext;
   const errorCopy: Record<ChatError, string> = {
     rate_limited: '今は利用が集中しているみたい。従来の返答を表示しました。少し時間をおいてから再試行できます。',
     timeout: '返答に時間がかかったため、従来の返答を表示しました。少し時間をおいてから再試行できます。',
@@ -222,7 +205,7 @@ export function CamelliaScreen({
         {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
       </div>
-      {chatError && <output className="chat-error" aria-live="polite"><p>{errorCopy[chatError]}</p>{retryState && !treeContext && consent === 'accepted' && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'Geminiでもう一度試す'}</button>}</output>}
+      {chatError && <output className="chat-error" aria-live="polite"><p>{errorCopy[chatError]}</p>{retryState && !treeContext && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'Geminiでもう一度試す'}</button>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
       {!!last?.choices?.length && <div className="quick-inputs conversation-choices">{last.choices.map((choice) => <button type="button" key={choice} onClick={() => void send(choice)}>{choice}</button>)}</div>}
@@ -230,16 +213,11 @@ export function CamelliaScreen({
       {last?.topics.some((topic) => ['RELATIONSHIP', 'FAMILY', 'FRIEND', 'LOVE'].includes(topic)) && <button className="text-button" onClick={onTree}>この人とのこと、My Treeに残しておく？</button>}
       {memoryCandidate && <section className="panel"><h2>次の会話のために覚えておく？</h2><p>{memoryCandidate}</p><p className="meta">Myから確認・削除できます。会話のすべてをMemoryにはしません。</p><button className="secondary-button" onClick={() => { onRemember(memoryCandidate); setMemoryCandidate(''); }}>この一言を覚えておく</button><button className="text-button" onClick={() => setMemoryCandidate('')}>今は保存しない</button></section>}
       <div className="conversation-entry">
-      {consentNeeded && <section className="panel gemini-consent" aria-labelledby="gemini-consent-title" aria-describedby="gemini-consent-copy">
-        <p className="eyebrow">会話の外部送信について</p><h2 id="gemini-consent-title">Geminiを使って話す</h2>
-        <p id="gemini-consent-copy">返答を作るため、今回のメッセージとGeminiで返答した会話の直近最大8件、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。プロフィール名とMy Treeに登録した名前は送信前に伏字にし、メール・電話番号・郵便番号・URLも伏字にします。保存されたMemoryや生理情報は参照しません。会話本文に入力した内容は送信対象になるので、個人情報や生理情報は入力しないでください。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。</p>
-        {freeTier && <p className="gemini-free-tier">PreviewではGemini API Free Tierを使います。Google側で送信内容がサービス改善に利用される可能性があります。</p>}
-        <div className="sheet-actions"><button className="secondary-button" onClick={() => setConsentChoice('declined')}>Geminiを使わない</button><button className="primary" onClick={() => setConsentChoice('accepted')}>内容を確認して使う</button></div>
-      </section>}
+        {availability === 'enabled' && !treeContext && <p className="gemini-disclosure">会話・直近の文脈・今日の気分をGoogleのGeminiへ送信します。<a href="/privacy.html" target="_blank" rel="noopener">詳しく</a>{freeTier && <span> Preview無料枠では、送信内容がGoogleのサービス改善に使われる場合があります。</span>}</p>}
         <p className="meta">話し始めに迷ったら、ここから。</p>
-        <div className="quick-inputs" aria-label="会話のきっかけ">{starters.map((starter) => <button type="button" key={starter.id} disabled={sending || retrying || consentNeeded || availability === 'checking'} onClick={() => { onTrack('conversation_starter_selected', { starter_id: starter.id }); void send(starter.text); }}>{starter.text}</button>)}</div>
+        <div className="quick-inputs" aria-label="会話のきっかけ">{starters.map((starter) => <button type="button" key={starter.id} disabled={sending || retrying || availability === 'checking'} onClick={() => { onTrack('conversation_starter_selected', { starter_id: starter.id }); void send(starter.text); }}>{starter.text}</button>)}</div>
         {check && <p className="today-check-chip">今日のCheck：<span aria-hidden="true">{moodMeta(check.mood).emoji}</span> {moodMeta(check.mood).label}</p>}
-        <div className="composer"><input aria-label="Camelliaへのメッセージ" maxLength={1000} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) void send(); }} placeholder="今の気持ちを話してね…" disabled={sending || retrying || consentNeeded || availability === 'checking'} /><button type="button" disabled={!input.trim() || sending || retrying || consentNeeded || availability === 'checking'} onClick={() => void send()} aria-label="送信"><Send size={18}/></button></div>
+        <div className="composer"><input aria-label="Camelliaへのメッセージ" maxLength={1000} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) void send(); }} placeholder="今の気持ちを話してね…" disabled={sending || retrying || availability === 'checking'} /><button type="button" disabled={!input.trim() || sending || retrying || availability === 'checking'} onClick={() => void send()} aria-label="送信"><Send size={18}/></button></div>
       </div>
     </main>
   );

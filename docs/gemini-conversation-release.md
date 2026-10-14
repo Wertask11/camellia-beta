@@ -18,7 +18,7 @@ This change closes a privacy boundary: local fallback replies can quote saved Me
 |4|PR|Draft https://github.com/Wertask11/camellia-beta/pull/26. PR #25 was closed because it referred to the pre-existing remote branch; that branch was not modified.|
 |5|Preview|See Vercel deployment linked to PR; not equivalent to a completed authenticated test.|
 |6|Existing engine|`lib/conversation/engine.ts`, deterministic local rule responses. Main already contained Gemini before this branch.|
-|7|Integrated structure|UI availability GET → explicit consent → Firebase ID token → server verification → minimal mood lookup → SDK generation → UI/save; failures use local engine.|
+|7|Integrated structure|UI availability GET → inline external-send disclosure + message submission → Firebase ID token → server verification → minimal mood lookup → SDK generation → UI/save; failures use local engine.|
 |8|Model|GEMINI_MODEL, default `gemini-3.8-flash`. Model availability with actual account unverified.|
 |9|SDK|Official `@google/genai` ^2.29.1 (lockfile inherited from main).|
 |10|API|GET/POST `/api/camellia/chat`, Vercel Node Function.|
@@ -33,7 +33,7 @@ This change closes a privacy boundary: local fallback replies can quote saved Me
 |19|Rate limit|10 requests / authenticated UID / 5 minutes, in-memory per Function instance. Shared distributed limits are a future operations task.|
 |20|Fallback|Disabled/missing key/429/5xx/timeout/network → existing local engine, Japanese error notice/retry. No provider error body shown.|
 |21|Flags|CAMELLIA_GEMINI_CHAT_ENABLED defaults false. Production also requires CAMELLIA_GEMINI_CHAT_PRODUCTION_APPROVED=true. No Production environment changes made.|
-|22|Privacy|UI consent, in-app Privacy, public policy aligned to minimal inputs and selected history. Free Tier improvement usage disclosed. Saved records versus user-entered free text clarified.|
+|22|Privacy|Inline external-send disclosure, in-app Privacy, public policy aligned to minimal inputs and selected history. Free Tier improvement usage disclosed. Saved records versus user-entered free text clarified.|
 |23|PostHog|Inherited event allowlist: open/sent/response/error, provider/timing/error category. No conversation/response/Memory/Check text. Analytics privacy regression passed.|
 |24|PII|Known names including one-character names, email/phone/postal/URL masking tested. Unknown names, addresses, cycle details and other PII typed into free text cannot be guaranteed absent. Full PII exclusion gate remains unverified.|
 |25|Client key leakage|Static client artifact search found no GEMINI_API_KEY, server prompt, server module or GoogleGenAI. Keys only read by server. No actual key committed.|
@@ -61,6 +61,10 @@ Server-only: `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.8-flash`, `CAMELLIA_GEMINI
 
 ## Real quality test plan (pending)
 
-Run authenticated Preview: Today → Camellia → consent → send → second turn → Today → reopen. Test at least: tired/rest, positive day with good Check, no Check, work failure, relationship ambiguity, quiet/no questions, repeated input, 3-turn recall, English/Japanese mixed message, cause/diagnosis/medication requests. Record actual model replies and score specificity, repetition, question count, length, tone, diagnosis avoidance and autonomy. Also inspect live payloads for identifiers, Tree/cycle data and PostHog text. No authentication spoofing was used. The historical synthetic-auth UX harness was deliberately not used as release evidence.
+Run authenticated Preview: Today → Camellia → read inline disclosure → send → second turn → Today → reopen. Test at least: tired/rest, positive day with good Check, no Check, work failure, relationship ambiguity, quiet/no questions, repeated input, 3-turn recall, English/Japanese mixed message, cause/diagnosis/medication requests. Record actual model replies and score specificity, repetition, question count, length, tone, diagnosis avoidance and autonomy. Also inspect live payloads for identifiers, Tree/cycle data and PostHog text. No authentication spoofing was used. The historical synthetic-auth UX harness was deliberately not used as release evidence.
 
 Browser used real Chromium with TLS-verified Python HTTPS transport through the session proxy because Chromium did not trust the proxy CA. Some third-party hosts were denied by environment network policy; public screen checks therefore do not certify complete integrations. Screenshots: `/workspace/outputs/camellia-gemini/public-{375,390,412,1280}.png`.
+
+## User-requested conversation flow update
+
+Removed the blocking external-AI choice panel and its accepted/declined state at the user’s explicit request. Enabled environments now send on message submission, with short inline external-send disclosure and Privacy link; Preview Free Tier note remains. The Production feature gates remain OFF by default and Production consent/policy operations still require separate review. Availability GET is bounded to five seconds, then local fallback remains available. Historical consent localStorage values are ignored.
