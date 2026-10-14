@@ -11,7 +11,7 @@
 <body>
 <p><a href="/">Camelliaへ戻る</a></p>
 <h1>Camellia プライバシーポリシー</h1>
-<p class="date">制定日：2026年10月6日　最終改定日：2026年10月6日</p>
+<p class="date">制定日：2026年10月6日　最終改定日：2026年10月14日</p>
 <p>合同会社型DAO SchoolPark（LLC.DAO School Park。以下「運営者」といいます。）は、Camelliaにおける利用者のプライバシーを重要なものと考えています。Camelliaでは、日々の気分や身体の状態、生活、人間関係に関する記録など、利用者にとって非常に私的な情報を扱う場合があります。</p>
 
 <h2>1. 取得する情報</h2>
@@ -25,9 +25,9 @@
 <ul><li>サービスの状態を保存するlocalStorageの情報</li><li>アクセス・機能利用の日時、画面・操作イベント、ブラウザ・端末・通信に関する情報、エラー情報</li></ul>
 
 <h2>2. 利用目的</h2>
-<p>取得した情報は、(1)認証・アカウント管理、(2)Check、会話、Insight、Recommendation、今日の一枚、My Tree等の提供、(3)利用者自身の過去記録の表示と継続的な振り返り、(4)記録や利用目的に応じた表示の調整、(5)利用者が選んだSchoolPark Passportとの連携、(6)不正利用・安全上の対応、(7)障害調査・データ同期、(8)問い合わせ対応、(9)サービス利用状況の分析と改善、(10)法令上必要な対応のために利用します。</p>
+<p>取得した情報は、(1)認証・アカウント管理、(2)Check、会話、Insight、Recommendation、今日の一枚、My Tree等の提供、(3)利用者自身の過去記録の表示と継続的な振り返り、(4)記録や利用目的に応じた表示の調整、(5)利用者が選んだSchoolPark Passportとの連携、(6)不正利用・安全上の対応、(7)障害調査・データ同期、(8)問い合わせ対応、(9)サービス利用状況の分析と改善、(10)Gemini機能が有効で利用者が同意した場合の会話応答生成、(11)法令上必要な対応のために利用します。</p>
 <p>運営管理画面には、記録日数や操作への反応等から、反応率・継続率・過去記録との差（偏差）・追従／抵抗・コミュニティ投稿数等の運営用指標を算出・表示する機能があります。これらの指標は、上記(7)(9)の目的の範囲で、権限を付与された運営担当者が閲覧します。医療診断や心理状態の判定として利用しません。</p>
-<p>Camelliaとの会話は、現在、アプリ内のルールに基づいて応答を作成しており、入力内容を外部の生成AIサービスへ送信していません。</p>
+<p>Gemini機能が無効な場合、会話はアプリ内のルールに基づいて処理し、外部の生成AIサービスへ送りません。Gemini機能が有効な場合も、利用者がアプリ内の説明を確認して利用を選んだときに限り、今回のメッセージ、直近最大8件の会話、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送信し、返答の生成に利用します。プロフィール名とMy Treeに登録した名前、メールアドレス、電話番号、郵便番号、URLは送信前に伏字化します。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。Memory、プロフィールその他のCheck項目、生理関連情報、My Treeの記録はGeminiへ送りません。会話内容・返答はPostHogへ送りません。Gemini API Free Tierを使うPreviewでは、Googleが送信内容を製品改善に利用する場合があります。ProductionではGemini機能を初期状態で無効にし、運営者が別途有効化した場合も、利用者がアプリ内で選択する前に送信しません。</p>
 
 <h2>3. 保存先・運営者による閲覧</h2>
 <p>本サービスの状態は、ブラウザのlocalStorageに保存されるほか、ログイン中はFirebase AuthenticationおよびGoogle Firebase / Cloud Firestoreを利用するFirebaseプロジェクト（emusch-2a111）に保存・同期されます。認証処理にはSchoolPark側のサーバー（Render）を利用し、アプリはVercelから配信されます。同期されたプロフィール、Check、会話、My Treeその他の情報は、SchoolParkの運営管理画面に反映され、権限を付与された運営担当者が閲覧できる場合があります。管理画面で詳細を開くことは画面上の表示切替であり、サーバー側に保存されたデータへのアクセス制限を意味しません。</p>
@@ -38,13 +38,14 @@
 <table>
 <tr><th>事業者・サービス</th><th>取り扱う情報</th><th>目的</th><th>所在国</th></tr>
 <tr><td>Google LLC（Firebase Authentication / Cloud Firestore）</td><td>認証情報、プロフィール、記録、会話、My Tree等</td><td>認証およびデータ保存・同期</td><td>米国</td></tr>
+<tr><td>Google LLC（Gemini API。機能有効時かつ利用者が選択した場合）</td><td>今回のメッセージ、直近最大8件の会話、今日のCheckの気分（記録がある場合）。送信前にプロフィール/My Treeの既知の名前と、メール・電話番号・郵便番号・URLを伏字化します。</td><td>会話応答の生成。Free Tierでは送信内容がGoogleの製品改善に利用される場合があります。</td><td>GoogleのAPI利用条件・処理地域に従う</td></tr>
 <tr><td>Vercel Inc.</td><td>アクセスログ</td><td>アプリ配信</td><td>米国</td></tr>
 <tr><td>Render Services, Inc.</td><td>認証のためのリクエストデータ</td><td>LINE認証コードの検証、Passport連携の一時チケット交換等（SchoolParkのサーバー）</td><td>米国</td></tr>
 <tr><td>LINEヤフー株式会社（LINEログイン）</td><td>LINEの利用者識別子</td><td>利用者が選択したLINEログインの認証</td><td>日本</td></tr>
 <tr><td>PostHog, Inc.</td><td>第5条の操作イベント</td><td>イベントベースの利用状況分析（米国向けホスト）</td><td>米国</td></tr>
 </table>
 <p>行動の提案に表示する一部の画像は、Unsplash（images.unsplash.com）から読み込みます。その際、IPアドレスやブラウザの種類等の通信情報が同サービスに送られます。記録の内容は送られません。</p>
-<p>SchoolPark Passportとの連携および運営管理は、運営者（SchoolPark）が行います。各事業者のプライバシー情報：<a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase</a>、<a href="https://vercel.com/legal/privacy-policy" rel="noopener">Vercel</a>、<a href="https://render.com/privacy" rel="noopener">Render</a>、<a href="https://www.lycorp.co.jp/ja/company/privacypolicy/" rel="noopener">LINEヤフー</a>、<a href="https://posthog.com/privacy" rel="noopener">PostHog</a>。</p>
+<p>SchoolPark Passportとの連携および運営管理は、運営者（SchoolPark）が行います。各事業者のプライバシー情報・利用条件：<a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase</a>、<a href="https://ai.google.dev/gemini-api/terms" rel="noopener">Gemini API利用規約</a>、<a href="https://policies.google.com/privacy" rel="noopener">Googleプライバシーポリシー</a>、<a href="https://vercel.com/legal/privacy-policy" rel="noopener">Vercel</a>、<a href="https://render.com/privacy" rel="noopener">Render</a>、<a href="https://www.lycorp.co.jp/ja/company/privacypolicy/" rel="noopener">LINEヤフー</a>、<a href="https://posthog.com/privacy" rel="noopener">PostHog</a>。</p>
 
 <h2>5. 分析サービスへ送信する情報</h2>
 <p>PostHogには、許可リストに基づくイベント名、機能ID、PostHogが端末ごとに発行するランダムな識別子等を送信します。名前、生年月日、Firebase UID、Passport ID、LINE内部識別子、Checkの入力値、会話本文、Memoryの本文、My Treeの人物名・本文は送信しない設計です。PostHogの識別子はFirebaseアカウントを横断する本人識別子ではありません。ページのURLは、ログインの戻り値等を含まないよう、クエリを除いて送信します。通信の性質上、IPアドレスやブラウザの種類等の通信情報はPostHogに届きます。画面の録画（セッション録画）や、画面操作の自動収集は行っていません。</p>
