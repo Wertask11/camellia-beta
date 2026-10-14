@@ -68,3 +68,7 @@ Browser used real Chromium with TLS-verified Python HTTPS transport through the 
 ## User-requested conversation flow update
 
 Removed the blocking external-AI choice panel and its accepted/declined state at the user’s explicit request. Enabled environments now send on message submission, with short inline external-send disclosure and Privacy link; Preview Free Tier note remains. The Production feature gates remain OFF by default and Production consent/policy operations still require separate review. Availability GET is bounded to five seconds, then local fallback remains available. Historical consent localStorage values are ignored.
+
+## Provider explanation visibility update
+
+At the user’s explicit request, all inline Gemini/provider/Free Tier explanation was removed from the conversation screen; retry/error messages use ordinary language. Full external-send and Free Tier explanations remain in the in-app Privacy and public policy. Production remains default OFF and requires policy review before enabling.
