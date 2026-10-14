@@ -13,9 +13,9 @@ This change closes a privacy boundary: local fallback replies can quote saved Me
 | # | Item | Result |
 |---|---|---|
 |1|Readiness|NOT READY. Real authenticated Preview/Gemini quality gates remain open.|
-|2|Branch|codex/camellia-gemini-conversation|
-|3|Commit|See PR head; report is committed with implementation.|
-|4|PR|Draft PR; URL supplied in final response.|
+|2|Branch|codex/camellia-gemini-hardening-20261014 (original name existed remotely; preserved without force push)|
+|3|Commit|Implementation: 640058cb3ece33de2af1be49c5e3d797b401cb7e; final report corrections in PR head.|
+|4|PR|Draft https://github.com/Wertask11/camellia-beta/pull/26. PR #25 was closed because it referred to the pre-existing remote branch; that branch was not modified.|
 |5|Preview|See Vercel deployment linked to PR; not equivalent to a completed authenticated test.|
 |6|Existing engine|`lib/conversation/engine.ts`, deterministic local rule responses. Main already contained Gemini before this branch.|
 |7|Integrated structure|UI availability GET → explicit consent → Firebase ID token → server verification → minimal mood lookup → SDK generation → UI/save; failures use local engine.|
