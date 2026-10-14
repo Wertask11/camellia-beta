@@ -72,3 +72,9 @@ Removed the blocking external-AI choice panel and its accepted/declined state at
 ## Provider explanation visibility update
 
 At the user’s explicit request, all inline Gemini/provider/Free Tier explanation was removed from the conversation screen; retry/error messages use ordinary language. Full external-send and Free Tier explanations remain in the in-app Privacy and public policy. Production remains default OFF and requires policy review before enabling.
+
+## Production generation recovery
+
+Production availability GET succeeded but the user supplied evidence of POST 502. Availability does not establish generation success. Google’s current docs confirm maxOutputTokens includes thought tokens; the old 256 cap could end reasoning before visible text. Use LOW thinking and a 2048 total cap while retaining short-answer instructions. Exact production failure is not proven without metadata. Provider exceptions and empty results now log only stage/status/finishReason/blockReason, never user text/identity/SDK raw message/key. Failed generation displays a truthful temporary failure instead of unrelated local conversation/choices. Actual authenticated generation remains a required live check.
+
+Reference: https://ai.google.dev/gemini-api/docs/generate-content/thinking

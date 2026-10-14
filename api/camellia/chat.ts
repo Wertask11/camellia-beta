@@ -2,6 +2,7 @@ import {
   GoogleGenAI,
   HarmBlockThreshold,
   HarmCategory,
+  ThinkingLevel,
 } from '@google/genai';
 import {
   createGeminiChatHandler,
@@ -42,13 +43,17 @@ const handler = createGeminiChatHandler({
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY_NOT_CONFIGURED');
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
+    let response;
+    try {
+      response = await ai.models.generateContent({
       model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
       contents,
       config: {
         systemInstruction,
         temperature: 0.7,
-        maxOutputTokens: 256,
+        // This limit includes internal thinking; 256 can yield no visible text.
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         automaticContinuation: false,
         abortSignal: AbortSignal.timeout(18_000),
         safetySettings: [
@@ -59,7 +64,17 @@ const handler = createGeminiChatHandler({
         ],
       },
     });
-    return response.text || '';
+    } catch (error) {
+      const status = error && typeof error === 'object' && 'status' in error && typeof error.status === 'number' ? error.status : undefined;
+      // Do not log the SDK message, request, response, key, or user identity.
+      console.error('camellia_generation_failed', { stage: 'provider_request', status });
+      throw error;
+    }
+    const text = response.text?.trim() || '';
+    if (!text) {
+      console.error('camellia_generation_failed', { stage: 'empty_output', finishReason: response.candidates?.[0]?.finishReason, blockReason: response.promptFeedback?.blockReason });
+    }
+    return text;
   },
 });
 
