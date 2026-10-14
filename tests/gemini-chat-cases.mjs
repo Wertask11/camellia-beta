@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const server = await createServer({ configFile: false, root, resolve: { alias: { '@': root } }, server: { middlewareMode: true }, appType: 'custom' });
 const chat = await server.ssrLoadModule('/lib/conversation/gemini-server.ts');
+const privacy = await server.ssrLoadModule('/lib/conversation/privacy.ts');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed += 1; console.log(`PASS ${name}`); };
 
@@ -28,6 +29,12 @@ try {
   await check('history starts with user role', () => assert.equal(chat.sanitizeHistory([{ role: 'assistant', text: 'answer' }, { role: 'user', text: 'question' }])[0].role, 'user'));
   await check('prompt contents map assistant to model', () => assert.equal(chat.buildGeminiContents([{ role: 'user', text: 'hi' }, { role: 'assistant', text: 'hello' }], 'again')[1].role, 'model'));
   await check('current message cap', () => assert.equal(chat.buildGeminiContents([], 'x'.repeat(1500))[0].parts[0].text.length, 1000));
+  await check('redacts known profile and tree names before Gemini', () => {
+    const safe = privacy.redactKnownNames('佐藤さんと花子のことを話す', ['佐藤', '花子']);
+    assert.equal(safe, '[名前]さんと[名前]のことを話す');
+    assert.equal(/佐藤|花子/.test(safe), false);
+  });
+  await check('leaves unknown names for the UI caution', () => assert.equal(privacy.redactKnownNames('山田さんの話', ['佐藤']), '山田さんの話'));
 
   const safetyCases = [
     ['self-harm', '死にたいです'], ['suicide', '自殺したい'], ['disappear', '消えてしまいたい'],

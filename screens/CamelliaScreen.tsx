@@ -6,6 +6,7 @@ import { firstInSession } from '@/lib/analytics/once';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
 import { immediateSafetyReply } from '@/lib/conversation/safety';
+import { redactKnownNames } from '@/lib/conversation/privacy';
 import { conversationStarters } from '@/lib/conversation/starters';
 import { moodMeta, todayCheck } from '@/lib/today/flow';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
@@ -46,6 +47,12 @@ async function requestGemini(message: string, history: RetryState['history']): P
     throw Object.assign(new Error('temporarily_unavailable'), { category });
   }
   return result as ChatResponse;
+}
+
+function redactKnownNamesForState(value: string, state: CamelliaState) {
+  const names = [state.profile.name, ...state.treeLeaves.map((leaf) => leaf.name)]
+    .filter((name): name is string => typeof name === 'string');
+  return redactKnownNames(value, names);
 }
 
 export function CamelliaScreen({
@@ -118,7 +125,8 @@ export function CamelliaScreen({
   const send = async (value = input) => {
     const clean = value.trim();
     if (!clean || sending || availability === 'checking' || (availability === 'enabled' && consent === 'unknown')) return;
-    const previousHistory = messages.slice(-8).map(({ role, text }) => ({ role, text }));
+    const previousHistory = messages.slice(-8).map(({ role, text }) => ({ role, text: redactKnownNamesForState(text, state) }));
+    const geminiMessage = redactKnownNamesForState(clean, state);
     const userId = createMessageId();
     const local = respond(state, recommendations, clean, messages, treeContext);
     const urgentReply = immediateSafetyReply(clean);
@@ -137,7 +145,7 @@ export function CamelliaScreen({
 
     if (useGemini && !urgentReply) {
       try {
-        const result = await requestGemini(clean, previousHistory);
+        const result = await requestGemini(geminiMessage, previousHistory);
         reply = result.reply;
         provider = result.provider;
         safety = result.safety === true;
@@ -145,7 +153,7 @@ export function CamelliaScreen({
       } catch (error) {
         failedCategory = (error && typeof error === 'object' && 'category' in error ? (error as { category?: ChatError }).category : undefined) || 'provider_error';
         setChatError(failedCategory);
-        if (failedCategory !== 'disabled') setRetryState({ userId, message: clean, history: previousHistory });
+        if (failedCategory !== 'disabled') setRetryState({ userId, message: geminiMessage, history: previousHistory });
         onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory });
       }
     }
@@ -204,7 +212,7 @@ export function CamelliaScreen({
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。My Treeの記録はGeminiへ送信しません。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
       {consentNeeded && <dialog open className="panel gemini-consent" aria-labelledby="gemini-consent-title" aria-describedby="gemini-consent-copy">
         <p className="eyebrow">会話の外部送信について</p><h2 id="gemini-consent-title">Geminiを使って話す</h2>
-        <p id="gemini-consent-copy">返答を作るため、今回のメッセージと直近最大8件の会話、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。Memory、My Tree、プロフィール、生理情報は送りません。</p>
+        <p id="gemini-consent-copy">返答を作るため、今回のメッセージと直近最大8件の会話、今日のCheckの気分（記録がある場合）をGoogleのGemini APIへ送ります。プロフィール名とMy Treeに登録した名前は送信前に伏字にし、メール・電話番号・郵便番号・URLも伏字にします。Memoryや生理情報は送りません。本文に含まれるその他の個人名は自動検出できないため、入力しないでください。</p>
         {freeTier && <p className="gemini-free-tier">PreviewではGemini API Free Tierを使います。Google側で送信内容がサービス改善に利用される可能性があります。</p>}
         <div className="sheet-actions"><button className="secondary-button" onClick={() => setConsentChoice('declined')}>Geminiを使わない</button><button className="primary" onClick={() => setConsentChoice('accepted')}>内容を確認して使う</button></div>
       </dialog>}
