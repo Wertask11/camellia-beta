@@ -122,6 +122,18 @@ try {
     });
   }
 
+  await check('empty provider output fails explicitly without pretending to converse', async () => {
+    const emptyHandler = chat.createGeminiChatHandler({
+      env: { GEMINI_API_KEY: 'present', CAMELLIA_GEMINI_CHAT_ENABLED: 'true' },
+      verifyToken: async () => ({uid:'empty-result-test'}), getTodayMood: async () => undefined,
+      generate: async () => '',
+    });
+    let body;
+    await emptyHandler({method:'POST',headers:{authorization:'Bearer test'},body:{message:'カレーが食べたい'}},{setHeader(){},status(code){assert.equal(code,502);return{json(value){body=value}}}});
+    assert.equal(body.category,'provider_error');
+    assert.equal('reply' in body,false);
+  });
+
   const failures = [
     { name: 'provider rate limit', error: { status: 429 }, expectedStatus: 429, expectedCategory: 'rate_limited' },
     { name: 'provider timeout', error: { name: 'TimeoutError' }, expectedStatus: 504, expectedCategory: 'timeout' },

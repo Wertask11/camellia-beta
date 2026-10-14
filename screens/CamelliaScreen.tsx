@@ -138,6 +138,7 @@ export function CamelliaScreen({
         responseTimeMs = result.responseTimeMs ?? wallClockNow() - started;
       } catch (error) {
         failedCategory = (error && typeof error === 'object' && 'category' in error ? (error as { category?: ChatError }).category : undefined) || 'provider_error';
+        reply = '今はうまく返せなかったみたい。少し時間をおいて、もう一度試してみてください。';
         setChatError(failedCategory);
         if (failedCategory !== 'disabled') setRetryState({ originalMessage: clean, userId, message: geminiMessage, history: previousHistory });
         onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory });
@@ -149,7 +150,7 @@ export function CamelliaScreen({
     const assistantMessage: AIMessage = { id: `${userId}-a`, role: 'assistant', text: reply, provider, intent: local.intent, topics: local.topics, createdAt: now };
     setMessages((current) => [...current, userMessage, assistantMessage]);
     const { intent, topics } = savePair(clean, reply, provider);
-    setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety ? { choices: [], showAction: false, showCircle: false } : {}) });
+    setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety || failedCategory ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
     if (provider === 'gemini' || safety) {
