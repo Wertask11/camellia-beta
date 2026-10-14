@@ -10,12 +10,14 @@ export async function generateWithModelRecovery<T>(options: {
   const models = [...new Set([options.primary, options.fallback].filter(Boolean))];
   for (let index = 0; index < models.length; index += 1) {
     options.signal.throwIfAborted();
+    const attemptSignal = AbortSignal.any([options.signal, AbortSignal.timeout(options.attemptTimeoutMs ?? 14_000)]);
     try {
-      return await options.request(models[index], AbortSignal.any([options.signal, AbortSignal.timeout(options.attemptTimeoutMs ?? 8000)]));
+      return await options.request(models[index], attemptSignal);
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error && typeof error.status === 'number' ? error.status : undefined;
       options.onFailure?.({ attempt: index + 1, status });
-      if (options.signal.aborted || index === models.length - 1 || ![500, 502, 503, 504].includes(status ?? 0)) throw error;
+      const attemptTimedOut = attemptSignal.aborted && !options.signal.aborted;
+      if (options.signal.aborted || index === models.length - 1 || (!attemptTimedOut && ![500, 502, 503, 504].includes(status ?? 0))) throw error;
     }
   }
   throw new Error('GENERATION_MODEL_NOT_CONFIGURED');

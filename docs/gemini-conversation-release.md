@@ -82,3 +82,6 @@ Reference: https://ai.google.dev/gemini-api/docs/generate-content/thinking
 ## Confirmed Google 503 and model recovery
 
 User-provided Vercel logs show provider_request status 503 at 19:59:58 and 20:00:23 JST on October 14. This establishes upstream unavailability, not invalid credentials or empty output. After primary model 5xx only, try Gemini 3.6 Flash once using the same minimal payload and safety prompt. GEMINI_FALLBACK_MODEL is configurable (empty disables recovery). SDK retries disabled; two attempts maximum, eight seconds per attempt and sixteen seconds total. No retry for invalid auth/key/quota or blocked output. The duplicate visible error paragraph is removed. Live alternate-model success still requires an authenticated request.
+
+## Attempt timeout recovery
+User screenshot shows one generated reply followed by POST 504. The old 8s attempt deadline did not recover on locally aborted requests. Each attempt now has 14s, generation has 28s total, and the browser waits up to 40s including auth/context. A per-attempt timeout can use the alternate model once; overall cancellation still prevents further calls. Auth/quota/safety boundaries unchanged. Live reliability remains unverified.

@@ -29,7 +29,7 @@ async function requestGemini(message: string, history: RetryState['history']): P
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ message, history }),
-    signal: AbortSignal.timeout(21_000),
+    signal: AbortSignal.timeout(40_000),
   });
   const result = await response.json().catch(() => ({})) as Partial<ChatResponse> & { category?: ChatError };
   if (!response.ok || typeof result.reply !== 'string' || (result.provider !== 'gemini' && result.provider !== 'fallback')) {
