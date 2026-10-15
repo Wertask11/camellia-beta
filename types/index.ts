@@ -221,6 +221,7 @@ export type AnalyticsEventName =
   | 'auth_returned'
   | 'login_failure'
   | 'conversation_starter_selected'
+  | 'circle_view' | 'circle_join' | 'circle_leave' | 'circle_post_create' | 'circle_comment_create' | 'circle_reaction' | 'circle_report' | 'circle_block'
   | 'conversation_open'
   | 'conversation_message_sent'
   | 'conversation_response_received'
@@ -272,6 +273,7 @@ export interface CamelliaState {
   updatedAt: string;
 }
 export interface ActionDefinition {
+  steps?: string[];
   id: string;
   title: string;
   category: Category;

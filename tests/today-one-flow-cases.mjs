@@ -24,6 +24,7 @@ try{
   // Browser globals only after the modules load (posthog-js reads `location` when it sees a window).
   for(const key of ['window','document','HTMLElement','Event','MouseEvent','localStorage','sessionStorage'])globalThis[key]=key==='window'?dom:dom[key];
   const now=new Date();
+  const weekCanShow=(new Date(now.getTime()+9*3600000).getUTCDay()+6)%7>=4;
   const at=days=>new Date(now.getTime()+days*86400000-60000).toISOString();
   const check=(days,mood=3,extra={})=>({id:`c${days}`,mood,...extra,createdAt:at(days),updatedAt:at(days)});
   const stateWith=checkins=>{const s=emptyState();s.profile={...s.profile,name:'テスト',availableMinutes:20};s.onboardingComplete=true;s.checkins=checkins;return s};
@@ -46,8 +47,8 @@ try{
   const stages=[
     {stage:'first_day',checkins:[check(0,4,{sleep:7})],title:'今日のあなた',tomorrow:'明日またCheckすると、今日との違いが見えてきます。'},
     {stage:'yesterday_compare',checkins:[check(-1,3),check(0,4,{sleep:7})],title:'昨日との違い',tomorrow:'明日でCheckが3回に。最近のあなたの流れが見えてきます。'},
-    {stage:'recent',checkins:[check(-2,3),check(-1,3),check(0,4)],title:'最近のあなた',tomorrow:'明日Checkすると、今日との違いと最近の流れが見えてきます。7回分のふり返りまで、あと4回です。'},
-    {stage:'weekly',checkins:[-6,-5,-4,-3,-2,-1,0].map(d=>check(d,d===0?4:3)),title:'今週のあなた',tomorrow:'明日Checkすると、今日との違いと、直近7回の流れが見えてきます。'},
+    {stage:'recent',checkins:[check(-2,3),check(-1,3),check(0,4)],title:'最近のあなた',tomorrow:'明日Checkすると、今日との違いと最近の記録をふり返れます。'},
+    {stage:weekCanShow?'weekly':'recent',checkins:[-6,-5,-4,-3,-2,-1,0].map(d=>check(d,d===0?4:3)),title:weekCanShow?'今週のあなた':'最近のあなた',tomorrow:weekCanShow?'明日Checkすると、今日との違いと今週の記録をふり返れます。':'明日Checkすると、今日との違いと最近の記録をふり返れます。'},
   ];
   for(const {stage,checkins,title,tomorrow} of stages){
     const state=stateWith(checkins);
@@ -67,7 +68,7 @@ try{
   }
   // 「今週のあなた」 only when the seven records really fall within seven days.
   const spread=stateWith([-20,-15,-10,-6,-3,-1,0].map(d=>check(d)));
-  result.push(['7回が1週間を超えると「最近7回のあなた」',heading(render(spread))==='最近7回のあなた',heading(render(spread))]);
+  result.push(['週をまたぐ少数の記録は「最近のあなた」',heading(render(spread))==='最近のあなた',heading(render(spread))]);
   // A missing optional field never breaks the screen (older records).
   const old=stateWith([{id:'o',mood:3,createdAt:at(-1),updatedAt:at(-1)},{id:'t',mood:4,createdAt:at(0)}]);
   result.push(['古い記録（updatedAt無し）でも表示できる',render(old).includes('today-result'),'']);

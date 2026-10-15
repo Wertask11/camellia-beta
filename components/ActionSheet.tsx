@@ -9,7 +9,7 @@ import type { ActionDefinition,DismissReason,SaveTiming } from '@/types';
    - 「やってみる」 only for what can be done right here (IN_PLACE_STEPS): steps → できた / あとで / やめる.
    With the flag off, the sheet keeps its previous single 「やってみる」. Escape closes it and Tab stays inside. */
 export function ActionSheet({action,onClose,onStart,onSave,onSkip,onDone}:{action:ActionDefinition;onClose:()=>void;onStart:()=>void;onSave:(t:SaveTiming)=>void;onSkip:(r:DismissReason)=>void;onDone?:()=>void}){
-  const steps=TODAY_ONE_FLOW&&onDone?IN_PLACE_STEPS[action.id]:undefined;
+  const steps=TODAY_ONE_FLOW&&onDone?(action.steps ?? IN_PLACE_STEPS[action.id]):undefined;
   const[mode,setMode]=useState<'main'|'run'|'save'|'skip'>('main');
   const sheet=useRef<HTMLElement>(null);
   const titleId=useId();

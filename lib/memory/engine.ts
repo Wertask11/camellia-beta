@@ -56,7 +56,7 @@ export function recentMemories(
 ): ContextualActionMemory[] {
   const after = date.getTime() - days * 86400000;
   return state.contextualMemory.filter(
-    (m) => m.actionId === actionId && new Date(m.createdAt).getTime() >= after,
+    (m) => m.actionId === actionId && new Date(m.createdAt).getTime() >= after && new Date(m.createdAt).getTime() <= date.getTime(),
   );
 }
 

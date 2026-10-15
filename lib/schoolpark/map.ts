@@ -187,7 +187,11 @@ export function mapCamelliaState(
       latestByDate.set(date, checkin);
   });
 
+  const today=jstParts(new Date()).date;
+  const chosen=[...state.actions].filter(a=>a.status!=='skipped'&&jstParts(new Date(a.createdAt)).date===today).sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
+  const stage=state.fortunes.some(f=>f.date===today)?'reflected':chosen?'action_selected':latestByDate.has(today)?'checked':'unchecked';
   return [
+    {path:`daily_context/${today}`,data:{stage,actionId:chosen?.actionId??''}},
     { path: '', data: root },
     { path: 'profile/basic', data: basic },
     {

@@ -3,7 +3,7 @@ export interface CamelliaDeleteUser {
   isAnonymous: boolean;
 }
 
-export const CAMELLIA_SYNC_DELETE_COLLECTIONS = ['daily', 'profile', 'imports'] as const;
+export const CAMELLIA_SYNC_DELETE_COLLECTIONS = ['daily', 'daily_context', 'profile', 'imports'] as const;
 
 export function syncedOwnerUids(keys: string[], owner: string | null) {
   const owners=keys.flatMap(key=>key.startsWith('camellia-sync-sent:')?[key.slice('camellia-sync-sent:'.length)]:key.startsWith('camellia-cloud-version:')?[key.slice('camellia-cloud-version:'.length)]:[]);

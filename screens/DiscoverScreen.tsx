@@ -12,7 +12,7 @@ const cats=(Object.keys(CATEGORY_LABELS) as Category[]);
 /* Discover is where Today continues: categories first, and never the same three plans Today already showed. */
 export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSecondary}:{state:CamelliaState;category?:Category;onCategory:(c?:Category)=>void;onOpenAction:(r:Recommendation)=>void;onOpenSecondary:(x:'circle'|'place')=>void}) {
   const now=useCurrentTime(state.checkins);
-  const list=useMemo(()=>recommend(state,now,category,20),[state,category,now]);
+  const list=useMemo(()=>recommend(state,now,category,100),[state,category,now]);
   const checked=dailyCheckins(state.checkins,now).some(check=>jstDate(new Date(check.createdAt))===jstDate(now));
   // The three Today shows (the same engine, the same order); existing actions, not generated articles.
   const todayIds=useMemo(()=>checked?todayPlans(state,now).map(item=>item.action.id):[],[state,now,checked]);
@@ -27,5 +27,6 @@ export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSec
     {!rest.length&&<p className="empty">このカテゴリは、Todayに出したものだけでした。ほかのカテゴリも見てみてください。</p>}
     {liveSecondary.length?<section className="secondary-links">{liveSecondary.map(x=><button key={x} onClick={()=>onOpenSecondary(x)}>{x==='circle'?'同じ気持ちの人とつながる':'近くで体験する'} <b>{x==='circle'?'Circle':'Place'} →</b></button>)}</section>
       :<p className="coming-places"><b>これから増える場所（準備中）</b><span>Circle：同じ気持ちの人とつながる ・ Place：近くで体験する</span></p>}
+    {!!liveSecondary.length&&<p className="coming-places"><b>Place（準備中）</b><span>近くで体験する場所は、今後の公開をお待ちください。</span></p>}
   </main>;
 }

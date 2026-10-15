@@ -136,7 +136,7 @@ try {
     await handler({ method, headers, body }, { setHeader: (key, value) => { headersOut[key] = value; }, status: (code) => { statusCode = code; return { json: (value) => { result = value; } }; } });
     return { statusCode, result, headersOut };
   };
-  await check('GET status exposes only enabled and preview tier', async () => { const result = await invoke('GET'); assert.deepEqual(result.result, { enabled: true, freeTier: true }); });
+  await check('GET status does not infer billing plan from deployment', async () => { const result = await invoke('GET'); assert.deepEqual(result.result, { enabled: true, dataPolicy: 'unknown' }); });
   await check('rejects unauthenticated request', async () => assert.equal((await invoke('POST', {}, { message: 'hi' })).statusCode, 401));
   await check('rejects invalid token', async () => assert.equal((await invoke('POST', { authorization: 'Bearer invalid' }, { message: 'hi' })).statusCode, 401));
   await check('rejects oversized request text', async () => assert.equal((await invoke('POST', { authorization: 'Bearer valid' }, { message: 'x'.repeat(1001) })).statusCode, 400));
@@ -182,11 +182,22 @@ try {
     });
     let body;
     await emptyHandler({method:'POST',headers:{authorization:'Bearer test'},body:{message:'カレーが食べたい'}},{setHeader(){},status(code){assert.equal(code,502);return{json(value){body=value}}}});
-    assert.equal(body.category,'provider_error');
+    assert.equal(body.category,'invalid_response');
     assert.equal('reply' in body,false);
   });
 
+  for (const [name, take, status] of [
+    ['shared quota exhausted', async()=>false, 429],
+    ['shared storage unavailable', async()=>{throw new Error('PRIVATE_BACKEND_ERROR');}, 503],
+  ]) await check(name+' fails closed before generation', async()=>{
+    let generated=false,result;
+    const handler=chat.createGeminiChatHandler({env:{GEMINI_API_KEY:'present',CAMELLIA_GEMINI_CHAT_ENABLED:'true'},verifyToken:async()=>({uid:'test'}),getTodayMood:async()=>undefined,limiter:{take},generate:async()=>{generated=true;return 'not allowed';}});
+    await handler({method:'POST',headers:{authorization:'Bearer test'},body:{message:'こんにちは'}},{setHeader(){},status(code){assert.equal(code,status);return {json(value){result=value;}}}});
+    assert.equal(generated,false);assert.ok(!JSON.stringify(result).includes('PRIVATE'));
+  });
   const failures = [
+    { name: 'provider safety block', error: {code:'SAFETY_BLOCK'}, expectedStatus:502, expectedCategory:'safety_block' },
+    { name: 'provider invalid response', error: {code:'INVALID_RESPONSE'}, expectedStatus:502, expectedCategory:'invalid_response' },
     { name: 'provider rate limit', error: { status: 429 }, expectedStatus: 429, expectedCategory: 'rate_limited' },
     { name: 'provider timeout', error: { name: 'TimeoutError' }, expectedStatus: 504, expectedCategory: 'timeout' },
     { name: 'provider 5xx', error: { status: 503 }, expectedStatus: 502, expectedCategory: 'provider_error' },

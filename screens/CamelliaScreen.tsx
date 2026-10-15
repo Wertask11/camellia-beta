@@ -13,7 +13,7 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import type { AIMessage, AnalyticsEventName, CamelliaState, ConversationIntent, ConversationTopic, Recommendation, TreeLeaf } from '@/types';
 
 type Provider = 'gemini' | 'fallback';
-type ChatError = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request';
+type ChatError = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
 type ChatResponse = { reply: string; provider: Provider; responseTimeMs?: number; safety?: boolean };
 type RetryState = { originalMessage: string; userId: string; message: string; history: Array<{ role: 'user' | 'assistant'; text: string }> };
 const wallClockNow = () => Date.now();
@@ -86,7 +86,7 @@ export function CamelliaScreen({
   const [chatError, setChatError] = useState<ChatError | null>(null);
   useEffect(() => {
     void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
-      .then(async (response): Promise<{ enabled?: boolean; freeTier?: boolean }> => response.ok ? await response.json() : {})
+      .then(async (response): Promise<{ enabled?: boolean; dataPolicy?: string }> => response.ok ? await response.json() : {})
       .then((status) => {
         setAvailability(status.enabled ? 'enabled' : 'disabled');
       })
@@ -191,6 +191,8 @@ export function CamelliaScreen({
     network: 'うまくつながらなかったみたい。通信を確認して、もう一度試してみてください。',
     provider_error: '今はうまく返せなかったみたい。少し時間をおいて、もう一度試してみてください。',
     disabled: '今はいつもの会話でお返ししています。',
+    safety_block: 'この内容にはここでお返しできないみたい。話せる範囲で、別の言葉にしてみてください。',
+    invalid_response: 'うまく言葉にできなかったみたい。少し時間をおいて、もう一度試してみてください。',
     invalid_request: 'うまく送れなかったみたい。入力を確認してみてください。',
   };
 

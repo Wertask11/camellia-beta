@@ -63,10 +63,10 @@ const weeklyChecks = [-9, -7, -6, -4, -2, -1, 0].map((day, i) =>
 );
 const weekly = reflection.buildDailyReflection(state(weeklyChecks), now);
 results.push([
-  'weekly real records only',
-  weekly.stage === 'weekly' &&
+  'old records spanning weeks are recent, not this week',
+  weekly.stage === 'recent' &&
     weekly.historyDays === 7 &&
-    weekly.hasWeeklyInsight,
+    !weekly.hasWeeklyInsight,
   weekly,
 ]);
 

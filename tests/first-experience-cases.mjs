@@ -36,7 +36,8 @@ try {
     const result=buildDailyReflection(state,now);
     assert.match(result.yesterdayMessages[0],/昨日より/,'yesterday comparison persists into recent/7-record stages');
     assert.equal(result.yesterdayMessages.length,1,'missing yesterday sleep is never inferred');
-    assert.ok(!result.messages.join('').includes('今週'),'seven stored records do not imply a calendar week');
+    const thisWeek=state.checkins.filter(c=>c.createdAt>='2026-10-04T15:00:00.000Z').length;
+    assert.equal(result.hasWeeklyInsight,thisWeek>=5,'weekly requires five distinct days in the current JST calendar week');
   }
   state.checkins=[check(-3),check(0)];
   assert.deepEqual(buildDailyReflection(state,now).yesterdayMessages,[]);

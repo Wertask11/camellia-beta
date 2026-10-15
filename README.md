@@ -1,75 +1,51 @@
-# Camellia prototype
+# Camellia β2 — Release Phase 1
 
-女性の身体・心・生活をやさしく捉え、その日の自分に合う行動につなげるスマホファーストの実動プロトタイプです。
+女性の日常のウェルビーイングを支える、4タブ（Today / Camellia / Discover / My）のサービスです。診断・治療・健康状態の断定は行いません。
 
-## 起動方法
+## 実装済み
 
-Node.js 22.13以降を用意し、プロジェクト直下で次を実行します。
+- LINE Login / Google Login（Primary）、既存利用者向けSchoolPark Passport連携。本人確認なしのアカウント統合なし。
+- localStorage v3、既存SchoolPark Firestore同期・復元・削除、プロフィール、My Tree、明示保存Memory。
+- Today One Flow：Check → 今日のあなた → 過ごし方 → 今日の一枚 → 今日どうする？ → 明日のCamellia。
+- JST日次比較と月曜始まりの週比較（今週5日以上の記録がある場合のみ週表示）。原因を推測せず、任意入力がない項目は比較しません。
+- Discover：74候補、6カテゴリ。Todayの提案を除き、表示・選択・完了・興味なし・保存履歴を順位に反映。短い行動はsteps → できた / あとで / やめる。
+- Gemini会話：Vercel Node Function、認証・最小文脈・短い履歴・Safety・有界なmodel recovery。既存ルールengineはOFF時に利用可能。
+- Circle MVPのコード：6テーマ、参加/退出、専用表示名、投稿/編集/削除、コメント、やさしいreaction、通報、ブロック/解除、運営削除。**Release Gate未達のため初期OFF。現在LIVEとは認定しません。**
+- PlaceはComing Soon。店舗・予約・決済・位置情報は提供しません。
 
-```bash
-npm install
-npm run dev
-```
+## 開発・検証
 
-表示されたローカルURL（通常は `http://localhost:3000`）をブラウザで開きます。初回はオンボーディングが表示されます。初期状態に戻す場合は、ブラウザのlocalStorageにある `camellia-prototype-v1` を削除してください。
+Node.js 22.13以降。`npm ci`、`npm run dev`。`npm run lint` / `npm run typecheck` / `npm test` / `npm run test:gemini` / `npm run test:phase1` / `npm run test:firestore` / `npm run build`。
 
-## Gemini会話（Preview検証）
+Vite devはVercel `api/` Functionsを実行しません。実認証/Functionsの確認にはVercel Previewが必要です。テスト用エミュレータはdemo projectのみを使用し、本番認証を偽装しません。既存のsynthetic-auth UX harnessを実認証のRelease Gate証拠には使いません。
 
-`api/camellia/chat.ts` はVercel Node Functionです。Geminiの鍵はサーバー環境変数 `GEMINI_API_KEY` のみで読み込み、ブラウザへ渡しません。`GEMINI_MODEL` の初期値は `gemini-3.8-flash`、`CAMELLIA_GEMINI_CHAT_ENABLED` が `true` のときだけ会話画面から利用できます。Previewではこのフラグと鍵を設定してください。Productionはさらに `CAMELLIA_GEMINI_CHAT_PRODUCTION_APPROVED=true` が必要で、初期値ではOFFです。
+## Gemini / Privacy
 
-PreviewでFree Tierを使う場合、Google側で送信内容が製品改善に利用される可能性があります。会話画面にはprovider説明を表示せず、外部送信の詳細はPrivacyに記載します。メッセージ送信時にAPIへ送信します。「使う／使わない」の追加確認は表示しません。Flag OFFまたは鍵未設定の場合は従来の端末内会話へフォールバックします。
+`api/camellia/chat.ts`。公式 `@google/genai`。Primaryは`GEMINI_MODEL`（default `gemini-3.8-flash`）。5xx/試行timeout時は`GEMINI_FALLBACK_MODEL`（default `gemini-3.1-flash-lite`、空で無効）へ最大1回。SDK内retryなし、14秒/試行・28秒全体・40秒client。失敗モデルは同一Function instance内で2分避けます。Liteはminimal thinking/512 token、他はlow/2048 token（内部思考込み）。
 
-Geminiへ渡す履歴は、Geminiで返答した会話だけの最大8件です。端末内の返答はMemoryやMy Treeを引用する場合があるため除外します。My Treeから開く会話は端末内処理のみです。保存されたMemoryや生理情報は参照しませんが、本人が本文に入力した内容は送信対象になります。未知の個人名・住所などの完全な自動検出はできません。
+送信するのは今回の本文、Geminiで返答した直近最大8メッセージ、serverから取得した今日の気分・Today stage・カタログで検証したActionのみ。保存Memory・My Tree・生理記録・プロフィール・UID・token・全履歴をGeminiへ送りません。既知名と連絡先を伏字にしますが、本人が本文へ直接入力した未知の個人情報は送信され得ます。Treeから開く会話は端末内限定。ログはstage/statusなどのみ、本文・key・raw responseは保存しません。PostHogもallowlistのみ。
 
-API Functionの依存にはNode ESMで解決できる相対 `.js` パスを使用します。Viteのalias解決に依存しません。ローカル `npm run dev` はVercelの `api/` を実行しないため、実APIの検証にはVercel Previewが必要です。`npm run test:gemini` と `npm run typecheck` で境界処理を確認できます。Rate LimitはFunctionインスタンスごとに10件/5分で、複数インスタンスを横断する厳密な制限ではありません。Production有効化前に共有ストアによる制限と運用監視を検討してください。
+`GEMINI_DATA_POLICY=free|paid|unknown` は実際の利用契約を確認して設定します。Preview/Productionから契約プランを推定しません。無料枠ではGoogleの製品改善利用の可能性があります。実契約・実運用の確認なしにPaid扱いやREADYとしません。Privacy/Terms/Community Guidelinesはpublic/にあります。
 
-## 使用技術
+## 共有Rate Limit
 
-- Next.js互換 App Router（Vinext / Vite）
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Lucide React
-- localStorage
+既存Firestoreのclient拒否領域`camellia_admin/release_phase1/rate_windows`を使い、**userと全体の予約を同じFirestore transactionで確定**します。初期値20 requests/user/5分、全体1000/5分。`CAMELLIA_CHAT_RATE_USER` / `CAMELLIA_CHAT_RATE_GLOBAL` / `CAMELLIA_CHAT_RATE_WINDOW_SECONDS`で変更可能。固定window方式です。
 
-## フォルダ構成
+server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_RATE_LIMIT_REQUIRED=true`なのに未設定・障害ならfail closed。移行前の既存環境でcredentialsもrequired flagもない場合のみ従来のinstance limitを維持し、本番共有化PASSとはしません。GET APIの`rateLimitMode`で選択方式を確認できます。独立した2クライアントが同じ実Firestore emulatorへ並行予約するテストで共有を検証します。
 
-- `app/page.tsx` — 画面、状態管理、ダミーデータ、全インタラクション
-- `app/globals.css` — ブランドトークンとレスポンシブUI
-- `app/layout.tsx` — 日本語設定とメタデータ
-- `components/ui` — 再利用可能なUIプリミティブ
-- `.openai/hosting.json` — Sites公開設定
+## Circleと権限
 
-## 実装済み機能
+全データは既存保護領域`camellia_admin/release_phase1`配下。テーマはコード内catalog、他は`circle_memberships/posts/comments/reactions/reports/blocks/moderation_audit`。client直接アクセスは拒否し、verified Firebase ID tokenとserver APIで権限を判定します。匿名認証を拒否、プロフィール同意が必要。投稿には本人が入力した文章のみ、公開IDはHMACでUIDと分離。通報/ブロックは相手へ通知しません。参加者でなければfeed/投稿/コメント不可、他人の編集/削除不可。運営削除はtrusted `camelliaModerator: true` custom claimのみ。本文のmoderator属性や表示名では権限は変わりません。
 
-- Today / Check / AI / Discover / Circle / Place の6タブ
-- Check入力・保存、Todayへの反映、7日間チャート
-- 状態・キーワードに応じたAI Camelliaのルールベース会話
-- Discoverのカテゴリ絞り込み、詳細、やってみる、あとで、興味なし
-- Circle参加、詳細、いいね、投稿追加
-- Placeカテゴリ絞り込み、詳細、地図風表示、予約デモ
-- 初回オンボーディング
-- プロフィール編集・保存
-- Free / Camellia+ / REAL の料金比較
-- localStorageによる端末内保存
-- モバイル幅と中央スマホ表示のレスポンシブ対応
-- WebMCPのチェックイン記録ツール（対応ブラウザのみ）
+`VITE_CIRCLE_ENABLED=true`（build）と`CAMELLIA_CIRCLE_ENABLED=true`（server）を、実認証・複数ユーザー・deployed Rules・index・moderation・Privacy・5サイズのgate通過後に設定。初期OFFのままではDiscoverのCircleはComing Soonです。Placeはflagに含めません。
 
-## 未実装機能
+## Server環境変数とリリース手順
 
-- 本物の生成AI、地図、位置情報、予約、決済
-- 認証、クラウド同期、複数端末同期
-- 実ユーザー同士のSNS通信
-- 本番用の医療判断や健康データ連携
+`.env.example`を参照。鍵をVITE_/NEXT_PUBLIC_へ入れないでください。
 
-## 次に実装する候補
+- 既存：GEMINI_API_KEY、GEMINI_MODEL、GEMINI_FALLBACK_MODEL、CAMELLIA_GEMINI_CHAT_ENABLED、CAMELLIA_GEMINI_CHAT_PRODUCTION_APPROVED。
+- 共有ストア：FIREBASE_SERVICE_ACCOUNT_JSON（emusch-2a111用、server only）、CAMELLIA_SHARED_RATE_LIMIT_REQUIRED、Rate Limit設定。
+- Circle：CAMELLIA_CIRCLE_SIGNING_SECRET（安定した32文字以上のserver secret）、CAMELLIA_CIRCLE_ENABLED、VITE_CIRCLE_ENABLED。署名secretの変更には公開ID/ブロック対応の移行が必要。
+- 契約確認：GEMINI_DATA_POLICY。まだ不明ならunknown。
 
-- Apple Health / Google Health Connect連携
-- セキュアなアカウントと同期
-- AI会話の安全設計と専門家監修
-- 実店舗・イベントの予約連携
-- アクセシビリティと実ユーザーテストの拡充
-
-生成APIが5xxまたは1回目の時間切れの場合に限り、同じGoogleの `GEMINI_FALLBACK_MODEL`（default `gemini-3.1-flash-lite`）へ1度切り替えます。SDK内の自動retryは無効、全体28秒・各試行14秒まで。400/401/403/429やSafety blockでは切り替えません。
-
-Flash-Liteではminimal thinkingと512 token上限を使います。5xx/時間切れになったprimaryは同じFunction instance内で2分間再試行せず軽量モデルを直接使用します。共有された永続状態ではありません。
+`security/README.md`に既存Rules境界・必要なindex・TTL・moderator設定を記載。snapshot rulesを他サービスの本番Rulesへ上書きしないでください。実credential・index・TTL・deployed Rulesを確認し、本人ログインでPreviewの全導線と複数ユーザー操作を検証してから有効化します。このPhase 1 PRは自動merge/本番ONを行いません。

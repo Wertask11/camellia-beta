@@ -12,7 +12,10 @@
     "lint": "oxlint",
     "format": "oxfmt",
     "typecheck": "tsc --noEmit",
-    "test:gemini": "node tests/gemini-chat-cases.mjs"
+    "test:gemini": "node tests/gemini-chat-cases.mjs",
+    "test:phase1": "node tests/phase1-cases.mjs",
+    "test:firestore": "node tests/run-firestore.mjs",
+    "test": "node tests/run-unit.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
@@ -24,6 +27,7 @@
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.2",
     "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "input-otp": "1.4.2",
     "lucide-react": "1.31.0",
     "posthog-js": "^1.427.2",
@@ -41,6 +45,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@openai/sites-vite-plugin": "0.2.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
@@ -48,6 +53,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
+    "firebase-tools": "^15.34.0",
     "happy-dom": "^20.14.5",
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",

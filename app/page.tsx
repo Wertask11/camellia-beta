@@ -16,6 +16,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
+import { CircleScreen } from '@/screens/CircleScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { TodayScreen } from '@/screens/TodayScreen';
 import { applyLessExplain, readLessExplain } from '@/lib/today/display';
@@ -195,10 +196,7 @@ export default function Page() {
   if (secondary)
     return (
       <div className="app-shell">
-        <SecondaryScreen
-          kind={secondary}
-          onBack={() => setSecondary(undefined)}
-        />
+        {secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen onBack={()=>setSecondary(undefined)} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/>}
       </div>
     );
   if (privacy)

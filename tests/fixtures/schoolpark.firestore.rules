@@ -1,0 +1,1638 @@
+rules_version = '2';
+
+// EMUER の計算根拠（posts / ches_accounts）と非公開下書きを、
+// クライアントから任意に改ざんできないように保護する。
+// Firebase Admin SDK を使うサーバー処理は、従来どおりルールをバイパスする。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function accountPath() {
+      return /databases/$(database)/documents/ches_verified_accounts/$(request.auth.uid);
+    }
+
+    function hasAccount() {
+      return signedIn() && exists(accountPath());
+    }
+
+    /* ここは必ず get('...', '') で読む。素で .walletAddress と書くと、
+       そのフィールドが無いアカウントでは参照そのものがエラーになり、
+       ルール全体が「拒否」になる。何を書いても保存できない状態になる。 */
+    function wallet() {
+      return get(accountPath()).data.get('walletAddress', '');
+    }
+
+    /* CHESアドレス。LINE / Google / メールでは walletAddress と同じものになるが、
+       ウォレット（MetaMask）でログインした人だけは別物になる。
+       walletAddress ＝ 署名で確認した実際のウォレット、
+       chesAddress   ＝ uid から決まる CHES 内の住所。
+
+       このフィールドは後から足したもので、それ以前に作られたアカウントには無い。
+       サーバー側の補完はウォレットでログインしたときだけ動くため、
+       LINE / Google / メールで作った古いアカウントには無いままだった。
+       素で参照していたせいで、そういう人は Good も Change も投稿もできなかった。 */
+    function chesAddress() {
+      return get(accountPath()).data.get('chesAddress', '');
+    }
+
+    /* 本人かどうか。実際のウォレットと CHESアドレスの
+       どちらの名義でも本人と認める。
+       片方しか見ていないと、ウォレットでログインした人が
+       CHESアドレス名義で書いたときに弾かれてしまう（議論が立てられなかった原因）。 */
+    /* アカウントは1回だけ読んで、中身を渡す。
+       wallet() と chesAddress() を並べて書くと、同じ文書を2回3回と
+       見に行くことになり、参照の回数の上限に近づく（下の「参照の回数」を参照）。
+
+       アカウントが無い人はここで読み取りに失敗し、拒否になる。
+       以前 hasAccount() で確かめていたのと結果は同じ。 */
+    function isMyWallet(value) {
+      return signedIn() && value is string && value.size() > 0
+        && addrIsMine(get(accountPath()).data, value);
+    }
+    function isOwnLabPost(data) {
+      return signedIn() && data.get('authorSchoolParkId', '') is string
+        && data.get('authorSchoolParkId', '').size() > 0
+        && data.get('authorSchoolParkId', '') == get(accountPath()).data.get('spid', '');
+    }
+    // Resolve legacy wallet names through protected server bindings. Unknown or
+    // inconsistent identities cannot answer/adopt rewards until linked safely.
+    function knowledgeSpid(value) {
+      // This SPID is written atomically with verified Passport linkage by the
+      // server. One read per participant keeps native light-plan quota batches
+      // within Rules' 10-document budget. Missing legacy bindings require review.
+      return knowledgeSpidWith(get(accountPath()).data, value);
+    }
+    function knowledgeSpidWith(account, value) {
+      return addrIsMine(account, value) ? verifiedKnowledgeSpid(account)
+        : verifiedKnowledgeSpid(get(/databases/$(database)/documents/ches_wallets/$(value.lower())).data);
+    }
+    function verifiedKnowledgeSpid(binding) {
+      return binding.get('passportBindingVersion', 0) == 1 ? binding.get('spid', '') : '';
+    }
+    function distinctKnowledgePeople(from, to) {
+      let left = knowledgeSpid(from);
+      let right = knowledgeSpid(to);
+      return from.lower() != to.lower() && left.size() > 0
+        && right.size() > 0 && left != right;
+    }
+    function validKnowledgeAdoption(requestData) {
+      let answer = getAfter(/databases/$(database)/documents/knowledge_answers/$(requestData.acceptedAnswerId)).data;
+      return distinctKnowledgePeople(requestData.author, answer.answerAuthor)
+        && answer.status == 'accepted';
+    }
+    function addrIsMine(a, value) {
+      return (a.get('walletAddress', '') is string
+              && a.get('walletAddress', '').size() > 0
+              && value.lower() == a.get('walletAddress', '').lower())
+        || (a.get('chesAddress', '') is string
+            && a.get('chesAddress', '').size() > 0
+            && value.lower() == a.get('chesAddress', '').lower());
+    }
+
+    /* 運営（オーナー）。クエストを出せるのは当面ここだけ。
+       あとで「信用スコアに応じて」広げるときは、この関数を差し替える。 */
+    /* 運営のアドレスは2つある。ウォレット（MetaMask）で入ったときは
+       実ウォレットのアドレス、LINE・Google・メールで入ったときは
+       uid から作られた別のアドレスになるため。同じ人なのでどちらも通す。 */
+    function isOwnerAddr(value) {
+      return value is string
+        && value.lower() in [
+          '0xdcc687c05f130e57597a8525771299a4efb6edf7',
+          '0x195f4478ee3865ee1dd360b79e121c638bdd42ac',
+          '0x66a676fdb1d45914472d3e0b53c75c8d0cfd2a98', '0x8ab838ebb2e3bf160bc61b7182d348a8500b35f7' // スマホの運営パスポート
+        ];
+    }
+
+    /* いま操作している人が運営かどうか */
+    function isOwner() {
+      return signedIn() && isOwnerData(get(accountPath()).data);
+    }
+    function isOwnerData(a) {
+      return isOwnerAddr(a.get('chesAddress', '')) || isOwnerAddr(a.get('walletAddress', ''));
+    }
+
+    /* 公式パスの持ち主かどうか。
+       paid_users には小文字IDとチェックサム表記IDの両方が現存するため、
+       実際の保存形と小文字形を、ウォレット・CHESアドレス双方で照らす。 */
+    function hasPass() {
+      return signedIn() && hasPassFor(get(accountPath()).data);
+    }
+    function hasPassFor(a) {
+      return (a.get('walletAddress', '').size() > 0
+          && (exists(/databases/$(database)/documents/paid_users/$(a.get('walletAddress', '')))
+            || exists(/databases/$(database)/documents/paid_users/$(a.get('walletAddress', '').lower()))))
+        || (a.get('chesAddress', '').size() > 0
+          && (exists(/databases/$(database)/documents/paid_users/$(a.get('chesAddress', '')))
+            || exists(/databases/$(database)/documents/paid_users/$(a.get('chesAddress', '').lower()))));
+    }
+
+    /* SchoolPark の公開期間。request.time は Firebase が付ける時刻なので、
+       利用者が端末時計を変えても早く入ることはできない。 */
+    function schoolParkPassPreviewStarted() {
+      return request.time >= timestamp.date(2026, 9, 21) - duration.value(9, 'h');
+    }
+    function schoolParkPublicStarted() {
+      return request.time >= timestamp.date(2026, 10, 1) - duration.value(9, 'h');
+    }
+    function canAccessSchoolPark() {
+      return schoolParkPublicStarted()
+        || isOwner()
+        || (schoolParkPassPreviewStarted() && hasPass());
+    }
+
+    /* ギルドに関われるか。
+         運営 ／ 公式パスの持ち主 ／ 信用が足りている人
+
+       信用スコアの合計はルールでは数えられない（何十件も読むことになる）。
+       そこで「参加を認めた人」を sp_trust に置き、ここではその1件だけを見る。
+       いまは運営が書き、あとでサーバーが計算して書くように差し替える。 */
+    function canGuild() {
+      return signedIn() && canGuildWith(get(accountPath()).data);
+    }
+    function canGuildWith(a) {
+      return isOwnerData(a) || hasPassFor(a)
+        || (a.get('chesAddress', '').size() > 0
+            && exists(/databases/$(database)/documents/sp_trust/$(a.get('chesAddress', ''))));
+    }
+
+    /* 公園に出せるか。
+         運営 ／ light 以上の人
+
+       公園に置けるのは運営だけだった。「無我夢中で遊ぼう」と書いてある場所が、
+       運営の掲示板になっていたので、light 以上なら誰でも出せるようにする。
+       集まり（event）だけは運営のまま（SchoolPark からのお知らせなので）。
+
+       アカウントはここで1回だけ読み、中身を持ち回る。canGuild と同じ書き方。
+       段を数えるのに参照を使うので、呼ぶ回数を増やさないこと
+       （1回の書き込みで見に行けるのは10回まで）。 */
+    function canPark() {
+      return signedIn() && canParkWith(get(accountPath()).data);
+    }
+    function canParkWith(a) {
+      return isOwnerData(a) || !enforcing() || rankOfUser(a) >= 1;
+    }
+
+    /* 反応した人の一覧に、自分をちょうど1人だけ足したか。
+       もとの並びは全部そのまま残っていること（他人を消せないように）。
+       自分の名義は、いちど読んだアカウントの中身から取る。 */
+    function addedMeOnce(a, before, after) {
+      return after.size() == before.size() + 1
+        && after.hasAll(before)
+        && a.get('walletAddress', '').lower() in after
+        && !(a.get('walletAddress', '').lower() in before);
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    /* ギルドの文書ID の形。小文字・数字・ハイフンだけ。
+       議題とクエストの guildId も、この形であることだけを確かめる。
+       「5つのうちどれか」を書かないのは、将来ギルドが増えたときに
+       Rules を書き換えないで済むようにするため。 */
+    function guildIdShape(v) {
+      return v is string && v.matches('^[a-z0-9-]{1,40}$');
+    }
+
+    // ───────── 利用資格（プランごとの制限） ─────────
+    // 規約 第10条により 2026-08-17 に掲示済み。効力は日本時間 2026-09-01 0:00 から。
+    // それまでは、これまでどおり全員が全部書ける。
+    function enforceFrom() {
+      return timestamp.date(2026, 8, 31) + duration.value(15, 'h');   // JST 9/1 0:00
+    }
+    function enforcing() {
+      return request.time >= enforceFrom();
+    }
+
+    function rankOf(p) {
+      return p == 'pro' ? 3 : (p == 'plus' ? 2 : (p == 'light' ? 1 : 0));
+    }
+
+    // 付与（公式パス保有者・オーナーなど）。期限切れは数えない。
+    function grantPath() {
+      return /databases/$(database)/documents/entitlements/$(request.auth.uid);
+    }
+    /* 期限は「無ければ期限なし」と読む。既定値に request.time を置くことで、
+       expiresAt を持たない付与（オーナー）は必ず生きていると判定される。
+
+       中身は grantRankOf に渡して1回で読む。
+       以前は get(grantPath()) を2回書いていて、そのぶん参照が増えていた。
+       （なぜ参照の回数を惜しむのかは、下の「参照の回数」を参照） */
+    function grantRank() {
+      return signedIn() && exists(grantPath()) ? grantRankOf(get(grantPath()).data) : 0;
+    }
+    function grantRankOf(d) {
+      return d.get('expiresAt', request.time) >= request.time
+        ? rankOf(d.get('plan', 'guest')) : 0;
+    }
+
+    // 契約（Stripe）。支払い再試行中も会員のまま。
+    function subPath() {
+      return /databases/$(database)/documents/subscriptions/$(request.auth.uid);
+    }
+    function subRank() {
+      return signedIn() && exists(subPath()) ? subRankOf(get(subPath()).data) : 0;
+    }
+    function subRankOf(d) {
+      return d.get('status', '') in ['active', 'trialing', 'past_due']
+        ? rankOf(d.get('plan', 'guest')) : 0;
+    }
+
+    /* 公式パス（NFT）。買い切りで期限が無いので、持っているあいだはずっと plus。
+       画面と特商法にも「plus 相当を無償で」と書いてある。
+       hasPass() は下で paid_users を見ている。 */
+    /* ───────── 参照の回数 ─────────
+
+       Firestoreのルールには「1つの書き込みにつき、ほかの文書を見に行けるのは
+       10回まで」という上限がある。超えると、条件を満たしていても断られる。
+
+       以前の書き方は、この上限を大きく超えていた。
+         myRank() が grantRank()・subRank() を毎回すべて呼び、
+         planName() が myRank() を最大3回、
+         limitFor() が planName() を最大5回、
+         hasRoom() が limitFor() を2回呼んでいた。
+       同じ文書を何十回も見に行っていたことになる。
+
+       施行日(9/1)より前は canWriteAs も hasRoom も !enforcing() で
+       すぐ true を返していたため、参照は2回で済んでいた。
+       数え始めた9/1に、いきなり上限を突き破った。
+       投稿・下書き・募集・回答・議論が、条件を満たしていても
+       「権限がありません」で断られていたのはこのため。
+
+       いま数えた結果は、呼び直さずに引数で渡していく。 */
+
+    /* 契約・付与・公式パスのうち、いちばん上の段を採る。
+       付与と契約を1回ずつ数え、公式パスは要るときだけ見る
+       （公式パスは plus 止まりなので、すでに plus 以上なら見なくていい）。 */
+    function myRank() {
+      return rankOfUser(get(accountPath()).data);
+    }
+    /* 付与 → 契約 → 公式パス の順に、決まった時点で止める。
+       付与が pro ならそこで終わり（契約も公式パスも、それ以上にはならない）。
+       公式パスは plus 止まりなので、すでに plus 以上なら見に行かない。 */
+    function rankOfUser(a) {
+      return rankFromGrant(a, grantRank());
+    }
+    function rankFromGrant(a, g) {
+      return g == 3 ? 3 : rankFromSub(a, g, subRank());
+    }
+    function rankFromSub(a, g, s) {
+      return higherOf(g, s) >= 2 ? higherOf(g, s)
+        : higherOf(higherOf(g, s), hasPassFor(a) ? 2 : 0);
+    }
+    function higherOf(a, b) {
+      return a > b ? a : b;
+    }
+
+    /* 新しく作ってよいか。名義の確認と段の確認をまとめて行う。
+       アカウントはここで1回だけ読み、中身を持ち回る。
+       isMyWallet と mayWrite を並べて書くと、同じ文書を2回読むことになる。 */
+    function mayCreate(addr, minRank, kind) {
+      return signedIn() && addr is string && addr.size() > 0
+        && mayCreateWith(get(accountPath()).data, addr, minRank, kind);
+    }
+    function mayCreateWith(a, addr, minRank, kind) {
+      return addrIsMine(a, addr)
+        && (!enforcing() || mayWriteAs(rankOfUser(a), minRank, kind));
+    }
+
+    /* クエストのための投稿。月の回数に数えない代わりに、
+       本当にそのクエストを受けていることをここで確かめる。
+
+       #003（ゴミ拾い）のように「写真と数をEmuに投稿し、その投稿を
+       途中報告で紐づける」クエストがある。報告3回ぶん投稿が要るので、
+       回数に数えると light（月5件）ではほかに使えなくなる。
+
+       受けた印は sp_quests/{questId}/commits/{自分の名義}。
+       questId を書くだけでは通らない。受けていない人の投稿は弾かれる。
+       名義は画面側もここも小文字（index.html の emuMyIdentity）。 */
+    function mayCreateForQuest(addr, qid) {
+      return signedIn() && addr is string && addr.size() > 0
+        && qid is string && qid.size() > 0 && qid.size() <= 80
+        && qid != 'founder-quest-000'
+        && mayCreateForQuestWith(get(accountPath()).data, addr, qid);
+    }
+    function mayCreateForQuestWith(a, addr, qid) {
+      return addrIsMine(a, addr)
+        && (!enforcing() || rankOfUser(a) >= 1)
+        && exists(/databases/$(database)/documents/sp_quests/$(qid)/commits/$(addr));
+    }
+
+    /* この段以上で書けるか。施行日より前は誰も止めない。
+       止めるのはサーバーだけでなくここでもやる。投稿や議論は
+       サーバーを通らずクライアントから直接書いているため、
+       ここを開けたままだと画面のボタンを隠すだけになってしまう。 */
+    function canWriteAs(minRank) {
+      return !enforcing() || myRank() >= minRank;
+    }
+
+    /* ───────── 回数の上限 ─────────
+
+       投稿・募集・回答はサーバーを通らずクライアントから直接書いている。
+       段の判定（canWriteAs）だけでは「light は月5件」を守れず、
+       画面を通さずに書けば何件でも作れてしまう。
+
+       そこで、書き込みと同じ一括処理（batch）で使用回数の記録も1つ増やしてもらい、
+       増えたあとの値が上限以内かを getAfter で確かめる。
+       記録を増やさずに書くこともできない（下の hasRoom が false になる）。 */
+
+    /* 「制限なし」を表す数。届かない大きさの数で表す。
+       backend/entitlement.js の UNLIMITED と必ず同じ値にすること。 */
+    function unlimited() { return 1000000; }
+
+    /* 上限の表。backend/entitlement.js の LIMITS と必ず同じ数にすること。
+       段は数のまま受け取る（0=guest 1=light 2=plus 3=pro）。
+       名前に直してから比べ直すと、そのたびに段を数え直すことになる。 */
+    function limitOf(rank, kind) {
+      return rank == 0 ? 0
+        : (rank == 1
+            ? (kind == 'post' ? 5 : (kind == 'request' ? 1 : (kind == 'answer' ? 5 : 0)))
+            /* pro は投稿の数を数えない。募集と回答は plus と同じ。 */
+            : (kind == 'post' ? (rank == 3 ? unlimited() : 30)
+                : (kind == 'request' ? 10 : (kind == 'answer' ? 30 : 0))));
+    }
+
+    /* 数える期間の名前。日本時間の暦月。
+       契約している人はサーバー側が請求期間で数えるが、ルールからは
+       請求期間の境目を計算できないため、ここでは暦月を使う。
+       上限を超えさせないという目的は、暦月でも満たせる。 */
+    function usageKey() {
+      return 'm' + string((request.time + duration.value(9, 'h')).year())
+        + '-' + string((request.time + duration.value(9, 'h')).month());
+    }
+    function usagePath() {
+      return /databases/$(database)/documents/plan_usage/$(request.auth.uid + '_r_' + usageKey());
+    }
+
+    /* 書く前の回数。記録がまだ無ければ0。 */
+    function usedBefore(kind) {
+      return exists(usagePath()) ? get(usagePath()).data.get(kind, 0) : 0;
+    }
+
+    /* 書いたあとの回数が「ちょうど1つ増えていて」「上限以内」か。
+       施行日より前は数えない（掲示した約束どおり）。
+
+       上限以内かだけを見ていたときは、記録を増やさずに投稿すれば
+       0 <= 2 で何度でも通ってしまった。
+       ちょうど1増えることまで確かめないと、上限を守れない。 */
+    /* 段と回数を、いちどの判定でまとめて確かめる。
+       段は myRank() で1回だけ数え、あとは引数で持ち回る。
+       getAfter も1回だけ呼んで、その値を渡す。 */
+    function mayWriteAs(rank, minRank, kind) {
+      return rank >= minRank && hasRoomIn(limitOf(rank, kind), kind);
+    }
+    function hasRoomIn(limit, kind) {
+      return limit > 0 && roomLeft(limit, kind, getAfter(usagePath()).data.get(kind, 0));
+    }
+    function roomLeft(limit, kind, after) {
+      return after <= limit && after == usedBefore(kind) + 1;
+    }
+
+    /* ───────── いま持っている数（マイライブラリー） ─────────
+       回数と違って、これは月でリセットしない「いまの総数」。
+       増やしたら減らせるので、別の書類で持つ。 */
+    function countsPath() {
+      return /databases/$(database)/documents/plan_counts/$(request.auth.uid);
+    }
+    function draftsBefore() {
+      return exists(countsPath()) ? get(countsPath()).data.get('drafts', 0) : 0;
+    }
+    function libraryLimitOf(rank) {
+      return rank == 0 ? 0 : (rank == 1 ? 30 : 1000);
+    }
+    /* 作れるか。段が足りていて、ちょうど1増えていて、上限以内であること。
+       ここも段を1回だけ数えて持ち回る（上の「参照の回数」を参照）。 */
+    function mayAddToLibrary(owner, minRank) {
+      return signedIn() && owner is string && owner.size() > 0
+        && mayAddToLibraryWith(get(accountPath()).data, owner, minRank);
+    }
+    function mayAddToLibraryWith(a, owner, minRank) {
+      return addrIsMine(a, owner) && (!enforcing() || mayAddAs(rankOfUser(a), minRank));
+    }
+    function mayAddAs(rank, minRank) {
+      return rank >= minRank
+        && libraryRoomLeft(libraryLimitOf(rank), getAfter(countsPath()).data.get('drafts', 0));
+    }
+    function libraryRoomLeft(limit, after) {
+      return limit > 0 && after <= limit && after == draftsBefore() + 1;
+    }
+    /* 消すときは、ちょうど1減っていること。減らさずに消せると、
+       消しても枠が空かず、使う人が損をする。 */
+    function libraryDecremented() {
+      return !enforcing()
+        || getAfter(countsPath()).data.get('drafts', 0) == draftsBefore() - 1;
+    }
+
+    match /plan_counts/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.get('drafts', 0) is int
+        && request.resource.data.get('drafts', 0) >= 0
+        && request.resource.data.get('drafts', 0) <= 1;
+      allow update: if signedIn() && request.auth.uid == uid
+        && changedOnly(['drafts', 'updatedAt'])
+        && request.resource.data.get('drafts', 0) is int
+        && request.resource.data.get('drafts', 0) >= 0
+        && request.resource.data.get('drafts', 0) >= resource.data.get('drafts', 0) - 1
+        && request.resource.data.get('drafts', 0) <= resource.data.get('drafts', 0) + 1;
+      allow delete: if false;
+    }
+
+    /* 回数が正しい形かを確かめる。負の数を入れて上限を回避されないようにする。 */
+    function usageSane(d) {
+      return d.get('post', 0) is int && d.get('post', 0) >= 0
+        && d.get('request', 0) is int && d.get('request', 0) >= 0
+        && d.get('answer', 0) is int && d.get('answer', 0) >= 0;
+    }
+
+    /* 使用回数の記録。本人だけが、自分の分を1つずつ増やせる。
+       減らすことも、まとめて増やすことも、負の数を入れることもできない。 */
+    match /plan_usage/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && docId == request.auth.uid + '_r_' + usageKey()
+        && usageSane(request.resource.data)
+        && request.resource.data.get('post', 0) <= 1
+        && request.resource.data.get('request', 0) <= 1
+        && request.resource.data.get('answer', 0) <= 1;
+      allow update: if signedIn()
+        && docId == request.auth.uid + '_r_' + usageKey()
+        && changedOnly(['post', 'request', 'answer', 'updatedAt'])
+        && usageSane(request.resource.data)
+        && request.resource.data.get('post', 0) >= resource.data.get('post', 0)
+        && request.resource.data.get('post', 0) <= resource.data.get('post', 0) + 1
+        && request.resource.data.get('request', 0) >= resource.data.get('request', 0)
+        && request.resource.data.get('request', 0) <= resource.data.get('request', 0) + 1
+        && request.resource.data.get('answer', 0) >= resource.data.get('answer', 0)
+        && request.resource.data.get('answer', 0) <= resource.data.get('answer', 0) + 1;
+      allow delete: if false;
+    }
+
+    match /emuer_offchain/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ───────── 有料会員（月額10,000円） ─────────
+    // 金額・会員状態・返金・本人確認は、すべてサーバー(Admin SDK)だけが書き込む。
+    // クライアントから書けると、課金せずに会員になったり返金状態を偽装できてしまう。
+
+    // 自分の契約状態だけ読める。書き込みは Stripe Webhook 経由のサーバーのみ。
+    match /subscriptions/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    /* 利用資格の付与（Founding Emuer など）。
+       決済を通さずに使える段を渡すレコードなので、
+       クライアントから書けると誰でも上の段を名乗れてしまう。
+       書けるのはサーバー（Admin SDK）だけ。自分の分だけ読める。 */
+    match /entitlements/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Stripe イベントの冪等性記録。クライアントからは一切触らせない。
+    match /billing_events/{document=**} {
+      allow read, write: if false;
+    }
+
+    // 返金申請。申請も承認もサーバー経由のみ（金額をサーバーが決めるため）。
+    match /refund_requests/{document=**} {
+      allow read, write: if false;
+    }
+
+    // 本人確認。書類の所在や判定結果をクライアントから読めないようにする。
+    match /kyc_submissions/{document=**} {
+      allow read, write: if false;
+    }
+
+    // 対話記録と対話可能枠。保証の判定根拠なので、本人でも直接は書き換えられない。
+    match /dialogue_sessions/{document=**} {
+      allow read, write: if false;
+    }
+    match /dialogue_slots/{document=**} {
+      allow read, write: if false;
+    }
+
+    // 会員プロフィール（自己紹介・興味テーマ）。
+    // 返金条件の判定材料なので、クライアントから直接書き換えられないようにする。
+    // 読み書きはサーバー（/api/dialogue/profile）経由のみ。
+    match /member_profiles/{document=**} {
+      allow read, write: if false;
+    }
+
+    // 監査ログ。改ざん・削除を防ぐためクライアントからは完全に遮断する。
+    match /admin_audit_logs/{document=**} {
+      allow read, write: if false;
+    }
+
+    // フィードバック。投稿も閲覧もサーバー経由のみ（他人の意見を読めないようにする）。
+    match /emu_feedback/{document=**} {
+      allow read, write: if false;
+    }
+
+    // 立てられた議論。誰でも一覧を読めて、参加できる。
+    // 作成・更新は自分名義のときだけ（同じ議題は同じIDに集約されるため update も許す）。
+    match /discussion_rooms/{id} {
+      allow read: if true;
+      // 議論を立てるのは plus 以上（9/1から）。参加・発言は light 以上。
+      allow create: if isMyWallet(request.resource.data.get('author', ''))
+        && canWriteAs(2)
+        && request.resource.data.topic is string
+        && request.resource.data.topic.size() > 0
+        && request.resource.data.topic.size() <= 120;
+      // 他の人が同じ議題に入ったときは、最終利用日時だけ更新できる。
+      // 議題・ジャンル・作成者は書き換えられない（作成者が乗っ取られないように）。
+      allow update: if hasAccount() && changedOnly(['lastActiveAt']);
+      allow delete: if false;
+    }
+
+    // 議論から生まれた「みんなの結論」。誰でも読めるが、書けるのは
+    // 自分名義で新規に残すときだけ。他人の結論の書き換え・削除はできない。
+    match /discussion_conclusions/{id} {
+      allow read: if true;
+      // 結論を残すのは light 以上（9/1から）
+      allow create: if isMyWallet(request.resource.data.get('author', ''))
+        && canWriteAs(1)
+        && request.resource.data.conclusion is string
+        && request.resource.data.conclusion.size() > 0
+        && request.resource.data.conclusion.size() <= 600;
+      allow update, delete: if false;
+    }
+
+    match /emuer_offchain_ledger/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /ches_accounts/{uid} {
+      // アカウントの個人情報は本人と運営だけが読む。匿名認証での他人の参照も拒否する。
+      allow read: if signedIn() && (request.auth.uid == uid || isOwner());
+      // アドレスの作成・補完は Firebase token を検証したサーバーだけが行う。
+      allow create, delete: if false;
+      allow update: if signedIn() && request.auth.uid == uid
+        && changedOnly(['lastLogin', 'displayName', 'email', 'photoURL']);
+    }
+
+    // 本人判定は旧来の自己申告データではなく、サーバーが検証した名義だけを見る。
+    match /ches_verified_accounts/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isOwner());
+      allow write: if false;
+    }
+
+    // バッジと集計はサーバー専用。公開表示に必要な記録の読み取りは維持する。
+    match /rank_badges/{id} { allow read: if true; allow write: if false; }
+    match /evolve_users/{id} { allow read: if true; allow write: if false; }
+    match /sp_stats/{id} { allow read: if true; allow write: if false; }
+    match /sp_entrants/{id} { allow read: if signedIn() && isMyWallet(id); allow write: if false; }
+    match /sp_brand_entrants/{id} { allow read, write: if false; }
+    match /sp_pass_logs/{id} { allow read: if signedIn() && isOwner(); allow write: if false; }
+    match /sp_paid_pass/{id} { allow read: if signedIn() && isMyWallet(id); allow write: if false; }
+    match /sp_free_pass/{id} { allow read: if signedIn() && isMyWallet(id); allow write: if false; }
+    match /sp_activity_limits/{id} { allow read, write: if false; }
+
+    /* アドレス → アカウント の逆引き。ここが「重複させない」仕組みそのもの。
+
+       作成しか許さず、書き換えも削除も禁止しているため、
+       ひとつのアドレスは一度しか登録できない。
+       すでにある宛先への create は Firestore 側で必ず失敗するので、
+       他人のアドレスを横取りすることはできない。
+
+       登録できるのは自分の2つの名義だけ。
+       walletAddress（ウォレットで入った人の実アドレス）と
+       chesAddress（uid から決まる CHES 内の住所）。
+       以前は walletAddress しか許しておらず、
+       ウォレットで入った人の chesAddress を画面から登録できなかった。 */
+    match /ches_wallets/{address} {
+      allow create: if signedIn()
+        && !request.resource.data.keys().hasAny(['spid','passportBindingVersion'])
+        && request.resource.data.uid == request.auth.uid
+        && (
+          (wallet().size() > 0 && address.lower() == wallet().lower())
+          || (chesAddress().size() > 0 && address.lower() == chesAddress().lower())
+        );
+      // 自分の分だけは読める（登録済みかどうかを確かめるため）
+      allow read: if signedIn() && resource.data.get('uid', '') == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+
+      /* 知識を届けるのは light 以上（9/1から）。
+         クエストのための投稿（questId 付き）だけは、月の回数に数えない。
+         そちらを先に見る。通れば回数の記録（plan_usage）は一度も見ない。
+         questId はあとから足せない（下の update の changedOnly に無い）。 */
+      allow create: if !request.resource.data.keys().hasAny(['knowledgeLab', 'authorSchoolParkId'])
+        && request.resource.data.get('visibility', 'public') == 'public'
+        && (
+          mayCreateForQuest(request.resource.data.get('address', ''),
+                            request.resource.data.get('questId', ''))
+          || mayCreate(request.resource.data.get('address', ''), 1, 'post')
+        )
+        && request.resource.data.get('questId', '') is string
+        && request.resource.data.get('questId', '').size() <= 80
+        && request.resource.data.get('goodCount', 0) == 0
+        && request.resource.data.get('changeCount', 0) == 0
+        && request.resource.data.get('goodUsers', []).size() == 0
+        && request.resource.data.get('changeUsers', []).size() == 0;
+
+      // 投稿者本人による本文編集。反応数・反応者一覧・投稿者は変更不可。
+      allow update: if !resource.data.keys().hasAny(['knowledgeLab'])
+        && isMyWallet(resource.data.get('address', '')) && changedOnly([
+        'title', 'body', 'tags', 'userType', 'userId', 'updatedAt', 'imageUrl',
+        'displayName'
+      ])
+      || (isMyWallet(resource.data.get('address', ''))
+        && changedOnly(['acceptedChangeCount', 'lastChangedAt'])
+        && request.resource.data.get('acceptedChangeCount', 0) == resource.data.get('acceptedChangeCount', 0) + 1)
+      // Good は、認証ユーザー自身のウォレットを1件追加し、件数を1増やす場合だけ許可。
+      || (canWriteAs(1)
+        && resource.data.get('visibility', 'public') == 'public'
+        && !isMyWallet(resource.data.get('address', ''))
+        && !isOwnLabPost(resource.data)
+        && changedOnly(['goodCount', 'goodUsers'])
+        && request.resource.data.get('goodCount', 0) == resource.data.get('goodCount', 0) + 1
+        && addedMeOnce(get(accountPath()).data,
+             resource.data.get('goodUsers', []), request.resource.data.get('goodUsers', [])))
+      // Change も同じく、1ユーザーにつき1件だけ許可。
+      || (canWriteAs(1)
+        && resource.data.get('visibility', 'public') == 'public'
+        && !isMyWallet(resource.data.get('address', ''))
+        && !isOwnLabPost(resource.data)
+        && changedOnly(['changeCount', 'changeUsers'])
+        && request.resource.data.get('changeCount', 0) == resource.data.get('changeCount', 0) + 1
+        && addedMeOnce(get(accountPath()).data,
+             resource.data.get('changeUsers', []), request.resource.data.get('changeUsers', [])));
+
+      allow delete: if !resource.data.keys().hasAny(['knowledgeLab'])
+        && isMyWallet(resource.data.get('address', ''));
+    }
+
+    match /knowledge_drafts/{draftId} {
+      /* 下書きを残すのは light 以上（9/1から）。
+         件数の上限（light 30 / plus 1,000）も、ここで確かめる。
+         画面だけで数えていたときは、画面を通さなければ何件でも作れた。 */
+      allow create: if mayAddToLibrary(request.resource.data.get('owner', ''), 1);
+      allow read, update: if isMyWallet(resource.data.get('owner', ''));
+      // 消すときは、持っている数の記録も1つ減らしてもらう
+      allow delete: if isMyWallet(resource.data.get('owner', '')) && libraryDecremented();
+    }
+
+    match /post_good_impacts/{impactId} {
+      allow read: if signedIn();
+      allow create: if isMyWallet(request.resource.data.get('fromAddress', ''))
+        && request.resource.data.postId is string;
+      allow update, delete: if false;
+    }
+
+    match /post_changes/{changeId} {
+      allow read: if signedIn();
+      allow create: if isMyWallet(request.resource.data.get('fromAddress', ''))
+        && request.resource.data.postId is string
+        && request.resource.data.get('accepted', false) == false;
+      // ここも素で参照しない。address や status が無い古い記録でエラーにならないように。
+      allow update: if signedIn()
+        && wallet().size() > 0
+        && get(/databases/$(database)/documents/posts/$(resource.data.postId)).data.get('address', '').lower() == wallet().lower()
+        && resource.data.get('status', '') == 'pending'
+        && changedOnly(['status', 'acceptedAt', 'acceptedBy'])
+        && request.resource.data.status == 'accepted';
+      allow delete: if false;
+    }
+
+    match /knowledge_requests/{requestId} {
+      allow read: if signedIn();
+      // 知識を募集するのは light 以上（9/1から）
+      /* 募集の作り方は2通り。
+           ・これまで：懸賞は募集者の残高から（settlementStatus: uncommitted）
+           ・EMUER v2（9/19〜）：募集者の残高は減らない。採用された回答には
+             運営トレジャリーから1 EMUER（rewardPolicy: emuer-v2-treasury-1、
+             settlementStatus: treasury_review、bounty: 1）。
+         前は v2 の形を通していなかったため、9/19 以降の募集の公開と採用が
+         すべて断られていた。v2 の報酬はサーバー（/activity/knowledge-answer）が
+         回答の中身を確かめてから出すので、ここでは形だけを確かめる。 */
+      allow create: if mayCreate(request.resource.data.get('author', ''), 1, 'request')
+        && request.resource.data.status == 'open'
+        && request.resource.data.answerCount == 0
+        && (request.resource.data.settlementStatus == 'uncommitted'
+            || (request.resource.data.settlementStatus == 'treasury_review'
+                && request.resource.data.get('rewardPolicy', '') == 'emuer-v2-treasury-1'
+                && request.resource.data.get('bounty', 0) == 1));
+      allow update: if signedIn() && (
+        (isMyWallet(resource.data.get('author', '')) && changedOnly([
+          'status', 'acceptedAnswerId', 'acceptedAnswerAuthor', 'awardedAt', 'settlementStatus'
+        ])
+          && request.resource.data.status == 'awarded'
+          && request.resource.data.settlementStatus == 'pending_distribution'
+          && resource.data.status == 'open'
+          && validKnowledgeAdoption(request.resource.data)
+          && getAfter(/databases/$(database)/documents/knowledge_answers/$(request.resource.data.acceptedAnswerId)).data.requestId == requestId
+          && getAfter(/databases/$(database)/documents/knowledge_answers/$(request.resource.data.acceptedAnswerId)).data.answerAuthor == request.resource.data.acceptedAnswerAuthor)
+        /* v2 の採用：募集中の募集だけ。運営トレジャリーの確認待ちにする */
+        || (isMyWallet(resource.data.get('author', '')) && resource.data.status == 'open'
+          && changedOnly([
+            'status', 'acceptedAnswerId', 'acceptedAnswerAuthor', 'awardedAt', 'settlementStatus', 'rewardPolicy'
+          ])
+          && request.resource.data.status == 'awarded'
+          && request.resource.data.settlementStatus == 'treasury_review'
+          && validKnowledgeAdoption(request.resource.data)
+          && request.resource.data.rewardPolicy == 'emuer-v2-treasury-1'
+          && getAfter(/databases/$(database)/documents/knowledge_answers/$(request.resource.data.acceptedAnswerId)).data.requestId == requestId
+          && getAfter(/databases/$(database)/documents/knowledge_answers/$(request.resource.data.acceptedAnswerId)).data.answerAuthor == request.resource.data.acceptedAnswerAuthor)
+        || (changedOnly(['answerCount'])
+          && request.resource.data.answerCount == resource.data.answerCount + 1)
+      );
+      allow delete: if isMyWallet(resource.data.get('author', '')) && resource.data.status == 'open';
+    }
+
+    match /knowledge_answers/{answerId} {
+      allow read: if signedIn();
+      // 募集へ答えるのは light 以上（9/1から）
+      allow create: if mayCreate(request.resource.data.get('answerAuthor', ''), 1, 'answer')
+        && request.resource.data.status == 'submitted'
+        && distinctKnowledgePeople(request.resource.data.requestAuthor, request.resource.data.answerAuthor)
+        && get(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.status == 'open'
+        && get(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.author == request.resource.data.requestAuthor;
+      allow update: if signedIn()
+        && isMyWallet(get(/databases/$(database)/documents/knowledge_requests/$(resource.data.requestId)).data.author)
+        && changedOnly(['status', 'acceptedAt'])
+        && resource.data.status == 'submitted'
+        && distinctKnowledgePeople(resource.data.requestAuthor, resource.data.answerAuthor)
+        && request.resource.data.status == 'accepted';
+      allow delete: if false;
+    }
+
+    match /emuer_bounty_claims/{claimId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && isMyWallet(request.resource.data.get('requestAuthor', ''))
+        && request.resource.data.status == 'pending'
+        && distinctKnowledgePeople(request.resource.data.requestAuthor, request.resource.data.recipient)
+        && getAfter(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.status == 'awarded'
+        && getAfter(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.settlementStatus == 'pending_distribution'
+        && request.resource.data.requestAuthor == getAfter(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.author
+        && request.resource.data.recipient == getAfter(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.acceptedAnswerAuthor
+        && request.resource.data.amount == getAfter(/databases/$(database)/documents/knowledge_requests/$(request.resource.data.requestId)).data.bounty;
+      allow update, delete: if false;
+    }
+
+    match /ichinichi_days/{document=**} {
+      allow read, write: if false;
+    }
+    match /ichinichi_goods/{document=**} {
+      allow read, write: if false;
+    }
+    match /ichinichi_reports/{document=**} {
+      allow read, write: if false;
+    }
+    match /ichinichi_adopts/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /scheduled_posts/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /sp_notifications/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /room1_contents/{document=**} {
+      allow read, write: if false;
+    }
+    match /room1_submissions/{document=**} {
+      allow read, write: if false;
+    }
+    match /contact_submissions/{document=**} {
+      allow read, write: if false;
+    }
+    match /user_profiles/{address} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // EMUERの表示用キャッシュ（localStorageの写し）。ドキュメントIDは本人のウォレット。
+    // 残高の正は emuer_offchain（サーバー専用）なので、ここは本人が自分の分だけ書ければよい。
+    match /emuer_rate/{wallet} {
+      allow read: if true;
+      allow write: if isMyWallet(wallet);
+    }
+    // エアドロ登録。GENESISバッジの表示でクライアントが読むため、読み取りは開ける。
+    // （登録はサーバーの /airdrop/register が行うので書き込みは閉じたまま）
+    match /airdrop_registrations/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /secret_door_rewards/{document=**} {
+      allow read, write: if false;
+    }
+    match /monthly_distributions/{document=**} {
+      allow read, write: if false;
+    }
+    match /bonus_rewards/{document=**} {
+      allow read, write: if false;
+    }
+
+    /* ───────── Camellia ─────────
+
+       ここに入るのは、気分・症状・服薬・月経といった
+       「要配慮個人情報」。取り違えたときの被害がいちばん大きい。
+
+       読めるのも書けるのも本人だけにする。
+       運営は管理画面から見るが、それはサーバー（Admin SDK）を通るので
+       このルールには当たらない。ここを開ける必要はない。
+
+       専用のルールが無かったあいだ、ここはいちばん下の受け皿に落ちていて、
+       ログインしていない人でも全員の記録を読み書きできる状態だった。
+
+       文書のIDは Firebase の uid。パスポート番号ではない。
+       パスポート番号は人に見せる番号なので、鍵にすると
+       番号を知っている人に狙われる。 */
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /camellia_users/{uid} {
+      allow read: if isMe(uid);
+      /* 生年月日と同意。同意した記録は、あとから書き換えられる。
+         年齢の判定はサーバーとアプリで行う。ルールでは形だけ確かめる。 */
+      /* Camellia ID は、一度決まったら変えられない。
+         変えられると、それまでの記録との結び付きが切れ、
+         管理画面から追えなくなる。作り直して身元を洗うこともできてしまう。 */
+      allow create: if isMe(uid)
+        && request.resource.data.get('birthDate', '') is string
+        && request.resource.data.get('agreedAt', '') is string
+        && request.resource.data.get('camelliaId', '') is string;
+      allow update: if isMe(uid)
+        && request.resource.data.get('birthDate', '') is string
+        && request.resource.data.get('agreedAt', '') is string
+        && (resource.data.get('camelliaId', '') == ''
+            || request.resource.data.get('camelliaId', '') == resource.data.get('camelliaId', ''));
+      allow delete: if isMe(uid);
+
+      /* 日々の記録・性格・設定。文書のIDで種類を分ける。
+           daily/{2026-09-02}   その日の記録
+           profile/basic        表示名・生年・職業・目標
+           profile/settings     設定
+           profile/personality  性格の結果
+         中身の形はアプリ側で変わっていくので、ここでは持ち主だけを見る。 */
+      match /{kind}/{docId} {
+        allow read, write: if isMe(uid) && kind != 'admin';
+      }
+
+      /* 運営が決めたこと（7つの機構の入り切り）。
+         本人は読めるが、書き換えられない。
+         書き換えられると、運営が切ったはずのものを自分で入れ直せてしまう。
+         書くのはサーバー（Admin SDK）だけ。
+
+         本人が読めるようにしてあるのは、画面に効かせるため。
+         そして「運営が変えた」と本人に見せるため。 */
+      match /admin/{docId} {
+        allow read: if isMe(uid);
+        allow write: if false;
+      }
+      /* その下（運営からの返信など）も同じ。本人は読めるが書けない。
+         書けると、運営が書いた返事を本人が差し替えられてしまう。 */
+      match /admin/{docId}/{sub=**} {
+        allow read: if isMe(uid);
+        allow write: if false;
+      }
+    }
+
+    /* ───────── Camellia のコミュニティ ─────────
+
+       ここだけは、ほかの人にも見える。
+       読めるのは、Camellia に入った人（camellia_users に文書がある人）だけ。
+       生年月日と同意を済ませていない人には見せない。
+
+       書けるのは自分の名義で、新しく置くときだけ。
+       いちど置いた投稿は書き換えられない（あとから中身をすり替えられないように）。
+       消せるのは、本人と運営。 */
+    function camelliaMember() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/camellia_users/$(request.auth.uid));
+    }
+
+    match /camellia_community/{postId} {
+      allow read: if camelliaMember();
+      allow create: if camelliaMember()
+        && request.resource.data.get('uid', '') == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500
+        && request.resource.data.get('name', '') is string
+        && request.resource.data.get('name', '').size() <= 40;
+      allow update: if false;
+      allow delete: if isOwner() || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
+    }
+
+    /* 通報。出すことしかできない。
+       ほかの人の通報を読めると、誰が誰を通報したかが分かってしまう。
+       運営はサーバー（Admin SDK）か Firebase の管理画面から読む。 */
+    match /camellia_reports/{reportId} {
+      allow read: if false;
+      allow create: if camelliaMember()
+        && request.resource.data.get('by', '') == request.auth.uid
+        && request.resource.data.get('postId', '') is string
+        && request.resource.data.get('reason', '') is string
+        && request.resource.data.get('reason', '').size() <= 300;
+      allow update, delete: if false;
+    }
+
+    /* ───────── SchoolPark の議題と投票 ─────────
+
+       議題は誰でも読める。出せるのは自分名義のときだけ。
+       いちど出した議題は書き換えも削除もできない（あとから条件を
+       すり替えられないようにするため）。
+
+       票は ballots/{パスポート番号} に置く。文書のIDがそのまま
+       「誰の票か」になっていて、作ることしか許していない。
+       これで
+         ・1つのパスポートにつき1票（同じIDは2度作れない）
+         ・入れたあとで書き換えたり消したりできない
+       が、アプリ側の作りに関係なく成り立つ。
+       旧SchoolParkは localStorage の使い捨てIDで数えていたので、
+       消せば何度でも投票できた。ここが根本的に違う。 */
+    /* ギルドは2つに分ける。
+         free    一般ギルド。投票は誰でもできる
+         special 特殊ギルド。投票もギルドに関われる人だけ
+       どちらも「議題を出す」のはギルドに関われる人だけ。 */
+    match /sp_votes/{voteId} {
+      allow read: if canAccessSchoolPark();
+      allow create: if canAccessSchoolPark()
+        && isMyWallet(request.resource.data.get('createdBy', ''))
+        && canGuild()
+        && request.resource.data.get('kind', '') in ['free', 'special']
+        && guildIdShape(request.resource.data.get('guildId', ''))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.options is list
+        && request.resource.data.options.size() >= 2
+        && request.resource.data.options.size() <= 4
+        /* 採択は出したあとに運営が決めるもの。出すときには入れられない。 */
+        && !request.resource.data.keys().hasAny(['adoptedOptionId', 'adoptedAt', 'adoptedBy']);
+      /* 出した本人が「予定より早く締め切る」ことだけできる。
+         締切を先に延ばすのは認めない（負けそうだから延長、ができてしまう）。
+         題名・説明・選択肢は動かせない。
+
+         これに2つだけ足す。どちらも運営だけ。
+           ・採択：どの選択肢で決まったかを記録する。1回だけ。
+             採択された議題からしか「Questにする」へ進めない。
+           ・ギルドの後付け：guildId がまだ空の古い議題に、1回だけ入れる。
+             すでに入っているものを別のギルドへ動かすことはできない。 */
+      allow update: if canAccessSchoolPark() && ((isMyWallet(resource.data.get('createdBy', ''))
+          && changedOnly(['closesAt'])
+          && request.resource.data.closesAt is int
+          && request.resource.data.closesAt <= resource.data.get('closesAt', 0))
+        || (isOwner()
+          && changedOnly(['adoptedOptionId', 'adoptedAt', 'adoptedBy'])
+          && !resource.data.keys().hasAny(['adoptedOptionId'])
+          && request.resource.data.adoptedOptionId is string
+          && request.resource.data.adoptedOptionId.size() > 0
+          && request.resource.data.adoptedOptionId.size() <= 40
+          && request.resource.data.adoptedAt is int
+          && isMyWallet(request.resource.data.get('adoptedBy', '')))
+        || (isOwner()
+          && changedOnly(['guildId'])
+          && resource.data.get('guildId', '') == ''
+          && guildIdShape(request.resource.data.get('guildId', ''))));
+      allow delete: if false;
+
+      match /ballots/{addr} {
+        allow read: if canAccessSchoolPark();
+        /* 文書のIDが自分のアドレスのときだけ作れる。他人の票は作れない。
+           特殊ギルドの議題は、ギルドに関われる人だけが入れられる。 */
+        allow create: if canAccessSchoolPark() && isMyWallet(addr)
+          && request.resource.data.get('optionId', '') is string
+          && request.resource.data.get('optionId', '').size() > 0
+          && (
+            get(/databases/$(database)/documents/sp_votes/$(voteId)).data.get('kind', 'free') == 'free'
+            || canGuild()
+          );
+        allow update, delete: if false;
+      }
+    }
+
+    /* ───────── SchoolPark のクエスト ─────────
+
+       投票と同じ考え方。
+       「受けた」は commits/{パスポート番号} に置く。文書のIDが誰かを表し、
+       作ることしか許していないので、1つのパスポートにつき1回しか受けられない。
+
+       クエストそのものは、出した本人だけが status と closedAt を書き換えられる。
+       題名・予算・元の知識などは、出したあと動かせない
+       （受けた人が見ていた条件が、あとからすり替わらないようにするため）。 */
+    /* クエストの番号は2つの系列に分かれる。
+         一般（general）… ふつうのクエスト。#001 から
+         特殊（special）… 特殊なクエスト。こちらも #001 から
+       系列が違えば同じ #001 が両方にあるので、番号だけでは一意にならない。
+       枝番（1〜5、無しは0）と段階（入門・標準・実践、無しは空）も合わせて一意。
+
+       自動採番はやめた。運営が出すときに指定する。順番に縛られていたため、
+       一般 #003 を先に用意しておく、といったことができなかった。
+       通し番号の元帳（sp_quest_counters）はもう使わない。
+
+       重複防止は sp_quest_numbers の文書ID（予約札）で行う。
+       系列・番号・枝番・段階から1つの文字列を作り、それを文書IDにする。
+       同じIDの文書は2つ作れないので、それがそのまま重複防止になる。
+       ここは frontend/public/schoolpark/quest-store.js の numberKey と
+       一字一句そろえること。ずれると書き込みが弾かれる。
+
+       既存の番号なしのクエスト文書は、そのまま番号なしで残す（書き換えない）。 */
+    function questNumberPath(key) {
+      return /databases/$(database)/documents/sp_quest_numbers/$(key);
+    }
+    /* 予約札のID … {系列}-{番号3桁}-{枝番}-{段階}
+       例：general-002-1-入門 ／ general-003-0-なし ／ special-001-0-なし */
+    function questNumberKey(d) {
+      return d.series + '-'
+        + (d.questNumber < 10 ? '00' : (d.questNumber < 100 ? '0' : ''))
+        + string(d.questNumber) + '-'
+        + string(d.get('branch', 0)) + '-'
+        + (d.get('stage', '') == '' ? 'なし' : d.get('stage', ''));
+    }
+    function ordinaryQuestNumber(d, questId) {
+      return !d.keys().hasAny(['kind', 'founderSections', 'founderVersion'])
+        && questId != 'founder-quest-000'
+        && d.get('series', '') in ['general', 'special']
+        && d.get('questNumber', -1) is int
+        && d.get('questNumber', -1) >= 1 && d.get('questNumber', -1) <= 999
+        && d.get('branch', 0) is int
+        && d.get('branch', 0) >= 0 && d.get('branch', 0) <= 5
+        && d.get('stage', '') in ['', '入門', '標準', '実践']
+        /* 予約札がまだ無く、この書き込みで自分あてに立つこと */
+        && !exists(questNumberPath(questNumberKey(d)))
+        && getAfter(questNumberPath(questNumberKey(d))).data.questId == questId;
+    }
+    /* 通し番号の元帳。もう使わないが、記録は残す（読むだけ）。 */
+    match /sp_quest_counters/{id} {
+      allow read: if canAccessSchoolPark();
+      allow write: if false;
+    }
+    /* 予約札。運営だけが立てられる。いちど立てたら書き換えも削除もできない。
+       番号を別のクエストへ付け替えられないようにするため。 */
+    match /sp_quest_numbers/{key} {
+      allow read: if canAccessSchoolPark();
+      allow update, delete: if false;
+      allow create: if canAccessSchoolPark() && isOwner()
+        && request.resource.data.keys().hasOnly(['questId'])
+        && request.resource.data.questId is string
+        && request.resource.data.questId.size() > 0
+        /* 同じ書き込みで作られるクエストの番号と、この札のIDが一致すること */
+        && !exists(/databases/$(database)/documents/sp_quests/$(request.resource.data.questId))
+        && questNumberKey(getAfter(/databases/$(database)/documents/sp_quests/$(request.resource.data.questId)).data) == key;
+    }
+
+    match /sp_quests/{questId} {
+      allow read: if canAccessSchoolPark();
+      /* クエストは「仕事」なので、誰でも出せるものではない。
+         当面は運営だけ。自分名義であることも合わせて確かめる。
+
+         クエストは、どのギルドの活動かを持てる。
+           ・ギルドの議題から生まれたクエスト … guildId と fromProposalId の両方
+           ・直接出したクエスト             … guildId だけ、または何も無し
+           ・Quest #000                    … どちらも持たない（原点なので所属しない）
+         guildId は空でもよい。どのギルドにも属さない小さな試みを残すため。
+         ここで文書を見に行かないのは、1回の書き込みで見に行ける回数（10回）を
+         採番の確認で使い切っているため。中身の形だけを確かめる。 */
+      allow create: if canAccessSchoolPark() && isMyWallet(request.resource.data.get('owner', ''))
+        && isOwnerAddr(request.resource.data.get('owner', ''))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        /* 案内文。カードに出る呼びかけ。無くてもよい。 */
+        && request.resource.data.get('intro', '') is string
+        && request.resource.data.get('intro', '').size() <= 600
+        && request.resource.data.get('status', '') == 'OPEN'
+        && (request.resource.data.get('guildId', '') == ''
+            || guildIdShape(request.resource.data.get('guildId', '')))
+        && request.resource.data.get('fromProposalId', '') is string
+        && request.resource.data.get('fromProposalId', '').size() <= 64
+        && request.resource.data.get('fromProposalTitle', '') is string
+        && request.resource.data.get('fromProposalTitle', '').size() <= 120
+        /* 元の議題があるなら、どのギルドの議題だったかも必ず付く */
+        && (request.resource.data.get('fromProposalId', '') == ''
+            || guildIdShape(request.resource.data.get('guildId', '')))
+        && ordinaryQuestNumber(request.resource.data, questId);
+      /* 出した本人が「進行中にする」「完了にする」だけ。ほかの欄は動かせない。
+         運営はどの入り方でも変えられるようにしておく。
+         同じ運営でも、ウォレットで入ったときとLINE等で入ったときで
+         アドレスが変わるため、名義だけで見ると
+         「自分が出したクエストなのに自分で完了にできない」が起きる。 */
+      allow update: if canAccessSchoolPark() && questId != 'founder-quest-000'
+        && (isOwner() || isMyWallet(resource.data.get('owner', '')))
+        && changedOnly(['status', 'closedAt'])
+        && request.resource.data.status in ['OPEN', 'RUNNING', 'CLOSED'];
+      allow delete: if false;
+
+      match /commits/{addr} {
+        allow read: if canAccessSchoolPark();
+        allow create: if canAccessSchoolPark() && questId != 'founder-quest-000' && isMyWallet(addr)
+          // 受けるときに自分で「認められた」ことにはできない
+          && !request.resource.data.keys().hasAny(['approved', 'approvedAt', 'approvedBy']);
+        /* 運営だけが「実際に動いたことを確かめた」印を付けられる。
+           分配も、信用スコアの完走も、この印が立っている人だけが対象。
+           受けただけでは分配しない。名前など他の欄は動かせない。 */
+        /* 周回の数（approvedRounds）も運営が書けるようにする。
+
+           同じクエストを2周3周する人がいる。周回の数はサーバーが書くが、
+           10/1 までサーバーは EMUER を扱えず NOT_STARTED で断るので、
+           承認は管理画面から直接この記録へ書くことになる。
+           ここを許していなかったため、2周目を認めても完走が1のままだった。
+
+           数であること・減らないことだけ確かめる。減らせると、認めた
+           周回を無かったことにできてしまう。 */
+        allow update: if canAccessSchoolPark() && isOwner()
+          && changedOnly(['approved', 'approvedAt', 'approvedBy', 'approvedRounds', 'lastApprovedAt'])
+          && request.resource.data.approved is bool
+          && (!('approvedRounds' in request.resource.data)
+              || (request.resource.data.approvedRounds is int
+                  && request.resource.data.approvedRounds >= 1
+                  && request.resource.data.approvedRounds >= resource.data.get('approvedRounds', 0)));
+        // 受けたあとで降りることは認める。ただし自分の分だけ。
+        allow delete: if canAccessSchoolPark() && questId != 'founder-quest-000' && isMyWallet(addr);
+      }
+
+      /* クエストの途中報告。書けるのは、そのクエストを実際に受けた人だけ。
+         受けた記録（commits/{番号}）があることを、その場で確かめる。
+         いちど書いた報告は、書き換えも削除もできない。 */
+      match /logs/{logId} {
+        allow read: if canAccessSchoolPark();
+        allow create: if canAccessSchoolPark() && questId != 'founder-quest-000' && isMyWallet(request.resource.data.get('author', ''))
+          && exists(/databases/$(database)/documents/sp_quests/$(questId)/commits/$(request.resource.data.author))
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() <= 2000
+          && request.resource.data.get('kind', '') in ['やってみた', 'つまずいた', '気づいた']
+          /* 一般 #001 は Emu 投稿を試す仕事なので、その出どころを必須にする。
+             ほかのクエストでは投稿なしの報告も認める。
+             どの投稿かはここでは確かめない（1回の書き込みで見に行ける回数を使うため）。
+             長さだけを縛る。 */
+          && request.resource.data.get('fromPostId', '') is string
+          && request.resource.data.get('fromPostId', '').size() <= 80
+          && (get(/databases/$(database)/documents/sp_quests/$(questId)).data.get('series', '') != 'general'
+              || get(/databases/$(database)/documents/sp_quests/$(questId)).data.get('questNumber', 0) != 1
+              || request.resource.data.get('fromPostId', '').size() > 0)
+          && request.resource.data.get('fromPostTitle', '') is string
+          && request.resource.data.get('fromPostTitle', '').size() <= 120
+          /* 添える画像は「やってみた」だけ。端末で縮めた JPEG の data URL を3枚まで。
+             1枚の長さを縛り、記録1件の上限（約1MB）を超えないようにする。 */
+          && request.resource.data.get('images', []) is list
+          && request.resource.data.get('images', []).size() <= 3
+          && (request.resource.data.get('images', []).size() == 0
+              || request.resource.data.get('kind', '') == 'やってみた')
+          && (request.resource.data.get('images', []).size() < 1
+              || (request.resource.data.images[0] is string
+                  && request.resource.data.images[0].size() <= 600000
+                  && request.resource.data.images[0].matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')))
+          && (request.resource.data.get('images', []).size() < 2
+              || (request.resource.data.images[1] is string
+                  && request.resource.data.images[1].size() <= 600000
+                  && request.resource.data.images[1].matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')))
+          && (request.resource.data.get('images', []).size() < 3
+              || (request.resource.data.images[2] is string
+                  && request.resource.data.images[2].size() <= 600000
+                  && request.resource.data.images[2].matches('data:image/jpeg;base64,[A-Za-z0-9+/=]+')));
+        allow update, delete: if false;
+      }
+    }
+
+    /* ───────── 自分の宿題 ─────────
+
+       クエストが「みんなに見える仕事」なら、こちらは「自分にしか見えない段取り」。
+       置き場は sp_tasks/{uid}/items/{id}。文書のIDが Firebase の uid なので、
+       本人以外はルールの時点で読めない。運営が覗く道も作っていない。
+
+       端末をまたいで同じものが出るように、端末ではなくここに置く。
+
+       ほかの文書を見に行かないので、参照は0回。 */
+    match /sp_tasks/{uid} {
+      allow read, write: if canAccessSchoolPark() && isMe(uid);
+
+      match /items/{taskId} {
+        allow read, delete: if canAccessSchoolPark() && isMe(uid);
+        allow create, update: if canAccessSchoolPark() && isMe(uid)
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 200
+          && request.resource.data.get('note', '') is string
+          && request.resource.data.get('note', '').size() <= 500
+          && request.resource.data.get('done', false) is bool;
+      }
+    }
+
+    /* ───────── ギルドへの参加を認めた人 ─────────
+
+       文書のIDはパスポート番号。あるかどうかだけを見る。
+       書けるのは運営だけ。誰でも読める（自分が入れるか分かるように）。
+
+       信用スコアの合計はルールでは数えられないので、
+       「一定に達したかどうか」の答えだけをここに置く。
+       いまは運営が管理画面から書く。あとでサーバーが自動で書くようにする。 */
+    match /sp_trust/{addr} {
+      allow read: if canAccessSchoolPark();
+      allow write: if canAccessSchoolPark() && isOwner();
+    }
+
+    /* ───── ギルド ─────
+
+       ギルドは「同じ目的・活動領域に関心を持つ人が集まる場所」。
+       最初の5つ（LEARN / WORK / PLAY / CONNECT / WEB3）は画面の中に書いてある。
+       ここは、そのあとで増えるぶんの置き場。
+       「新しいギルドを作りたい」という議題が通ったら、運営がここへ1件足す。
+       画面は、書いてある5つとここの中身をまとめて出す。
+
+       一般ギルド／特殊ギルドは、ギルドの分類ではない。
+       議題ごとの投票資格（sp_votes の kind）としてこれまでどおり残している。
+       同じギルドの中に、誰でも投票できる議題と、関われる人だけの議題が並ぶ。 */
+    match /sp_guilds/{guildId} {
+      allow read: if canAccessSchoolPark();
+      allow create, update: if canAccessSchoolPark() && isOwner()
+        && guildIdShape(guildId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.get('concept', '') is string
+        && request.resource.data.get('concept', '').size() <= 120
+        && request.resource.data.get('body', '') is string
+        && request.resource.data.get('body', '').size() <= 600;
+      allow delete: if false;   /* 一度できたギルドは消さない。議題とクエストが紐づいているため */
+    }
+
+    /* ───── ギルドへの「参加したい」と「応援する」 ─────
+
+       いいねではない。
+         joins    … 自分もこの領域で活動・貢献したい
+         supports … 活動まではできないが、方向性に共感・期待している
+
+       どちらも 1つのパスポートにつき1回だけ。
+       文書のIDがパスポート番号なので、二重には置けない。
+       気が変わったときのために、自分の分だけ取り消せる。
+
+       投票権とは関係が無い。議題の投票資格はこれまでどおり
+       一般（誰でも）／特殊（関われる人だけ）で決まる。 */
+    match /sp_guild_members/{guildId} {
+      allow read: if canAccessSchoolPark();
+      allow write: if false;    /* 数は下の2つを数えて出す。まとめの数字は置かない */
+
+      match /joins/{addr} {
+        allow read: if canAccessSchoolPark();
+        allow create: if canAccessSchoolPark() && isMyWallet(addr)
+          && request.resource.data.get('name', '') is string
+          && request.resource.data.get('name', '').size() <= 60
+          && request.resource.data.get('at', 0) is int;
+        allow update: if false;
+        allow delete: if canAccessSchoolPark() && isMyWallet(addr);
+      }
+
+      match /supports/{addr} {
+        allow read: if canAccessSchoolPark();
+        allow create: if canAccessSchoolPark() && isMyWallet(addr)
+          && request.resource.data.get('name', '') is string
+          && request.resource.data.get('name', '').size() <= 60
+          && request.resource.data.get('at', 0) is int;
+        allow update: if false;
+        allow delete: if canAccessSchoolPark() && isMyWallet(addr);
+      }
+    }
+
+    /* ───────── 公園 ─────────
+
+       締切も報酬もない場所。ボード・挑戦・部屋・集まりの4種類を
+       1つのコレクションに入れ、kind で分ける。
+       出せるのは当面は運営だけ。「乗る」は誰でもできる。
+
+       乗った記録は joins/{パスポート番号}。文書のIDが誰かを表すので、
+       同じ人が二重に乗ることはできない。降りるのは自分の分だけ。 */
+    match /sp_park/{itemId} {
+      allow read: if canAccessSchoolPark();
+      /* ボードと挑戦は light 以上なら誰でも。集まりは運営だけ。
+         「いま開いてる部屋」は行き先を持てず成り立たなかったので、種類ごと外した。 */
+      allow create: if canAccessSchoolPark() && isMyWallet(request.resource.data.get('by', ''))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.get('body', '') is string
+        && request.resource.data.get('body', '').size() <= 600
+        && (
+          (request.resource.data.get('kind', '') in ['board', 'dumb'] && canPark())
+          || (request.resource.data.get('kind', '') == 'event'
+              && isOwnerAddr(request.resource.data.get('by', '')))
+        );
+      /* 出した本人が、しまうことだけできる。
+         クエストと同じ理由で、運営はどの入り方でも触れるようにしておく。 */
+      allow update: if canAccessSchoolPark() && (isOwner() || isMyWallet(resource.data.get('by', '')))
+        && changedOnly(['hidden']);
+      allow delete: if canAccessSchoolPark() && (isOwner() || isMyWallet(resource.data.get('by', '')));
+
+      match /joins/{addr} {
+        allow read: if canAccessSchoolPark();
+        allow create: if canAccessSchoolPark() && isMyWallet(addr);
+        allow update: if false;
+        allow delete: if canAccessSchoolPark() && isMyWallet(addr);
+      }
+    }
+
+    /* ───────── 知恵カード ─────────
+
+       知恵は「やった人」が置く。だから条件は、そのクエストを
+       実際に受けていること。受けた記録（commits/{番号}）をその場で確かめる。
+       途中報告（logs）と同じ確かめ方にそろえてある。
+
+       前は「クエストの状態が CLOSED であること」を見ていた。
+       CLOSED にできるのは出した人（運営）だけなので、受けた人は
+       自分の知恵カードを置けなかった。完走条件が
+       「報告3回＋知恵カード1枚＋運営の確認」なのに、まん中の1枚を
+       自分で満たす道が無い、という状態だった。
+
+       クエストが実際にあることは別に確かめる。受けた記録だけを見ると、
+       ありもしないクエストの下に受けた記録を作って、そこへ
+       知恵カードをぶら下げられてしまう（受けるときの決まりは
+       クエストの有無を見ていない）。
+       見に行く回数は前と同じ2回なので、上限（10回）は変わらない。
+
+       いちど置いた知恵は書き換えも削除もできない。 */
+    match /sp_wisdom/{wisdomId} {
+      allow read: if canAccessSchoolPark();
+      /* 置くのはサーバーだけ（Admin SDK はこのルールを通らない）。
+
+         「知恵カードは、完了したクエストからしか生まれない」。
+         ここは「そのクエストを受けているか」しか見ていなかったので、
+         受けるだけで何枚でも置けた。信用スコアの「知恵 ×5」が
+         そのぶん増えるので、働かずに点を積める状態だった。
+
+         「完了した」は「承認済み」とは読めない。承認の口のほうが
+         知恵カード1枚を完走の証拠として要求しているので、
+         カードに承認を求めると、どちらも永久に起きない。
+         守るべきは「やってみた・つまずいた・気づいた が揃っている」。
+
+         それはここでは数えられない。報告は自動のIDで並んでいて、
+         ルールはサブコレクションを数えたり検索したりできないため。
+         だからサーバーで数える（backend/quest-completion.js の
+         POST /:questId/wisdom）。ここは閉じる。 */
+      allow create: if false;
+      allow update, delete: if false;
+
+      /* 引用。1つのパスポートにつき1回。数はここを数えて出す。
+         自分の知恵カードは引用できない。引用の数は信用スコア（×3）の
+         もとになるので、自分で押せると自分で点を増やせてしまう。
+         画面でもボタンを隠しているが、押せる道が残らないようここでも止める。 */
+      match /cites/{addr} {
+        allow read: if canAccessSchoolPark();
+        allow create: if canAccessSchoolPark() && isMyWallet(addr)
+          && get(/databases/$(database)/documents/sp_wisdom/$(wisdomId)).data.get('author', '') != addr;
+        allow update: if false;
+        allow delete: if canAccessSchoolPark() && isMyWallet(addr);
+      }
+    }
+
+    /* ───────── 公式パスの持ち主 ─────────
+
+       ここに自分のアドレスの文書があると、公式パスの持ち主として扱われる。
+       画面では Emu plus 相当の表示になり、サーバー側の権利判定
+       （entitlement.js）でも plus として通り、ギルドの議題も出せるようになる。
+
+       ところが、ここは専用のルールが無く、いちばん下の受け皿に落ちていた。
+       つまり誰でも自分のアドレスの文書を作れて、
+       月3,000円ぶんの権利を無料で手に入れられる状態だった。
+
+       読むのは誰でもよい（自分に権利があるかを画面が確かめるため）。
+       書くのは止める。運営が入れるときは、Firebase の管理画面か
+       サーバー（Admin SDK）から入れる。どちらもこのルールを通らない。 */
+    match /paid_users/{addr} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    /* ═══════════ SchoolPark ID（Passport ID） ═══════════
+
+       「この人は誰か」を表す固定の番号。ログイン方法（LINE / Google /
+       メール / ウォレット）は、この番号へ入るための入口にすぎない。
+
+       番号を作れるのはサーバーだけ（Admin SDK はルールを通らない）。
+       ブラウザからは一切書けない。これは次の2つを守るため。
+
+         1. ログインのたびに番号が増えないこと
+         2. 他人のパスポートへ、自分のログイン方法を横から足せないこと
+
+       詳しくは backend/identity.js と docs/schoolpark-id.md。 */
+
+    /* 番号そのもの。読めるのは本人と運営だけ。
+       自分の番号かどうかは ches_accounts/{uid}.spid で照らす
+       （この欄はサーバーしか書けないので、名乗り変えはできない）。 */
+    match /sp_identities/{spid} {
+      allow read: if signedIn()
+        && (get(accountPath()).data.get('spid', '') == spid
+            || isOwnerData(get(accountPath()).data));
+      allow write: if false;
+    }
+
+    /* 認証情報 → 番号 の対応表。ここが「一人一つ」の要。
+
+       ブラウザからは読むことも書くこともできない。
+         ・書けると、他人の番号へ自分のログイン方法を足せてしまう
+         ・読めると、番号を片端から引いて回れてしまう（列挙）
+       サーバーは Admin SDK なのでルールを通らず、これまでどおり動く。 */
+    match /sp_auth_links/{linkId} {
+      allow read, write: if false;
+    }
+
+    /* ログイン方法を足すときの引換券。10分・1回きり。
+       券の中身が読めると他人の番号へ足せてしまうので、完全に閉じる。 */
+    match /sp_link_tickets/{ticketId} {
+      allow read, write: if false;
+    }
+
+    /* 同じ人かもしれない別番号の候補。運営が中身を見て決めるためのもの。
+       勝手に統合・削除はしない（サーバーも自動では動かさない）。 */
+    match /sp_identity_duplicates/{docId} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    /* 発行・連携・拒否の記録。あとから追えるようにするためのもの。 */
+    match /sp_identity_audit/{docId} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    /* 招待リンクの合言葉（一般クエスト #005）。
+
+       合言葉 → 招待した人の番号、と、その下に招待した相手の一覧。
+       書けるのはサーバーだけ。ブラウザから書けると、招待した件数を
+       自分で増やせてしまう（＝完走を自作できてしまう）。
+
+       読むのも閉じる。自分の合言葉は /api/identity/invite が返すので、
+       ブラウザがここを読む必要はない。開けておくと、合言葉から
+       他人の番号が引けてしまう。 */
+    match /sp_invite_codes/{code} {
+      allow read: if isOwner();
+      allow write: if false;
+      match /invited/{spid} {
+        allow read: if isOwner();
+        allow write: if false;
+      }
+    }
+
+    /* ───────── 運営が書く読みもの ─────────
+
+       いまは sp_docs/year-goals（SchoolParkの年内目標）の1件だけ。
+       クエスト一覧の頭にカードで出し、押すと全文が開く。
+
+       読むのは誰でもよい。これから来る人に「何を目指しているのか」を
+       先に見せる場所なので、入る前でも読めるようにしておく。
+       書けるのは運営だけ。中身は運営の言葉として出るので、
+       ほかの人が書き換えられると、言っていないことを言ったことにできる。
+
+       blocks は上から順に並べる配列。種類は heading / text / table / image。
+       Firestore は「配列の中の配列」を持てないので、表の行は
+       { cells: [...] } の形で持つ。 */
+    /* 1つ1つのブロックの中身は、ここでは確かめない。
+       記録の決まりでは配列を1件ずつ回せないため。
+       形の崩れたブロックは、読むときに画面側（index.html の _spYearBlock）が
+       落とす。書けるのは運営だけなので、ここは件数と全体の形だけを縛る。 */
+    match /sp_docs/{docId} {
+      allow read: if true;
+      allow create, update: if canAccessSchoolPark() && isOwner()
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.get('summary', '') is string
+        && request.resource.data.get('summary', '').size() <= 400
+        && request.resource.data.blocks is list
+        && request.resource.data.blocks.size() <= 200
+        && request.resource.data.get('updatedAt', 0) is int;
+      /* 消すのは運営だけ。書き換えの履歴は残さない（1件しか置かないため）。 */
+      allow delete: if canAccessSchoolPark() && isOwner();
+    }
+
+    /* ───────── トレジャリーの入出金 ─────────
+
+       クエストに付いた予算は「これから払う約束」でしかない。
+       実際にいくら持っているかは、ここに記録した入金と支出で決まる。
+
+       DAOの会計なので、中身は誰でも見られる。
+       書けるのは運営だけ。金額はあとから書き換えられない
+       （直すときは、打ち消しの記録をもう1本入れる）。 */
+    match /sp_treasury/{entryId} {
+      allow read: if canAccessSchoolPark();
+      allow create: if canAccessSchoolPark() && isOwner()
+        && request.resource.data.get('kind', '') in ['in', 'out']
+        && request.resource.data.get('currency', '') in ['EMUER', 'JPYC', 'JPY']
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.label is string
+        && request.resource.data.label.size() > 0
+        && request.resource.data.label.size() <= 120
+        && request.resource.data.get('note', '') is string
+        && request.resource.data.get('note', '').size() <= 400;
+      /* 消すのは運営だけ。書き換えは認めない。 */
+      allow update: if false;
+      allow delete: if canAccessSchoolPark() && isOwner();
+    }
+
+    // Knowledge Lab: Admin SDK + verified API only. No direct client data access.
+    match /{labCollection}/{document=**} {
+      allow read, write: if labCollection.matches('knowledge_lab_.*') && false;
+    }
+
+    // 既存の施設・議論等は現状維持。上記の重要コレクションはここへ到達しない。
+    match /{coll}/{document=**} {
+      /* 未使用の旧コレクションも汎用許可へ漏らさない。 */
+      allow read, write: if !coll.matches('knowledge_lab_.*')
+        && coll != 'sp_members'
+        && coll != 'sp_votes'
+        && coll != 'sp_quests'
+        && coll != 'sp_quest_counters'
+        && coll != 'sp_quest_numbers'
+        && coll != 'sp_quest_certificates'
+        /* 限定星。運営が配り、サーバーだけが書く。
+           ここに入れないと、包括許可のほうで誰でも自分に星を書けてしまい、
+           そのままNFTまで発行できてしまう。 */
+        && coll != 'sp_stars'
+        /* EMUER v2 の予算・貢献・報酬・認可履歴はサーバー専用。
+           Admin SDK は Rules を経由しない。 */
+        && !coll.matches('emuer_v2_.*')
+        /* みてみる（商品・注文・使った送金）。お金の記録なのでサーバー専用。
+           ここに入れないと、誰でも自分の注文を「支払い済み」に書けてしまう。 */
+        && !coll.matches('mitemiru_.*')
+        && coll != 'sp_tasks'
+        && coll != 'sp_wisdom'
+        && coll != 'sp_park'
+        && coll != 'sp_trust'
+        && coll != 'sp_guilds'
+        && coll != 'sp_guild_members'
+        && coll != 'sp_treasury'
+        && coll != 'sp_docs'
+        /* SchoolPark ID の一式。汎用許可へ漏らさない。 */
+        && coll != 'sp_identities'
+        && coll != 'sp_auth_links'
+        && coll != 'sp_link_tickets'
+        && coll != 'sp_identity_duplicates'
+        && coll != 'sp_identity_audit'
+        && coll != 'paid_users'
+        && coll != 'emuer_offchain'
+        && coll != 'emuer_offchain_ledger'
+        && coll != 'ches_accounts'
+        && coll != 'ches_verified_accounts'
+        && coll != 'rank_badges'
+        && coll != 'evolve_users'
+        && coll != 'sp_stats'
+        && coll != 'sp_entrants'
+        && coll != 'sp_brand_entrants'
+        && coll != 'sp_pass_logs'
+        && coll != 'sp_paid_pass'
+        && coll != 'sp_free_pass'
+        && coll != 'sp_activity_limits'
+        && coll != 'ches_wallets'
+        && coll != 'posts'
+        && coll != 'knowledge_drafts'
+        && coll != 'post_good_impacts'
+        && coll != 'post_changes'
+        && coll != 'knowledge_requests'
+        && coll != 'knowledge_answers'
+        && coll != 'emuer_bounty_claims'
+        && coll != 'ichinichi_days'
+        && coll != 'ichinichi_goods'
+        && coll != 'ichinichi_reports'
+        && coll != 'ichinichi_adopts'
+        && coll != 'scheduled_posts'
+        && coll != 'sp_notifications'
+        && coll != 'room1_contents'
+        && coll != 'room1_submissions'
+        && coll != 'contact_submissions'
+        && coll != 'user_profiles'
+        && coll != 'emuer_rate'
+        && coll != 'airdrop_registrations'
+        && coll != 'secret_door_rewards'
+        && coll != 'monthly_distributions'
+        && coll != 'bonus_rewards'
+        // 個別ルールの契約・利用枠・招待の制限を包括許可で上書きしない。
+        && coll != 'entitlements'
+        && coll != 'plan_usage'
+        && coll != 'plan_counts'
+        && coll != 'sp_invite_codes'
+        && coll != 'subscriptions'
+        && coll != 'billing_events'
+        && coll != 'refund_requests'
+        && coll != 'kyc_submissions'
+        && coll != 'dialogue_sessions'
+        && coll != 'dialogue_slots'
+        && coll != 'admin_audit_logs'
+        && coll != 'emu_feedback'
+        && coll != 'discussion_conclusions'
+        && coll != 'discussion_rooms'
+        && coll != 'member_profiles'
+        && coll != 'camellia_users'
+        && coll != 'camellia_admin'
+        && coll != 'camellia_community'
+        && coll != 'camellia_reports'
+        /* Camellia のログイン記録（LINE・Passport との対応表、引換券）。サーバー専用。
+           誰でも書けると、引換券を自作して他人の Camellia アカウントへ入れてしまう。 */
+        && !coll.matches('camellia_auth_.*');
+    }
+  }
+}

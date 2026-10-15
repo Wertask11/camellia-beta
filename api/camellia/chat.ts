@@ -11,6 +11,9 @@ import {
   verifyFirebaseIdToken,
 } from '../../lib/conversation/gemini-server.js';
 
+import { adminConfigured, serverAdmin } from '../../lib/server/admin.js';
+import { createSharedRateLimiter } from '../../lib/server/shared-limit.js';
+import { getSafeTodayContext } from '../../lib/conversation/today-server.js';
 import { createModelCooldown, generateWithModelRecovery } from '../../lib/conversation/provider-recovery.js';
 
 type ApiRequest = {
@@ -40,8 +43,11 @@ async function getTodayMood(uid: string, token: string) {
 
 const handler = createGeminiChatHandler({
   env: process.env,
+  rateLimitMode:adminConfigured()?'firestore':process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED==='true'?'unavailable':'instance',
   verifyToken: (token) => verifyFirebaseIdToken(token, { projectId: PROJECT_ID }),
   getTodayMood,
+  getTodayContext: getSafeTodayContext,
+  ...(adminConfigured() ? {limiter:{take:(uid:string)=>createSharedRateLimiter(serverAdmin().db).take(uid)}} : process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true' ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
   generate: async (contents, systemInstruction) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY_NOT_CONFIGURED');
@@ -86,6 +92,7 @@ const handler = createGeminiChatHandler({
     if (!text) {
       console.error('camellia_generation_failed', { stage: 'empty_output', finishReason: response.candidates?.[0]?.finishReason, blockReason: response.promptFeedback?.blockReason });
     }
+    if(!text)throw Object.assign(new Error('GENERATION_EMPTY'),{code:response.promptFeedback?.blockReason || response.candidates?.[0]?.finishReason==='SAFETY' ? 'SAFETY_BLOCK':'INVALID_RESPONSE'});
     return text;
   },
 });
