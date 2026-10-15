@@ -85,3 +85,7 @@ User-provided Vercel logs show provider_request status 503 at 19:59:58 and 20:00
 
 ## Attempt timeout recovery
 User screenshot shows one generated reply followed by POST 504. The old 8s attempt deadline did not recover on locally aborted requests. Each attempt now has 14s, generation has 28s total, and the browser waits up to 40s including auth/context. A per-attempt timeout can use the alternate model once; overall cancellation still prevents further calls. Auth/quota/safety boundaries unchanged. Live reliability remains unverified.
+
+## Lightweight degraded service (October 15)
+User evidence still shows intermittent generated replies and 502/504. Replace the default alternate 3.6 Flash with stable 3.1 Flash-Lite, configured with documented minimal thinking and 512 total output tokens. Keep configured primary/model flag semantics. Cache primary 5xx/attempt-timeout unavailability for two minutes per Function instance so successive turns can directly use the lightweight alternate. This is best-effort local health state, not shared infrastructure. No new env setting is required unless an explicit GEMINI_FALLBACK_MODEL override exists. Actual user-account reliability and model access remain unverified.
+Reference: https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite and https://ai.google.dev/gemini-api/docs/gemini-3
