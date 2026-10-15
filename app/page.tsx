@@ -7,7 +7,7 @@ import { ACTIONS } from '@/data/actions';
 import { useCamelliaStore } from '@/hooks/useCamelliaStore';
 import {useCurrentTime} from '@/hooks/useCurrentTime';
 import { recommend } from '@/lib/recommendation';
-import { CamelliaScreen } from '@/screens/CamelliaScreen';
+import { ConversationWorkspace } from '@/screens/ConversationWorkspace';
 import { DiscoverScreen } from '@/screens/DiscoverScreen';
 import { MyScreen } from '@/screens/MyScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
@@ -298,7 +298,7 @@ export default function Page() {
         />
       )}
       {tab === 'camellia' && (
-        <CamelliaScreen
+        <ConversationWorkspace
           onRemember={store.remember}
           onTrack={store.track}
           treeContext={treeContext}

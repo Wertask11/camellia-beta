@@ -8,9 +8,10 @@
 - localStorage v3、既存SchoolPark Firestore同期・復元・削除、プロフィール、My Tree、明示保存Memory。
 - Today One Flow：Check → 今日のあなた → 過ごし方 → 今日の一枚 → 今日どうする？ → 明日のCamellia。
 - JST日次比較と月曜始まりの週比較（今週5日以上の記録がある場合のみ週表示）。原因を推測せず、任意入力がない項目は比較しません。
-- Discover：74候補、6カテゴリ。Todayの提案を除き、表示・選択・完了・興味なし・保存履歴を順位に反映。短い行動はsteps → できた / あとで / やめる。
+- Discover：74候補、6カテゴリ。Todayの提案を除き、表示・選択・完了・興味なし・保存履歴を順位に反映。短い行動はsteps → できた / あとで / やめる。6カテゴリの専用イラストを同梱WebPで表示。
+- 会話一覧：新規会話・検索・履歴選択。既存v3履歴を保持し、選択した会話だけへ保存・再試行。入力欄は画面内、メッセージのみスクロール。
 - Gemini会話：Vercel Node Function、認証・最小文脈・短い履歴・Safety・有界なmodel recovery。既存ルールengineはOFF時に利用可能。
-- Circle MVPのコード：6テーマ、参加/退出、専用表示名、投稿/編集/削除、コメント、やさしいreaction、通報、ブロック/解除、運営削除。**Release Gate未達のため初期OFF。現在LIVEとは認定しません。**
+- Circle MVPのコード：6テーマ、参加/退出、専用表示名、投稿/編集/削除、コメント、やさしいreaction、通報、ブロック/解除、運営削除。**Release Gate未達のため初期OFF。Discover上部に入口と公開準備中の表示。現在LIVEとは認定しません。**
 - PlaceはComing Soon。店舗・予約・決済・位置情報は提供しません。
 
 ## 開発・検証

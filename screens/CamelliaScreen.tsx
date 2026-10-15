@@ -46,6 +46,7 @@ function redactKnownNamesForState(value: string, state: CamelliaState) {
 }
 
 export function CamelliaScreen({
+  conversationId,
   state,
   recommendations,
   onSaveConversation,
@@ -58,6 +59,7 @@ export function CamelliaScreen({
   onRemember,
   onTrack,
 }: {
+  conversationId?: string;
   state: CamelliaState;
   recommendations: Recommendation[];
   onSaveConversation: (user: string, assistant: string, intent: ConversationIntent, topics: ConversationTopic[], provider?: Provider) => void;
@@ -74,11 +76,13 @@ export function CamelliaScreen({
   const starters = conversationStarters(state, currentTime, Boolean(treeContext));
   const check = todayCheck(state, currentTime);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<AIMessage[]>(state.aiConversations[0]?.messages ?? []);
+  const [messages, setMessages] = useState<AIMessage[]>((conversationId ? state.aiConversations.find(item=>item.id===conversationId) : state.aiConversations[0])?.messages ?? []);
   const [memoryCandidate, setMemoryCandidate] = useState('');
   const [last, setLast] = useState<ReturnType<typeof respond>>();
   const [lastSafety, setLastSafety] = useState(false);
   const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled' | 'unavailable'>('checking');
+  const messageEnd = useRef<HTMLDivElement>(null);
+  useEffect(()=>{messageEnd.current?.scrollIntoView?.({block:'end',behavior:'smooth'});},[messages]);
   const requestInFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -212,7 +216,9 @@ export function CamelliaScreen({
       <div className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
+        <div ref={messageEnd} aria-hidden="true"/>
       </div>
+      <div className="conversation-followups">
       {chatError && <output className="chat-error" aria-live="polite"><span className="sr-only">{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
@@ -220,6 +226,7 @@ export function CamelliaScreen({
       {last?.showCircle && <div className="conversation-action"><button onClick={() => onNavigate('circle')}><MessageCircle/>安心して話せるCircleを見る</button></div>}
       {last?.topics.some((topic) => ['RELATIONSHIP', 'FAMILY', 'FRIEND', 'LOVE'].includes(topic)) && <button className="text-button" onClick={onTree}>この人とのこと、My Treeに残しておく？</button>}
       {memoryCandidate && <section className="panel"><h2>次の会話のために覚えておく？</h2><p>{memoryCandidate}</p><p className="meta">Myから確認・削除できます。会話のすべてをMemoryにはしません。</p><button className="secondary-button" onClick={() => { onRemember(memoryCandidate); setMemoryCandidate(''); }}>この一言を覚えておく</button><button className="text-button" onClick={() => setMemoryCandidate('')}>今は保存しない</button></section>}
+      </div>
       <div className="conversation-entry">
         <p className="meta">話し始めに迷ったら、ここから。</p>
         <div className="quick-inputs" aria-label="会話のきっかけ">{starters.map((starter) => <button type="button" key={starter.id} disabled={sending || retrying || availability === 'checking'} onClick={() => { onTrack('conversation_starter_selected', { starter_id: starter.id }); void send(starter.text); }}>{starter.text}</button>)}</div>
