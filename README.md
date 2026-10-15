@@ -49,3 +49,7 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 - 契約確認：GEMINI_DATA_POLICY。まだ不明ならunknown。
 
 `security/README.md`に既存Rules境界・必要なindex・TTL・moderator設定を記載。snapshot rulesを他サービスの本番Rulesへ上書きしないでください。実credential・index・TTL・deployed Rulesを確認し、本人ログインでPreviewの全導線と複数ユーザー操作を検証してから有効化します。このPhase 1 PRは自動merge/本番ONを行いません。
+
+### Server SDK互換性
+
+`firebase-admin`は`13.10.0`へ固定しています。14系の認証依存（jwks-rsa4→jose6）は同期require(ESM)に依存し、これが無効なserverless runtimeでERR_REQUIRE_ESMになります。更新時は`node tests/server-sdk-compatibility.mjs`とFirestore emulatorを通してください。Gemini公式SDKは変更していません。

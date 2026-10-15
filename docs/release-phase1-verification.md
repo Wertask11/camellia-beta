@@ -88,3 +88,11 @@ Fixed an independent confirmed client bug: failed/invalid/timed-out GET was trea
 Split API status/feature gating from optional SDK/Admin runtime imports. GET can return status without loading those dependencies; failed runtime initialization returns a safe structured503 and logs only stage/code. Bootstrap tests cover missing configuration, OFF, enabled status, unauthenticated request rejection, and deliberately broken runtime isolation (five passes). Real Gemini and authenticated Preview acceptance remain pending.
 
 Packaged-function check: official @vercel/node24.0.1 builder produced1367 files. Extracted output imported in Node24; test-only flags/key placeholder (no real credential), GET200 with enabled:true, SDK/Admin runtime loads and unauthenticated POST401. No provider call or authentication impersonation occurred. This does not prove the deployed500 cause or live Gemini availability; fresh Preview GET/POST and Vercel logs remain required.
+
+## Confirmed runtime failure: 2026-10-16 JST
+
+User supplied deployed POST503 log: runtime_initialization / ERR_REQUIRE_ESM. Reproduced the exact failure using the previously packaged Function with `node --no-experimental-require-module`: jwks-rsa4.0.1 CommonJS requires jose6 ESM via firebase-admin14.5.0. Default local Node24 permits this require and masked the incompatibility; the earlier smoke test was insufficient.
+
+Pinned firebase-admin13.10.0 exactly (jwks-rsa3.2.2 uses its jose4 dependency). Added a permanent import regression with synchronous require(ESM) disabled for Google GenAI and all used Firebase Admin entrypoints. Same restrictive import succeeds after the pin. Gemini SDK/model, feature flags, user data and existing services are unchanged. Packaged-function restrictive-mode, emulator and regular validation results are recorded in the PR after completion. Live generated conversation remains a separate acceptance gate.
+
+After-pin verification: restrictive-mode packaged Function1044 files, GET200 / unauthenticated POST401 PASS; direct server SDK import regression PASS; Firestore emulator23 PASS (ownership, moderation, same-user/global shared quotas); Gemini88 PASS; API bootstrap5 PASS. Default local import success is no longer used as sole runtime compatibility evidence.
