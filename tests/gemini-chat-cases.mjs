@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const server = await createServer({ configFile: false, root, resolve: { alias: { '@': root } }, server: { middlewareMode: true }, appType: 'custom' });
 const chat = await server.ssrLoadModule('/lib/conversation/gemini-server.ts');
 const privacy = await server.ssrLoadModule('/lib/conversation/privacy.ts');
-const { generateWithModelRecovery } = await server.ssrLoadModule('/lib/conversation/provider-recovery.ts');
+const { createModelCooldown, generateWithModelRecovery } = await server.ssrLoadModule('/lib/conversation/provider-recovery.ts');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed += 1; console.log(`PASS ${name}`); };
 
@@ -44,6 +44,22 @@ try {
   });
   await check('overall timeout never starts another attempt',async()=>{
     let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:AbortSignal.timeout(5),attemptTimeoutMs:100,request:async(_,signal)=>{calls++;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>resolve('late'),200);signal.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason)},{once:true});});}}),{name:'TimeoutError'});assert.equal(calls,1);
+  });
+
+  await check('successive turns avoid unavailable primary during cooldown',async()=>{
+    const health=createModelCooldown();const calls=[];
+    const send=()=>generateWithModelRecovery({...health.select('primary','lite'),signal:new AbortController().signal,onFailure:metadata=>health.failed(metadata),request:async(model)=>{calls.push(model);if(model==='primary')throw {status:503};health.succeeded(model);return '短い会話';}});
+    await send();await send();assert.deepEqual(calls,['primary','lite','lite']);
+  });
+  await check('primary is probed again after cooldown expires',()=>{
+    let now=0;const health=createModelCooldown({now:()=>now,cooldownMs:100});
+    health.failed({model:'primary',status:503,timedOut:false});assert.equal(health.select('primary','lite').primary,'lite');now=100;assert.equal(health.select('primary','lite').primary,'primary');
+  });
+  await check('attempt timeouts mark primary unhealthy but quota errors do not',()=>{
+    const health=createModelCooldown();health.failed({model:'primary',status:429,timedOut:false});assert.equal(health.select('primary','lite').primary,'primary');health.failed({model:'primary',timedOut:true});assert.equal(health.select('primary','lite').primary,'lite');health.succeeded('primary');assert.equal(health.select('primary','lite').primary,'primary');
+  });
+  await check('disabled alternate does not bypass configured primary',()=>{
+    const health=createModelCooldown();health.failed({model:'primary',status:503,timedOut:false});assert.deepEqual(health.select('primary',''),{primary:'primary',fallback:''});
   });
 
   const redactCases = [

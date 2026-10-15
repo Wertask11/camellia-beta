@@ -11,7 +11,7 @@ import {
   verifyFirebaseIdToken,
 } from '../../lib/conversation/gemini-server.js';
 
-import { generateWithModelRecovery } from '../../lib/conversation/provider-recovery.js';
+import { createModelCooldown, generateWithModelRecovery } from '../../lib/conversation/provider-recovery.js';
 
 type ApiRequest = {
   method?: string;
@@ -24,6 +24,7 @@ type ApiResponse = {
 };
 
 const PROJECT_ID = 'emusch-2a111';
+const modelCooldown = createModelCooldown();
 
 async function getTodayMood(uid: string, token: string) {
   const date = getTodayJstDate();
@@ -48,19 +49,19 @@ const handler = createGeminiChatHandler({
     let response;
     try {
       response = await generateWithModelRecovery({
-      primary: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      fallback: process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.6-flash',
+      ...modelCooldown.select(process.env.GEMINI_MODEL || 'gemini-3.8-flash', process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite'),
       signal: AbortSignal.timeout(28_000),
-      onFailure: (metadata) => console.warn('camellia_provider_attempt_failed', metadata),
-      request: (model, signal) => ai.models.generateContent({
+      onFailure: (metadata) => { modelCooldown.failed(metadata); console.warn('camellia_provider_attempt_failed', metadata); },
+      request: async (model, signal) => {
+      const result = await ai.models.generateContent({
       model,
       contents,
       config: {
         systemInstruction,
         temperature: 0.7,
         // This limit includes internal thinking; 256 can yield no visible text.
-        maxOutputTokens: 2048,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        maxOutputTokens: model.includes('flash-lite') ? 512 : 2048,
+        thinkingConfig: { thinkingLevel: model.includes('flash-lite') ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW },
         automaticContinuation: false,
         abortSignal: signal,
         safetySettings: [
@@ -70,7 +71,10 @@ const handler = createGeminiChatHandler({
           { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         ],
       },
-    }),
+    });
+      modelCooldown.succeeded(model);
+      return result;
+    },
     });
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error && typeof error.status === 'number' ? error.status : undefined;
