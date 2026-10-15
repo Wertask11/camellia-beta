@@ -6,7 +6,9 @@ export async function circleRequest(
 ) {
   const user = schoolParkAuth.currentUser;
   if (!user) throw new Error('ログインしてください。');
-  const token = await user.getIdToken();
+  const token = await user.getIdToken().catch(() => {
+    throw new Error('もう一度ログインしてください。');
+  });
   const response = await fetch(`/api/camellia/circle${query}`, {
     method: body ? 'POST' : 'GET',
     headers: {
@@ -16,8 +18,16 @@ export async function circleRequest(
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(15_000),
     cache: 'no-store',
+  }).catch(() => {
+    throw new Error(
+      '今はつながりにくいようです。少し時間をおいて試してください。',
+    );
   });
-  const data = (await response.json()) as {
+  const data = (await response.json().catch(() => {
+    throw new Error(
+      '今はつながりにくいようです。少し時間をおいて試してください。',
+    );
+  })) as {
     error?: string;
     circles: Array<{
       id: string;
@@ -40,6 +50,10 @@ export async function circleRequest(
   };
   if (!response.ok) {
     const errors: Record<string, string> = {
+      LOGIN_REQUIRED: 'もう一度ログインしてください。',
+      PROFILE_REQUIRED: 'Myで利用開始時の設定を確認してください。',
+      NOT_FOUND: 'この文章は削除されたか、今は表示できません。',
+      NOT_AVAILABLE: 'この文章は今は表示できません。',
       MEMBERSHIP_REQUIRED: '参加してから利用できます。',
       GUIDELINES_REQUIRED: 'ガイドラインを確認してください。',
       CONTENT_NOT_ALLOWED:

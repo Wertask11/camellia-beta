@@ -373,6 +373,7 @@ export class CircleService {
     requireValue(identity.moderator, 403, 'MODERATOR_REQUIRED');
     if (!body) {
       const queue = await this.col('circle_reports')
+        .where('status', '==', 'open')
         .orderBy('createdAt', 'desc')
         .limit(50)
         .get();

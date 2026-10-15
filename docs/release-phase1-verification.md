@@ -16,11 +16,13 @@ Chromium: Today → Discover → concrete Action steps → completion at 375/390
 
 `npm run lint`, `npm run typecheck`, `npm run build` pass. Browser build scan finds no GEMINI_API_KEY, FIREBASE_SERVICE_ACCOUNT_JSON, CAMELLIA_CIRCLE_SIGNING_SECRET or private-key markers. No real credentials were added. PostHog properties use explicit allowlists and strip private content.
 
+Vercel Preview deployment succeeded: https://vercel.com/school-park/camellia-beta/8i76MPdbeXJvjv5MUVyTNSSebEnB . Direct access to the Preview host from this workspace fails with `Tunnel connection failed: 403 Forbidden`; no Preview browser PASS is claimed.
+
 ## Required live acceptance (not passed)
 
 - Vercel Preview network access and本人 login (LINE / Google / existing Passport); verify restoration, Today, conversation continuity and cloud sync. ログインしてください。
 - Actual primary/fallback availability and 10 real quality conversations. This workspace has no Gemini key or authenticated user token; no claims about Google availability or production billing tier are made.
-- Preview-only server FIREBASE_SERVICE_ACCOUNT_JSON for emusch-2a111; appropriate Firestore/Auth IAM. Verify actual deployed rules deny the protected root, install the two composite indexes, and test the queries.
+- Preview-only server FIREBASE_SERVICE_ACCOUNT_JSON for emusch-2a111; appropriate Firestore/Auth IAM. Verify actual deployed rules deny the protected root, install the three composite indexes, and test the queries.
 - Set CAMELLIA_SHARED_RATE_LIMIT_REQUIRED=true once storage is configured, verify `rateLimitMode: firestore`, and prove the same user/global budgets across deployed function instances. Configure rate_windows.expiresAt TTL for cleanup.
 - Set stable server-only Circle signing secret. Assign moderator claim to an identified trusted operator through Firebase administration; agree moderation response/retention process. Verify two real users' ownership, leave, reports, blocking, moderation and five screen sizes.
 - Confirm actual Gemini data contract and GEMINI_DATA_POLICY; policies cannot infer the plan from Preview/Production.
@@ -33,8 +35,8 @@ Chromium: Today → Discover → concrete Action steps → completion at 375/390
 |1|READY / NOT READY|NOT READY: live acceptance above remains|
 |2|branch|codex/camellia-release-phase1-20261015|
 |3|commit|PR implementation HEAD; see Git history|
-|4|PR|Draft PR linked in final handoff|
-|5|Preview URL|Vercel PR deployment; exact URL recorded in PR after push|
+|4|PR|https://github.com/Wertask11/camellia-beta/pull/31|
+|5|Preview URL|https://camellia-beta-git-codex-camellia-release-pha-1d8abb-school-park.vercel.app/ (Vercel SUCCESS; workspace tunnel403 blocks direct access)|
 |6|Today Before / After|Loose seven-record week → actual JST Monday week, five recorded days; optional yesterday fields and three-record trends are factual; proposal impressions no longer reshuffle cards|
 |7|Discover Before / After|14 candidates → 74; excludes unavailable destinations and Today cards, six populated categories, existing behavioral ranking retained|
 |8|Added Actions|60; 74 total, 71 usable with Circle/Place OFF|
