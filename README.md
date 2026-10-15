@@ -21,7 +21,7 @@ Vite devはVercel `api/` Functionsを実行しません。実認証/Functionsの
 
 ## Gemini / Privacy
 
-`api/camellia/chat.ts`。公式 `@google/genai`。Primaryは`GEMINI_MODEL`（default `gemini-3.8-flash`）。5xx/試行timeout時は`GEMINI_FALLBACK_MODEL`（default `gemini-3.1-flash-lite`、空で無効）へ最大1回。SDK内retryなし、14秒/試行・28秒全体・40秒client。失敗モデルは同一Function instance内で2分避けます。Liteはminimal thinking/512 token、他はlow/2048 token（内部思考込み）。
+`api/camellia/chat.ts`は軽量な状態確認・flag判定を担当し、POST時に`lib/conversation/gemini-runtime.ts`を読み込みます。状態確認の失敗だけで端末内会話へ固定しません。公式 `@google/genai`。Primaryは`GEMINI_MODEL`（default `gemini-3.8-flash`）。5xx/試行timeout時は`GEMINI_FALLBACK_MODEL`（default `gemini-3.1-flash-lite`、空で無効）へ最大1回。SDK内retryなし、14秒/試行・28秒全体・40秒client。失敗モデルは同一Function instance内で2分避けます。Liteはminimal thinking/512 token、他はlow/2048 token（内部思考込み）。
 
 送信するのは今回の本文、Geminiで返答した直近最大8メッセージ、serverから取得した今日の気分・Today stage・カタログで検証したActionのみ。保存Memory・My Tree・生理記録・プロフィール・UID・token・全履歴をGeminiへ送りません。既知名と連絡先を伏字にしますが、本人が本文へ直接入力した未知の個人情報は送信され得ます。Treeから開く会話は端末内限定。ログはstage/statusなどのみ、本文・key・raw responseは保存しません。PostHogもallowlistのみ。
 

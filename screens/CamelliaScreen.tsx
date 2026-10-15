@@ -78,7 +78,7 @@ export function CamelliaScreen({
   const [memoryCandidate, setMemoryCandidate] = useState('');
   const [last, setLast] = useState<ReturnType<typeof respond>>();
   const [lastSafety, setLastSafety] = useState(false);
-  const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled'>('checking');
+  const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled' | 'unavailable'>('checking');
   const requestInFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -86,16 +86,23 @@ export function CamelliaScreen({
   const [chatError, setChatError] = useState<ChatError | null>(null);
   useEffect(() => {
     void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
-      .then(async (response): Promise<{ enabled?: boolean; dataPolicy?: string }> => response.ok ? await response.json() : {})
+      .then(async (response): Promise<{ enabled?: boolean; dataPolicy?: string }> => {
+        if (!response.ok) throw new Error('STATUS_UNAVAILABLE');
+        const status = await response.json();
+        if (!status || typeof status !== 'object' || !('enabled' in status) || typeof status.enabled !== 'boolean') throw new Error('STATUS_INVALID');
+        return { enabled: status.enabled };
+      })
       .then((status) => {
         setAvailability(status.enabled ? 'enabled' : 'disabled');
       })
-      .catch(() => setAvailability('disabled'));
+      // A failed status probe does not mean the server feature flag is OFF.
+      // POST is authoritative and still enforces the flag before external transmission.
+      .catch(() => setAvailability('unavailable'));
   }, []);
 
   useEffect(() => {
     if (availability === 'checking' || !firstInSession('camellia-conversation-open')) return;
-    onTrack('conversation_open', { provider: availability === 'enabled' ? 'gemini' : 'fallback' });
+    onTrack('conversation_open', { provider: availability !== 'disabled' ? 'gemini' : 'fallback' });
   }, [availability, onTrack]);
 
   const savePair = (userText: string, assistantText: string, provider: Provider) => {
@@ -115,7 +122,7 @@ export function CamelliaScreen({
     const userId = createMessageId();
     const local = respond(state, recommendations, clean, messages, treeContext);
     const urgentReply = immediateSafetyReply(clean);
-    const useGemini = availability === 'enabled' && !treeContext;
+    const useGemini = availability !== 'disabled' && !treeContext;
     requestInFlight.current = true;
     setSending(true);
     setInput('');
@@ -161,7 +168,7 @@ export function CamelliaScreen({
   };
 
   const retryLast = async () => {
-    if (!retryState || requestInFlight.current || treeContext || availability !== 'enabled') return;
+    if (!retryState || requestInFlight.current || treeContext || (availability === 'disabled' || availability === 'checking')) return;
     requestInFlight.current = true;
     setRetrying(true);
     setChatError(null);
@@ -206,7 +213,7 @@ export function CamelliaScreen({
         {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
       </div>
-      {chatError && <output className="chat-error" aria-live="polite"><span className="sr-only">{errorCopy[chatError]}</span>{retryState && !treeContext && availability === 'enabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>}</output>}
+      {chatError && <output className="chat-error" aria-live="polite"><span className="sr-only">{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
       {!!last?.choices?.length && <div className="quick-inputs conversation-choices">{last.choices.map((choice) => <button type="button" key={choice} onClick={() => void send(choice)}>{choice}</button>)}</div>}
