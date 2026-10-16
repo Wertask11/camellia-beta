@@ -16,6 +16,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
+import { readCircleIntent, clearCircleIntent, setCircleUrl, clearCircleUrl } from '@/lib/circle/links';
 import { CircleScreen } from '@/screens/CircleScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { TodayScreen } from '@/screens/TodayScreen';
@@ -56,6 +57,9 @@ export default function Page() {
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
   const [secondary, setSecondary] = useState<'circle' | 'place'>();
+  const [circleEntry,setCircleEntry]=useState<{id?:string;joinedOnly?:boolean}>();
+  useEffect(()=>{let active=true;queueMicrotask(()=>{const intent=readCircleIntent();if(active&&intent){setCircleEntry(intent);setSecondary('circle');}});return()=>{active=false;};},[]);
+  useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))clearCircleIntent();},[accountReady,accountUser,store.state.profile]);
   const [privacy, setPrivacy] = useState(false);
   const [treeContext,setTreeContext]=useState<TreeLeaf>();
   const [feature, setFeature] = useState<'fortune' | 'tree'>();
@@ -196,7 +200,7 @@ export default function Page() {
   if (secondary)
     return (
       <div className="app-shell">
-        {secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen onBack={()=>setSecondary(undefined)} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/>}
+        {secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen initialCircleId={circleEntry?.id} initialJoinedOnly={circleEntry?.joinedOnly} onCircleChange={setCircleUrl} onBack={()=>{setSecondary(undefined);setCircleEntry(undefined);clearCircleUrl();}} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>{setSecondary(undefined);clearCircleUrl();}}/>}
       </div>
     );
   if (privacy)
@@ -325,7 +329,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen
+        <MyScreen onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}
