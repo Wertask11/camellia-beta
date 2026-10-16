@@ -69,6 +69,11 @@ try {
       'configuration never grants anonymous write access',
     );
   }
+  process.env.FIREBASE_SERVICE_ACCOUNT_JSON='unit-only-not-json';
+  let diagnosis;
+  await circle({method:'GET',headers:{},query:{status:'1'}},{setHeader(){},status(code){assert.equal(code,200);return {json(value){diagnosis=value;}};}});
+  assert.deepEqual(diagnosis,{enabled:true,configurationStatus:'ready',storageStatus:'invalid_json',credentialFormat:'other_text'});
+  assert.ok(!JSON.stringify(diagnosis).includes(process.env.FIREBASE_SERVICE_ACCOUNT_JSON));
   console.log(
     'Circle configuration status and anonymous access PASS (unit-only placeholder env; no live credentials, auth or storage).',
   );
