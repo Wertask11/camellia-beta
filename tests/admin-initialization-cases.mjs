@@ -11,7 +11,7 @@ try {
  process.env.FIREBASE_SERVICE_ACCOUNT_JSON=JSON.stringify({project_id:'another-project'});assert.equal(adminInitializationStatus(),'wrong_project');
  process.env.FIREBASE_SERVICE_ACCOUNT_JSON=JSON.stringify({project_id:'emusch-2a111',client_email:'test@emusch-2a111.iam.gserviceaccount.com',private_key:'not a PEM key'});assert.equal(adminInitializationStatus(),'invalid_credential');
  const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048,privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
- const {parseServiceAccountJson,credentialInputFormat}=await server.ssrLoadModule('/lib/server/credential-json.ts');
+ const {parseServiceAccountJson,credentialInputFormat}=await server.ssrLoadModule('/lib/server/credential-json.js');
  const account={project_id:'emusch-2a111',client_email:'test@emusch-2a111.iam.gserviceaccount.com',private_key:privateKey};
  const json=JSON.stringify(account,null,2);
  for(const input of [json,'\uFEFF'+json,JSON.stringify(json),"'"+json+"'",'```json\n'+json+'\n```','FIREBASE_SERVICE_ACCOUNT_JSON='+json,json.replace(/\\n/g,'\n')])assert.deepEqual(parseServiceAccountJson(input),account,'transport normalization must preserve exact credential identity');

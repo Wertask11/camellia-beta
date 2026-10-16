@@ -19,6 +19,7 @@ export async function circleRequest(query='',body?:Record<string,unknown>) {
  if(params.has('audit'))return {audits};
  if(params.has('own'))return {own:[]};
  if(params.has('blocks'))return {blocks:[]};
+ if(params.has('circle')&&location.hash==='#feed-error')throw new Error('投稿を読み込めませんでした。');
  if(params.has('circle'))return {posts:[{...post,myReaction:reaction}],comments:params.has('post')?[{...post,id:'fixture-comment',text:'そっと読んでいます。'}]:[],nextCursor:params.has('cursor')?undefined:'fixture-next'};
  return {circles:CIRCLES.map(c=>({...c,joined:c.id==='tired'&&joined,memberCount:2,daysSinceJoin:1})),moderator:true};
 }
