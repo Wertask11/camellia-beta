@@ -88,8 +88,8 @@ function checkCandidates(checks: Checkin[], now: Date): InsightCandidate[] {
           observations: lastSeven.length + previousSeven.length,
           summaryData: { recentAverage: Number(currentAverage.toFixed(2)), previousAverage: Number(previousAverage.toFixed(2)), delta: Number(delta.toFixed(2)) },
           text: delta > 0
-            ? '先週の記録と比べると、最近は気分が少し上向いているようです。'
-            : '先週の記録と比べると、最近は気分が少し低めの日が増えているようです。',
+            ? 'その前の7日間の記録と比べると、直近7日間は気分が少し上向いているようです。'
+            : 'その前の7日間の記録と比べると、直近7日間は気分が少し低めの日が増えているようです。',
         });
       }
     }
@@ -173,7 +173,7 @@ function choiceCandidates(state: CamelliaState, now: Date): InsightCandidate[] {
       type: 'action_following_check' as const,
       confidence: Math.min(0.72, 0.57 + pairs.length * 0.025),
       observations: pairs.length,
-      summaryData: { actionId, pairedDays: pairs.length, improved, declined, averageDifference: Number(average(pairs.map((pair) => pair.difference)).toFixed(2)) },
+      summaryData: { periodStart:pairs.map(pair=>pair.date).sort()[0],periodEnd:jstDate(new Date(dayNumber(pairs.map(pair=>pair.date).sort().at(-1)!)+86400000)), actionId, pairedDays: pairs.length, improved, declined, averageDifference: Number(average(pairs.map((pair) => pair.difference)).toFixed(2)) },
       text: direction === 'up'
         ? `「${title}」を始めた日の翌日に記録したCheckでは、開始前より気分が上向いていた回が複数ありました。記録上の並びとしての気づきです。`
         : `「${title}」を始めた日の翌日に記録したCheckでは、開始前より気分が低めだった回が複数ありました。記録上の並びとしての気づきです。`,
@@ -193,7 +193,7 @@ function choiceCandidates(state: CamelliaState, now: Date): InsightCandidate[] {
       type:'repeated_choice' as const,
       confidence:Math.min(0.76,0.56+value.dates.size*0.035),
       observations:value.selected,
-      summaryData:{actionId,distinctDays:value.dates.size,selections:value.selected},
+      summaryData:{periodStart:[...value.dates].sort()[0],periodEnd:[...value.dates].sort().at(-1)!,actionId,distinctDays:value.dates.size,selections:value.selected},
       text:`「${ACTIONS.find(action=>action.id===actionId)?.title||'同じ行動'}」を選んだ記録が、${value.dates.size}日で${value.selected}回あります。最近のあなたにとって、取り入れやすい選択なのかもしれません。`,
     }));
   return [...actionAssociations, ...repeatedChoices];

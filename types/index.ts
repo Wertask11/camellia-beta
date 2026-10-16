@@ -144,6 +144,7 @@ export interface ContextualActionMemory {
   createdAt: string;
 }
 export interface Insight {
+  fact?:string; hypothesis?:string; periodStart?:string; periodEnd?:string;
   id: string;
   key: string;
   text: string;
