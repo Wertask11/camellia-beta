@@ -46,6 +46,11 @@ function authNoticeFor(code:string,signedIn=false){
   return 'ログインを完了できませんでした。通信を確認して、もう一度お試しください。';
 }
 
+function viewingPublicPlaceDemo() {
+  const open = new URL(location.href).searchParams.get('open');
+  return open === 'place-demo' || (open === 'place' && !LIVE_DESTINATIONS.has('place'));
+}
+
 const ignoreDemoTrack=()=>{};
 export default function Page() {
   const store = useCamelliaStore();
@@ -91,7 +96,7 @@ export default function Page() {
   const showWelcome = !accountUser && entry === 'welcome' && !returning;
   const showAccount = !accountUser && !showWelcome;
   useEffect(() => {
-    if (!store.ready || store.storageError || !accountReady) return;
+    if (!store.ready || store.storageError || !accountReady || viewingPublicPlaceDemo()) return;
     if (showWelcome && sessionStorage.getItem('camellia-welcome-view') !== '1') {
       sessionStorage.setItem('camellia-welcome-view', '1');
       store.track('welcome_view', { period: welcomeTheme().period });
@@ -100,14 +105,14 @@ export default function Page() {
       sessionStorage.setItem('camellia-login-view', '1');
       captureAuthEvent('login_view', { authenticated: Boolean(schoolParkAuth.currentUser) }, store.state.profile.id);
     }
-  }, [showWelcome, showAccount, accountReady, store.ready, store.storageError, store.track]);
+  }, [showWelcome, showAccount, accountReady, store.ready, store.storageError, store.track, placeDemo]);
   /* profile_view：はじめてのプロフィール入力が実際に表示されたとき、1回だけ。
      login_success → profile_view → profile_complete で、入力の手前で止まった人が分かる。
      My からの編集は数えない。StrictMode の二重実行と再読み込みは sessionStorage で防ぐ。 */
   const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !editingProfile && !profileComplete(store.state.profile));
   useEffect(() => {
-    if (showingFirstProfile && firstInSession('camellia-profile-view')) store.track('profile_view');
-  }, [showingFirstProfile, store.track]);
+    if (!viewingPublicPlaceDemo() && showingFirstProfile && firstInSession('camellia-profile-view')) store.track('profile_view');
+  }, [showingFirstProfile, store.track, placeDemo]);
   /* Which user the screens were last prepared for ("uid:anonymous?"). A β guest that logs in keeps its
      uid, and onAuthStateChanged only fires when the uid changes, so the login return applies it itself. */
   const appliedUser=useRef<string|null>(null);
