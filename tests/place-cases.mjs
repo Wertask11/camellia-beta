@@ -65,6 +65,16 @@ try {
     );
     assert.ok(!JSON.stringify(props).includes('PRIVATE'));
   }
+  const { PLACE_DEMO_DATA } = await server.ssrLoadModule('/data/place-demo.ts');
+  assert.equal(PLACE_DEMO_DATA.length, 3);
+  for (const demo of PLACE_DEMO_DATA) {
+    assert.equal(demo.status, 'draft');
+    assert.ok(demo.name.includes('デモ'));
+    for (const key of ['officialUrl', 'instagramUrl', 'bookingUrl', 'mapUrl'])
+      assert.equal(demo[key], '');
+    assert.equal(demo.sponsored, false);
+    assert.equal(demo.partnerStatus, 'none');
+  }
   console.log(
     'Place validation and privacy boundaries PASS. No real place published.',
   );

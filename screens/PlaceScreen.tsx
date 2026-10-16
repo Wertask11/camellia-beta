@@ -5,6 +5,7 @@ import { placeRequest } from '@/lib/place/client';
 import { PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
 import type { AnalyticsEventName } from '@/types';
 type Props = {
+  demoPlaces?: Place[];
   onBack: () => void;
   onTrack: (
     name: AnalyticsEventName,
@@ -14,11 +15,13 @@ type Props = {
   savedOnly?: boolean;
 };
 export function PlaceScreen({
+  demoPlaces,
   onBack,
   onTrack,
   initialSlug,
   savedOnly = false,
 }: Props) {
+  const isDemo = Boolean(demoPlaces);
   const [places, setPlaces] = useState<Place[]>([]),
     [selected, setSelected] = useState<Place>(),
     [cursor, setCursor] = useState<string>(),
@@ -30,6 +33,10 @@ export function PlaceScreen({
     [operator, setOperator] = useState(false),
     [operatorMode, setOperatorMode] = useState(false);
   const load = async (next?: string, manage = false) => {
+    if (demoPlaces) {
+      setPlaces(demoPlaces);
+      return;
+    }
     const data = await placeRequest(
       `${manage ? '?operator=1' : savedOnly ? '?saved=1' : '?'}${next ? `&cursor=${next}` : ''}`,
       undefined,
@@ -41,6 +48,17 @@ export function PlaceScreen({
   };
   useEffect(() => {
     let active = true;
+    if (demoPlaces) {
+      queueMicrotask(() => {
+        if (active) {
+          setPlaces(demoPlaces);
+          setSelected(demoPlaces.find((place) => place.slug === initialSlug));
+        }
+      });
+      return () => {
+        active = false;
+      };
+    }
     void placeRequest(savedOnly ? '?saved=1' : '')
       .then((data) => {
         if (active) {
@@ -70,7 +88,7 @@ export function PlaceScreen({
     return () => {
       active = false;
     };
-  }, [initialSlug, onTrack, savedOnly]);
+  }, [initialSlug, onTrack, savedOnly, demoPlaces]);
   const run = async (fn: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
@@ -85,9 +103,10 @@ export function PlaceScreen({
   };
   const open = (place: Place) => {
     setSelected(place);
-    if (!operatorMode) onTrack('place_view', { place_id: place.slug });
+    if (!operatorMode && !isDemo)
+      onTrack('place_view', { place_id: place.slug });
     const url = new URL(location.href);
-    url.searchParams.set('open', 'place');
+    url.searchParams.set('open', isDemo ? 'place-demo' : 'place');
     url.searchParams.set('place', place.slug);
     history.replaceState({}, '', url.pathname + url.search);
   };
@@ -144,18 +163,37 @@ export function PlaceScreen({
       <button
         className="back"
         onClick={() => {
-          if (selected) setSelected(undefined);
-          else onBack();
+          if (selected) {
+            setSelected(undefined);
+            const url = new URL(location.href);
+            url.searchParams.delete('place');
+            history.replaceState({}, '', url.pathname + url.search);
+          } else onBack();
         }}
       >
-        ← {selected ? 'Place一覧へ' : 'Discoverへ戻る'}
+        ←{' '}
+        {selected ? 'Place一覧へ' : isDemo ? 'デモを閉じる' : 'Discoverへ戻る'}
       </button>
       <header>
         <div>
-          <p className="eyebrow">今日の自分に合う、現実の場所へ</p>
+          <p className="eyebrow">
+            {isDemo ? 'Placeの掲載イメージ' : '今日の自分に合う、現実の場所へ'}
+          </p>
           <h1>{selected?.name ?? (savedOnly ? '保存したPlace' : 'Place')}</h1>
         </div>
       </header>
+      {isDemo && (
+        <section
+          className="panel place-demo-notice"
+          role="note"
+          aria-label="Placeデモについて"
+        >
+          <strong>デモ · 掲載イメージ</strong>
+          <p>
+            実在の掲載店舗・施設ではありません。写真は雰囲気を伝える参考画像です。予約・地図・保存は利用できません。確認した実在の場所に、後から差し替えられます。
+          </p>
+        </section>
+      )}
       {error && (
         <p role="alert">
           {error}
@@ -218,24 +256,32 @@ export function PlaceScreen({
             <p>掲載内容を確認した提携先です。</p>
           )}
           {selected.specialOffer && <p>{selected.specialOffer}</p>}
-          <nav aria-label="場所の外部情報">
-            {external(
-              '公式サイト',
-              selected.officialUrl,
-              'place_external_open',
-            )}
-            {external(
-              'Instagram',
-              selected.instagramUrl,
-              'place_external_open',
-            )}
-            {external('予約サイト', selected.bookingUrl, 'place_booking_open')}
-            {external('地図を開く', selected.mapUrl, 'place_map_open')}
-          </nav>
-          <p className="meta">
-            リンク先は外部サービスです。営業時間・価格・予約条件は公式情報をご確認ください。CamelliaのCheckや会話はリンクに付加しません。
-          </p>
-          {!operatorMode && (
+          {!isDemo && (
+            <>
+              <nav aria-label="場所の外部情報">
+                {external(
+                  '公式サイト',
+                  selected.officialUrl,
+                  'place_external_open',
+                )}
+                {external(
+                  'Instagram',
+                  selected.instagramUrl,
+                  'place_external_open',
+                )}
+                {external(
+                  '予約サイト',
+                  selected.bookingUrl,
+                  'place_booking_open',
+                )}
+                {external('地図を開く', selected.mapUrl, 'place_map_open')}
+              </nav>
+              <p className="meta">
+                リンク先は外部サービスです。営業時間・価格・予約条件は公式情報をご確認ください。CamelliaのCheckや会話はリンクに付加しません。
+              </p>
+            </>
+          )}
+          {!operatorMode && !isDemo && (
             <button
               className="primary"
               disabled={busy}
