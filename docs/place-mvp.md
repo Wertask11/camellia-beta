@@ -32,3 +32,9 @@ PostHog5イベントはplace_view/save/external_open/booking_open/map_open、プ
 ## Acceptance
 
 lint/typecheck/unit/buildとエミュレータ、5幅のlocal fixtureを別々に記録します。最低1件の実在場所を運営が確認してPreview公開し、実写真・リンク・保存/別端末・削除を確認するまで公開可とは判定しません。CLIや固定fixtureのpublish成功は実在Place公開の証明ではありません。
+
+## 説明用デモ（本人の追加要望）
+
+`/?open=place-demo` はログイン不要の読み取り専用デモ。3つの架空例を「デモ・実在の掲載ではない」と常時明示し、参考写真の意味も説明します。予約/地図/保存/店舗への送信/Place analyticsは動かしません。APIやFirestoreへデータを投入せず、status=draft・公式URL空の別ファイル data/place-demo.ts から表示します。後から同ファイルを編集できます。実在Place公開とは別で、REAL PUBLISHED PLACE PASSの件数には数えません。
+
+デモ追加の検証：実際のapp/page入口を未ログイン・認証/API差し替えなしでChromium375/390/412/768/1280から開き、3例の一覧、カテゴリ絞り込み、詳細URL再読み込み、外部リンク/保存操作なし、Place API通信0を確認。参照写真の配信先はこの実行環境でブロックされるため、写真の実表示は本人のPreview確認が必要です。

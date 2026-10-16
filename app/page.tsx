@@ -17,6 +17,7 @@ import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
 import { readCircleIntent, clearCircleIntent, setCircleUrl, clearCircleUrl } from '@/lib/circle/links';
+import {PLACE_DEMO_DATA} from '@/data/place-demo';
 import {PlaceScreen} from '@/screens/PlaceScreen';
 import {validSlug} from '@/lib/place/model';
 import { CircleScreen } from '@/screens/CircleScreen';
@@ -45,6 +46,7 @@ function authNoticeFor(code:string,signedIn=false){
   return 'ログインを完了できませんでした。通信を確認して、もう一度お試しください。';
 }
 
+const ignoreDemoTrack=()=>{};
 export default function Page() {
   const store = useCamelliaStore();
   const currentTime=useCurrentTime(store.state.checkins);
@@ -62,6 +64,8 @@ export default function Page() {
   const [circleEntry,setCircleEntry]=useState<{id?:string;joinedOnly?:boolean}>();
   useEffect(()=>{let active=true;queueMicrotask(()=>{const intent=readCircleIntent();if(active&&intent){setCircleEntry(intent);setSecondary('circle');}});return()=>{active=false;};},[]);
   useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))clearCircleIntent();},[accountReady,accountUser,store.state.profile]);
+  const [placeDemo,setPlaceDemo]=useState<{slug?:string}|null>(null);
+  useEffect(()=>{let active=true;queueMicrotask(()=>{if(!active)return;const url=new URL(location.href);if(url.searchParams.get('open')==='place-demo'){const slug=url.searchParams.get('place');setPlaceDemo({slug:validSlug(slug)?slug:undefined});}});return()=>{active=false;};},[]);
   const [placeEntry,setPlaceEntry]=useState<{slug?:string;savedOnly?:boolean}>();
   useEffect(()=>{let active=true;queueMicrotask(()=>{try{const url=new URL(location.href);let pending;if(url.searchParams.get('open')==='place'){const slug=url.searchParams.get('place');pending={slug:validSlug(slug)?slug:undefined,at:Date.now()};localStorage.setItem('camellia-pending-place',JSON.stringify(pending));}else pending=JSON.parse(localStorage.getItem('camellia-pending-place')||'null');if(active&&pending&&Date.now()-pending.at<1800000){setPlaceEntry({slug:pending.slug});setSecondary('place');}}catch{/* Root navigation works without saved destination. */}});return()=>{active=false;};},[]);
   useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))try{localStorage.removeItem('camellia-pending-place');}catch{/* No effect on personal records. */}},[accountReady,accountUser,store.state.profile]);
@@ -144,6 +148,7 @@ export default function Page() {
       const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry('account');
     });
   },[store.ready,accountReady,store.state.profile.id,store.state.profile,store.state.onboardingComplete]);
+  if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
   if(store.storageError)return <main className="screen"><h1>端末の記録を読み込めませんでした</h1><p>保存データを上書きせず、そのまま残しています。別の端末やアカウントへ切り替える前に、運営へお問い合わせください。</p></main>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accountError&&accountUser){
