@@ -16,6 +16,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
+import { readCircleIntent, clearCircleIntent, setCircleUrl, clearCircleUrl } from '@/lib/circle/links';
 import {PLACE_DEMO_DATA} from '@/data/place-demo';
 import {PlaceScreen} from '@/screens/PlaceScreen';
 import {validSlug} from '@/lib/place/model';
@@ -60,6 +61,9 @@ export default function Page() {
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
   const [secondary, setSecondary] = useState<'circle' | 'place'>();
+  const [circleEntry,setCircleEntry]=useState<{id?:string;joinedOnly?:boolean}>();
+  useEffect(()=>{let active=true;queueMicrotask(()=>{const intent=readCircleIntent();if(active&&intent){setCircleEntry(intent);setSecondary('circle');}});return()=>{active=false;};},[]);
+  useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))clearCircleIntent();},[accountReady,accountUser,store.state.profile]);
   const [placeDemo,setPlaceDemo]=useState<{slug?:string}|null>(null);
   useEffect(()=>{let active=true;queueMicrotask(()=>{if(!active)return;const url=new URL(location.href);if(url.searchParams.get('open')==='place-demo'){const slug=url.searchParams.get('place');setPlaceDemo({slug:validSlug(slug)?slug:undefined});}});return()=>{active=false;};},[]);
   const [placeEntry,setPlaceEntry]=useState<{slug?:string;savedOnly?:boolean}>();
@@ -206,7 +210,7 @@ export default function Page() {
   if (secondary)
     return (
       <div className="app-shell">
-        {secondary === 'place' && LIVE_DESTINATIONS.has('place') ? <PlaceScreen initialSlug={placeEntry?.slug} savedOnly={placeEntry?.savedOnly} onTrack={store.track} onBack={()=>{setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/> : secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen onBack={()=>setSecondary(undefined)} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/>}
+        {secondary === 'place' && LIVE_DESTINATIONS.has('place') ? <PlaceScreen initialSlug={placeEntry?.slug} savedOnly={placeEntry?.savedOnly} onTrack={store.track} onBack={()=>{setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/> : secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen initialCircleId={circleEntry?.id} initialJoinedOnly={circleEntry?.joinedOnly} onCircleChange={setCircleUrl} onBack={()=>{setSecondary(undefined);setCircleEntry(undefined);clearCircleUrl();}} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>{setSecondary(undefined);clearCircleUrl();}}/>}
       </div>
     );
   if (privacy)
@@ -335,7 +339,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}}
+        <MyScreen onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}

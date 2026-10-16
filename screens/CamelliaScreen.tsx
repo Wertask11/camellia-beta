@@ -6,6 +6,7 @@ import { firstInSession } from '@/lib/analytics/once';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
 import { immediateSafetyReply } from '@/lib/conversation/safety';
+import { CONVERSATION_ACTIONS } from '@/lib/conversation/action-catalog';
 import { geminiHistory, redactKnownNames } from '@/lib/conversation/privacy';
 import { conversationStarters } from '@/lib/conversation/starters';
 import { moodMeta, todayCheck } from '@/lib/today/flow';
@@ -14,7 +15,7 @@ import type { AIMessage, AnalyticsEventName, CamelliaState, ConversationIntent, 
 
 type Provider = 'gemini' | 'fallback';
 type ChatError = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
-type ChatResponse = { reply: string; provider: Provider; responseTimeMs?: number; safety?: boolean };
+type ChatResponse = { reply: string; provider: Provider; responseTimeMs?: number; safety?: boolean; actionId?: string };
 type RetryState = { originalMessage: string; userId: string; message: string; history: Array<{ role: 'user' | 'assistant'; text: string }> };
 const wallClockNow = () => Date.now();
 const createMessageId = () => globalThis.crypto.randomUUID();
@@ -77,6 +78,9 @@ export function CamelliaScreen({
   const check = todayCheck(state, currentTime);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<AIMessage[]>((conversationId ? state.aiConversations.find(item=>item.id===conversationId) : state.aiConversations[0])?.messages ?? []);
+  const [visibleCount,setVisibleCount]=useState(40);
+  const chatViewport=useRef<HTMLDivElement>(null);
+  const [suggestedAction,setSuggestedAction]=useState<string>();
   const [memoryCandidate, setMemoryCandidate] = useState('');
   const [last, setLast] = useState<ReturnType<typeof respond>>();
   const [lastSafety, setLastSafety] = useState(false);
@@ -129,6 +133,7 @@ export function CamelliaScreen({
     const useGemini = availability !== 'disabled' && !treeContext;
     requestInFlight.current = true;
     setSending(true);
+    setSuggestedAction(undefined);
     setInput('');
     setChatError(null);
     setRetryState(null);
@@ -144,6 +149,7 @@ export function CamelliaScreen({
       try {
         const result = await requestGemini(geminiMessage, previousHistory);
         reply = result.reply;
+        setSuggestedAction(result.actionId);
         provider = result.provider;
         safety = result.safety === true;
         responseTimeMs = result.responseTimeMs ?? wallClockNow() - started;
@@ -178,6 +184,7 @@ export function CamelliaScreen({
     setChatError(null);
     try {
       const result = await requestGemini(retryState.message, retryState.history);
+      setSuggestedAction(result.actionId);
       const now = new Date().toISOString();
       setMessages((current) => current.map((message) => message.id === `${retryState.userId}-a` ? { ...message, text: result.reply, provider: result.provider, createdAt: now } : message));
       onReplaceConversationAssistant(retryState.originalMessage, result.reply, result.provider);
@@ -210,22 +217,24 @@ export function CamelliaScreen({
   return (
     <main className="screen camellia">
       <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>Camellia</h1></div><span className="avatar-flower">✿</span></header>
-      {!messages.length && <section className="ai-context"><p>今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。</p></section>}
+      {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
 
-      <div className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
-        {messages.map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}</div>)}
+      <div ref={chatViewport} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
+        {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
+        {messages.slice(-visibleCount).map((message) => <div className={`bubble ${message.role}`} key={message.id}>{message.text}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}</div>)}
         {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
         <div ref={messageEnd} aria-hidden="true"/>
       </div>
       <div className="conversation-followups">
       {chatError && <output className="chat-error" aria-live="polite"><span className="sr-only">{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
+      {suggestedAction&&CONVERSATION_ACTIONS.filter(action=>action.id===suggestedAction).map(action=><div className="conversation-action" key={action.id}><p className="eyebrow">よければ、こんな選択も</p><button onClick={()=>onOpenAction({action,score:0,reasons:['会話の続きに、自分で選べる小さな過ごし方']})}>{action.title}<span>内容を見る →</span></button><button className="text-button" onClick={()=>setSuggestedAction(undefined)}>今は話を続ける</button></div>)}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
       {!!last?.choices?.length && <div className="quick-inputs conversation-choices">{last.choices.map((choice) => <button type="button" key={choice} onClick={() => void send(choice)}>{choice}</button>)}</div>}
       {last?.showCircle && <div className="conversation-action"><button onClick={() => onNavigate('circle')}><MessageCircle/>安心して話せるCircleを見る</button></div>}
       {last?.topics.some((topic) => ['RELATIONSHIP', 'FAMILY', 'FRIEND', 'LOVE'].includes(topic)) && <button className="text-button" onClick={onTree}>この人とのこと、My Treeに残しておく？</button>}
-      {memoryCandidate && <section className="panel"><h2>次の会話のために覚えておく？</h2><p>{memoryCandidate}</p><p className="meta">Myから確認・削除できます。会話のすべてをMemoryにはしません。</p><button className="secondary-button" onClick={() => { onRemember(memoryCandidate); setMemoryCandidate(''); }}>この一言を覚えておく</button><button className="text-button" onClick={() => setMemoryCandidate('')}>今は保存しない</button></section>}
+      {memoryCandidate && <section className="panel"><h2>自分のために、この一言を残しておく？</h2><p>{memoryCandidate}</p><p className="meta">Myから確認・削除できます。会話のすべてをMemoryにはしません。</p><button className="secondary-button" onClick={() => { onRemember(memoryCandidate); setMemoryCandidate(''); }}>この一言を覚えておく</button><button className="text-button" onClick={() => setMemoryCandidate('')}>今は保存しない</button></section>}
       </div>
       <div className="conversation-entry">
         <p className="meta">話し始めに迷ったら、ここから。</p>

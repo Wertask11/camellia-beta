@@ -1,6 +1,6 @@
 import { useState,useSyncExternalStore } from 'react';
 import {getSyncStatus,subscribeSyncStatus,flushSchoolParkSync} from '@/lib/schoolpark/sync';
-import {LIVE_DESTINATIONS} from '@/lib/features';
+import { LIVE_DESTINATIONS } from '@/lib/features';
 import { ACTIONS } from '@/data/actions';
 import { generateInsights } from '@/lib/insight/engine';
 import { AccountSettings } from '@/components/AccountSettings';
@@ -8,7 +8,7 @@ import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
 import type { CamelliaState } from '@/types';
 
-export function MyScreen({onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onPlaces,onCircles,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onPlaces?:()=>void;onCircles?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const sync=useSyncExternalStore(subscribeSyncStatus,getSyncStatus,getSyncStatus);
   const backups=typeof window==='undefined'?[]:Object.keys(localStorage).filter(key=>key.startsWith('camellia-local-backup:'));
@@ -25,6 +25,7 @@ export function MyScreen({onPlaces,state,devNight,onEditProfile,onForget,onReset
     {/* Only a problem gets a line at the top; the details stay in 「アカウントと記録」. */}
     {sync.phase==='error'&&<div className="my-alert" role="alert"><p>この端末の記録は残っています。もう一度確認すると、アカウントにも保存されます。</p><button className="text-button" onClick={()=>void flushSchoolParkSync()}>もう一度確認する</button></div>}
     <button className="my-tree-entry" onClick={onTree}><span className="tree-mini">♧</span><span><b>My Tree</b><small>人とのつながりから、自分を知る</small></span><strong>{state.treeLeaves.filter(l=>l.status==='active').length}枚の葉 →</strong></button>
+    {LIVE_DESTINATIONS.has('circle')&&onCircles&&<button className="secondary-button" onClick={onCircles}>参加中のCircleを見る →</button>}
     {LIVE_DESTINATIONS.has('place')&&onPlaces&&<button className="secondary-button" onClick={onPlaces}>保存したPlaceを見る →</button>}
     <section className="insights"><p className="eyebrow">Camelliaがあなたについて気づいたこと</p><h2>これまでの記録からの気づき</h2>{insights.length?insights.map(i=><article className="insight-card" key={i.key}><p>{i.text}</p><small>{i.sampleSize}件の記録から考えた仮説です</small><div><button onClick={()=>onInsight(i.key,'correct')}>合ってる</button><button onClick={()=>onInsight(i.key,'incorrect')}>ちょっと違う</button></div></article>):<div className="empty"><b>まだ分からないこともたくさんあります。</b><br/>少しずつ一緒に見つけていきましょう。</div>}</section>
     <section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section>
