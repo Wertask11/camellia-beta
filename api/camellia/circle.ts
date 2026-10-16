@@ -5,6 +5,13 @@ import {
 } from '../../lib/server/admin.js';
 import { CircleError, CircleService } from '../../lib/circle/service.js';
 import { credentialInputFormat } from '../../lib/server/credential-json.js';
+import { createFeedQueryProbe } from '../../lib/circle/readiness.js';
+
+const feedQueryProbe = createFeedQueryProbe(async () => {
+  const credential = serverAdmin().auth.app.options.credential;
+  if (!credential) throw new Error('SERVER_STORAGE_NOT_CONFIGURED');
+  return (await credential.getAccessToken()).access_token;
+});
 
 type Request = {
   method?: string;
@@ -36,6 +43,7 @@ export default async function circle(req: Request, res: Response) {
       configurationStatus,
       ...(enabled ? { storageStatus } : {}),
       ...(storageStatus === 'invalid_json' ? { credentialFormat: credentialInputFormat(process.env.FIREBASE_SERVICE_ACCOUNT_JSON) } : {}),
+      ...(storageStatus === 'initialized' && req.query?.check === 'feed' ? { feedQueryStatus: await feedQueryProbe() } : {}),
     });
   }
   if (!enabled) return res.status(503).json({ error: 'COMMUNITY_UNAVAILABLE' });

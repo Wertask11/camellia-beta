@@ -27,7 +27,11 @@
 
 実際のRulesがcamellia_admin以下への直接clientアクセスを拒否することをFirebase担当者が確認する。テスト用Rules snapshotを本番へ上書きしない。
 
-既存indexを削除せず、security/firestore.indexes.jsonのCircle用6定義をFirestoreの「インデックス」で確認・不足分だけ追加する。collection scope。circle_posts(circleId昇順,createdAt降順)、circle_comments(postId昇順,createdAt昇順)、circle_reports(status昇順,createdAt降順)、circle_posts(uid昇順,createdAt降順)、circle_comments(uid昇順,createdAt降順)、circle_memberships(circleId昇順,active昇順)。作成中は完了まで待つ。
+ProductionでCAMELLIA_CIRCLE_ENABLED=trueの場合、build後のscripts/circle-indexes.mjsがsecurity/firestore.indexes.jsonのCircle用6定義を確認し、不足分だけ追加する。既存indexの削除・変更、Rules・IAM・claim・利用者データの操作は行わない。Preview・local・Circle OFFでは実行しない。結果は本番の/circle-setup-status.jsonで確認できる。buildingの場合は作成完了まで待つ。setup_failedの場合、権限を自動変更しない。
+
+担当者が[Firestoreのインデックス](https://console.firebase.google.com/project/emusch-2a111/firestore/indexes)で不足分を追加する場合の定義：collection scope。circle_posts(circleId昇順,createdAt降順)、circle_comments(postId昇順,createdAt昇順)、circle_reports(status昇順,createdAt降順)、circle_posts(uid昇順,createdAt降順)、circle_comments(uid昇順,createdAt降順)、circle_memberships(circleId昇順,active昇順)。既存のSchoolPark用indexは保持する。
+
+/api/camellia/circle?status=1&check=feedは、固定の投稿検索についてexplainOptions.analyze=falseで検索計画のみ確認する。投稿・利用者情報は取得せず、固定の成否ラベルだけ返す。初期化成功や検索計画成功は、認証・投稿・2-user・Moderationの実確認の代わりにはならない。
 
 運営担当者へのModerator claimは既存のscripts/circle-moderator.mjsとdocs/circle-phase2a.mdの手順を使い、信頼できる本人を確認して設定する。今回の画面公開やbuildで自動付与しない。
 

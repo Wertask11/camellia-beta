@@ -760,14 +760,14 @@ export function CircleScreen({
               </button>
               {itemView(post, 'post')}
               {comments.map((item) => itemView(item, 'comment'))}
-              {!comments.length && (
+              {!comments.length && !error && !busy && (
                 <p className="meta">まだコメントはありません。</p>
               )}
             </>
           ) : (
             <>
               {posts.map((item) => itemView(item, 'post'))}
-              {!posts.length && (
+              {!posts.length && !error && !busy && (
                 <p className="empty">
                   まだ投稿はありません。短い一言からでも。
                 </p>
