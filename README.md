@@ -61,3 +61,6 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 ### Place Phase 2C
 
 [掲載・審査・公開の運営手順と保存/削除の境界](docs/place-mvp.md)。新しい実在Placeの公開は運営確認と専用権限が必要です。架空データの自動投入はありません。
+### My / Tree / Insight Phase 2D
+
+[振り返りと事実・仮説、書き出し・削除の範囲](docs/reflection-phase2d.md)。人物の評価・順位付け・自動共有は追加しません。
