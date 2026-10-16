@@ -12,7 +12,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp",
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "窓の近くに座る",
       "目に入る色をひとつ見つける",
@@ -32,7 +32,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp",
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "画面を伏せる",
       "遠くを無理なく眺める",
@@ -51,7 +51,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp",
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "飲み慣れた飲み物を用意する",
       "安全な温度を確かめる",
@@ -71,7 +71,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp",
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "予定を見渡す",
       "今日でなくてもよい用事を選ぶ",
@@ -90,7 +90,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp"
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "rest-chair",
@@ -105,7 +105,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp",
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "安定した椅子に座る",
       "楽な位置に手を置く",
@@ -125,7 +125,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "night"
     ],
-    "image": "/actions/illustrations/rest.webp"
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "slow-morning",
@@ -140,7 +140,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "morning"
     ],
-    "image": "/actions/illustrations/rest.webp"
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "park-bench",
@@ -154,7 +154,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp"
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "unplanned-hour",
@@ -168,7 +168,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/rest.webp"
+    "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "shoulder-circle",
@@ -184,7 +184,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "body"
     ],
-    "image": "/actions/illustrations/body.webp",
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "楽な姿勢になる",
       "肩を小さくゆっくり回す",
@@ -204,7 +204,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp",
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "片づける一角を決める",
       "不要な物を元の場所へ戻す",
@@ -224,7 +224,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp",
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "飲み慣れた飲み物を用意する",
       "楽に座る",
@@ -243,7 +243,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp",
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "中身を見渡す",
       "不要な紙を一つ出す",
@@ -262,7 +262,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp",
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "一つ選ぶ",
       "自分のやり方でたたむ",
@@ -281,7 +281,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "low-cost",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp"
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "short-errand",
@@ -295,7 +295,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "low-cost",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp"
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "room-air",
@@ -309,7 +309,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "free",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp",
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "窓の周りの安全を確かめる",
       "開けられる範囲で窓を開ける",
@@ -328,7 +328,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "low-cost",
       "alone"
     ],
-    "image": "/actions/illustrations/body.webp"
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "neighborhood-route",
@@ -343,7 +343,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "body"
     ],
-    "image": "/actions/illustrations/body.webp"
+    "image": "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "hand-care",
@@ -358,7 +358,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp",
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "手を清潔にする",
       "使い慣れた保湿剤を少量とる",
@@ -378,7 +378,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp",
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "使い慣れた物を選ぶ",
       "少量でケアする",
@@ -398,7 +398,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp",
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "明日の予定と天気を確かめる",
       "着たい一組を選ぶ",
@@ -418,7 +418,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp"
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "closet-three",
@@ -433,7 +433,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp"
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "hair-comb",
@@ -448,7 +448,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp",
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "使い慣れた道具を用意する",
       "無理に引っ張らずとかす",
@@ -468,7 +468,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp",
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "身の回りの色を眺める",
       "気になる色を一つ選ぶ",
@@ -488,7 +488,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp",
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "道具を清潔にする",
       "無理のない範囲で一つ整える",
@@ -508,7 +508,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp"
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "beauty-budget",
@@ -523,7 +523,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "beauty"
     ],
-    "image": "/actions/illustrations/beauty.webp"
+    "image": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "photo-light",
@@ -539,7 +539,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp",
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "身の回りの光を探す",
       "人物や住所が写らないか確認する",
@@ -559,7 +559,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp",
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "紙とペンを用意する",
       "好きな線をいくつか描く",
@@ -579,7 +579,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "old-photo",
@@ -594,7 +594,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp",
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "写真を3枚選ぶ",
       "好きなところを一つ見つける",
@@ -614,7 +614,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "snack-taste",
@@ -629,7 +629,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "library-visit",
@@ -644,7 +644,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "movie-hour",
@@ -659,7 +659,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "season-find",
@@ -674,7 +674,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "small-craft",
@@ -689,7 +689,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "play"
     ],
-    "image": "/actions/illustrations/play.webp"
+    "image": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "word-one",
@@ -704,7 +704,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp",
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "言葉を一つ選ぶ",
       "信頼できる辞書などで調べる",
@@ -724,7 +724,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp",
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "紙かメモを開く",
       "気になる問いを一つ書く",
@@ -744,7 +744,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp",
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "本を開く",
       "2ページだけ読む",
@@ -764,7 +764,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp"
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "language-three",
@@ -779,7 +779,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp",
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "言語と話題を選ぶ",
       "3語の意味や音を確かめる",
@@ -799,7 +799,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp"
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "library-skill",
@@ -814,7 +814,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp"
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "money-note",
@@ -829,7 +829,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp",
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "メモを開く",
       "覚えている支出だけ書く",
@@ -849,7 +849,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp"
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "deep-read",
@@ -864,7 +864,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "learn"
     ],
-    "image": "/actions/illustrations/learn.webp"
+    "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "thanks-one",
@@ -879,7 +879,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp",
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "相手と伝えたいことを考える",
       "返信を求めない一言にする",
@@ -899,7 +899,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp",
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "紙やメモを開く",
       "今伝えたいことを書く",
@@ -920,7 +920,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp",
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "挨拶したい人がいるか考える",
       "短い言葉を選ぶ",
@@ -940,7 +940,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp",
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "誘いたい人と無理のない時間を考える",
       "断りやすい言葉で誘う",
@@ -960,7 +960,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp"
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "shared-tea",
@@ -976,7 +976,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp"
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "call-friend",
@@ -991,7 +991,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp"
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "boundary-note",
@@ -1007,7 +1007,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp",
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
     "steps": [
       "頼まれたことをメモする",
       "今できる範囲を考える",
@@ -1027,7 +1027,7 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "alone",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp"
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80"
   },
   {
     "id": "shared-hobby",
@@ -1043,6 +1043,6 @@ export const EXPANDED_ACTIONS: ActionDefinition[] = [
       "social",
       "connect"
     ],
-    "image": "/actions/illustrations/connect.webp"
+    "image": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80"
   }
 ];
