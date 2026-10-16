@@ -8,7 +8,7 @@ with sync_playwright() as p:
   context=b.new_context(viewport={'width':width,'height':height},reduced_motion='reduce',timezone_id='Asia/Tokyo')
   context.route('**/*',lambda route:route.continue_() if route.request.url.startswith('http://127.0.0.1:4177/') else route.abort())
   page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-  page.goto('http://127.0.0.1:4177/layout-conversation');page.get_by_role('heading',name='Camelliaに話す',exact=True).wait_for()
+  page.goto('http://127.0.0.1:4177/layout-conversation',wait_until='domcontentloaded',timeout=60000);page.get_by_role('heading',name='Camelliaに話す',exact=True).wait_for()
   assert page.locator('.conversation-preview').count()==2
   page.get_by_role('searchbox',name='会話を探す').fill('週末');assert page.locator('.conversation-preview').count()==1
   page.get_by_role('searchbox',name='会話を探す').fill('');page.screenshot(path=str(out/f'{width}-library.png'))
@@ -22,8 +22,14 @@ with sync_playwright() as p:
   page.get_by_role('button',name='前の会話を読む',exact=True).click();assert page.locator('.bubble').count()==80
   page.screenshot(path=str(out/f'{width}-thread.png'))
   page.get_by_role('button',name='会話一覧へ戻る',exact=True).click();page.get_by_role('button',name=re.compile('週末の楽しみを考えたい')).click();assert page.locator('.bubble').count()==1
+  assert page.locator('.bubble').bounding_box()['height']<150,'a single short message must not fill the viewport'
   page.get_by_role('button',name='新しい会話を始める',exact=True).click();assert page.locator('.bubble').count()==0
+  page.goto('http://127.0.0.1:4177/layout-conversation?short=1',wait_until='domcontentloaded',timeout=60000);page.locator('.conversation-preview').click();page.locator('.bubble.assistant').wait_for()
+  assert page.locator('.bubble.user').bounding_box()['height']<150
+  assert page.locator('.bubble.assistant').bounding_box()['height']<150
+  assert page.locator('.bubble.assistant').bounding_box()['y']-page.locator('.bubble.user').bounding_box()['y']-page.locator('.bubble.user').bounding_box()['height']<=12
+  page.screenshot(path=str(out/f'{width}-short-thread.png'))
   assert not errors,errors
-  results.append({'width':width,'library_search_switch_new':'PASS','legacy80messages_paged40':'PASS','composer_visible':'PASS','errors':errors});context.close()
+  results.append({'width':width,'library_search_switch_new':'PASS','legacy80messages_paged40':'PASS','composer_visible':'PASS','short_bubbles_fit_content':'PASS','errors':errors});context.close()
  b.close()
 (out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));print(json.dumps(results,ensure_ascii=False,indent=2))

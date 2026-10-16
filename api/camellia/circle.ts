@@ -1,4 +1,8 @@
-import { adminConfigured, serverAdmin } from '../../lib/server/admin.js';
+import {
+  adminConfigured,
+  adminInitializationStatus,
+  serverAdmin,
+} from '../../lib/server/admin.js';
 import { CircleError, CircleService } from '../../lib/circle/service.js';
 
 type Request = {
@@ -25,7 +29,11 @@ export default async function circle(req: Request, res: Response) {
   const enabled = configurationStatus === 'ready';
   if (req.method === 'GET' && req.query?.status === '1')
     // Configuration labels only: never return secret values, identities or SDK errors.
-    return res.status(200).json({ enabled, configurationStatus });
+    return res.status(200).json({
+      enabled,
+      configurationStatus,
+      ...(enabled ? { storageStatus: adminInitializationStatus() } : {}),
+    });
   if (!enabled) return res.status(503).json({ error: 'COMMUNITY_UNAVAILABLE' });
   if (req.method !== 'GET' && req.method !== 'POST')
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });

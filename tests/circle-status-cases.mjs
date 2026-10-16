@@ -54,11 +54,12 @@ try {
     assert.deepEqual(body, {
       enabled: expected === 'ready',
       configurationStatus: expected,
+      ...(expected === 'ready' ? { storageStatus: 'wrong_project' } : {}),
     });
     assert.equal(headers['Cache-Control'], 'no-store');
     assert.equal(
       Object.keys(body).length,
-      2,
+      expected === 'ready' ? 3 : 2,
       'no credential values or private identity',
     );
     await circle({ method: 'POST', headers: {}, body: {} }, res);
