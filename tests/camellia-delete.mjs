@@ -57,7 +57,7 @@ try {
   await assert.rejects(accountChanged.operation, { message: 'ACCOUNT_CHANGED' });
   assert.equal(accountChanged.local.get('camellia-state-v3'), 'personal data', 'UID changes prevent local cleanup');
 
-  assert.deepEqual(CAMELLIA_SYNC_DELETE_COLLECTIONS, ['daily', 'profile', 'imports']);
+  assert.deepEqual(CAMELLIA_SYNC_DELETE_COLLECTIONS, ['daily', 'daily_context', 'profile', 'imports']);
   const syncSource = await readFile(new URL('../lib/schoolpark/sync.ts', import.meta.url), 'utf8');
   assert.match(syncSource, /doc\(schoolParkDb, 'camellia_users', uid\)/, 'only the current user root document is targeted');
   assert.match(syncSource, /CAMELLIA_SYNC_DELETE_COLLECTIONS\.map/, 'child deletions use the explicit allowlist');

@@ -41,3 +41,7 @@ next-env.d.ts
 /outputs/
 /work/
 *.tsbuildinfo
+
+# Firebase emulator logs and isolated runtime cache
+*-debug.log
+/work/

@@ -4,7 +4,7 @@
 import { ACTIONS } from '@/data/actions';
 import { recommend } from '@/lib/recommendation/engine';
 import { jstDate } from '@/lib/fortune/engine';
-import { dailyCheckins, jstDayOffset } from '@/lib/reflection/engine';
+import { currentWeekChecks, dailyCheckins } from '@/lib/reflection/engine';
 import type { ActionRecord, CamelliaState, Checkin, Mood, ReflectionStage } from '@/types';
 
 export const MOODS: { value: Mood; emoji: string; label: string }[] = [
@@ -48,25 +48,23 @@ export const jstTime = (iso: string) =>
 
 /** The heading of 1/3 grows with the person's own records (never with age):
  * 今日のあなた → 昨日との違い → 最近のあなた → 今週のあなた.
- * 「今週のあなた」 only when the last seven daily Checks really fall within seven days. */
+ * 「今週のあなた」 only with five recorded days in the current JST calendar week. */
 export function reflectionHeading(state: CamelliaState, stage: ReflectionStage, now: Date) {
   if (stage === 'yesterday_compare') return '昨日との違い';
   if (stage === 'recent') return '最近のあなた';
   if (stage !== 'weekly') return '今日のあなた';
-  const last7 = dailyCheckins(state.checkins, now).slice(-7);
-  const first = last7[0] ? jstDate(new Date(last7[0].createdAt)) : '';
-  return first && first >= jstDayOffset(now, -6) ? '今週のあなた' : '最近7回のあなた';
+  return currentWeekChecks(dailyCheckins(state.checkins, now), now).length >= 5 ? '今週のあなた' : '最近のあなた';
 }
 
 /** 明日のCamellia: what tomorrow's Check can really bring back, from the same thresholds the reflection engine uses
- * (yesterday_compare: a Check yesterday; recent: 3 daily Checks; weekly: 7). Not a reward and not a promise. */
+ * (yesterday_compare: a Check yesterday; recent: 3 daily Checks; weekly: 5 days in the current JST week). Not a reward and not a promise. */
 export function tomorrowCopy(stage: ReflectionStage, historyDays: number, adaptive = true) {
   if (!adaptive) return '明日もCheckすると、今日との違いが見えてきます。';
   const next = historyDays + 1;
-  if (stage === 'weekly') return '明日Checkすると、今日との違いと、直近7回の流れが見えてきます。';
-  if (next >= 7) return `明日でCheckが${next}回に。直近7回の流れから、あなたのパターンが見えてきます。`;
+  if (stage === 'weekly') return '明日Checkすると、今日との違いと今週の記録をふり返れます。';
+  if (next >= 7) return `明日Checkすると、今日との違いと最近の記録をふり返れます。`;
   if (next >= 3 && historyDays < 3) return `明日でCheckが${next}回に。最近のあなたの流れが見えてきます。`;
-  if (next >= 3) return `明日Checkすると、今日との違いと最近の流れが見えてきます。7回分のふり返りまで、あと${7 - historyDays}回です。`;
+  if (next >= 3) return '明日Checkすると、今日との違いと最近の記録をふり返れます。';
   return '明日またCheckすると、今日との違いが見えてきます。';
 }
 
@@ -99,5 +97,13 @@ export const IN_PLACE_STEPS: Record<string, string[]> = {
 /** Today's three plans (2/3): the existing engine's order, without 何もしない (that choice lives only in
  * 今日どうする？). Discover leaves these same three out. */
 export function todayPlans(state: CamelliaState, now: Date) {
-  return recommend(state, now, undefined, 4).filter(r => r.action.id !== 'do-nothing').slice(0, 3);
+  const check = todayCheck(state, now);
+  const fresh = recommend(state, now, undefined, 4).filter(r => r.action.id !== 'do-nothing').slice(0, 3);
+  if (!check) return fresh;
+  // Recording an impression must not immediately reshuffle the cards that were just shown.
+  const firstShown = state.contextualMemory.filter(item => item.event === 'proposed' && item.createdAt >= check.createdAt && Date.parse(item.createdAt) <= now.getTime() + 60_000).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
+  const pool = recommend(state, now, undefined, 100);
+  const ids = [...new Set(firstShown.map(item=>item.actionId))].slice(0,3);
+  const previous = ids.flatMap(id=>{const found=pool.find(r=>r.action.id===id&&id!=='do-nothing');return found?[found]:[];});
+  return [...previous,...fresh.filter(r=>!ids.includes(r.action.id))].slice(0,3);
 }

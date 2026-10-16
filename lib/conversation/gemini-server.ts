@@ -4,7 +4,7 @@ import { immediateSafetyReply } from './safety.js';
 export { immediateSafetyReply } from './safety.js';
 
 export type SafeHistoryMessage = { role: 'user' | 'assistant'; text: string };
-export type ChatErrorCategory = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request';
+export type ChatErrorCategory = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
 
 export const CAMELLIA_SYSTEM_PROMPT = `あなたは「Camellia」です。女性の日常のウェルビーイングを支える会話相手です。診断や正解を与えるのではなく、本人が今の気持ちや今日どうしたいかに気づき、小さな選択をできるように支えます。
 
@@ -118,6 +118,8 @@ export function normalizeMoodForPrompt(value: unknown): string | undefined {
 export function classifyChatError(error: unknown): ChatErrorCategory {
   if (error && typeof error === 'object') {
     const value = error as { status?: unknown; code?: unknown; name?: unknown };
+    if(value.code==='SAFETY_BLOCK')return 'safety_block';
+    if(value.code==='INVALID_RESPONSE')return 'invalid_response';
     if (value.status === 429 || value.code === 429 || value.code === 'RESOURCE_EXHAUSTED') return 'rate_limited';
     if (value.name === 'AbortError' || value.name === 'TimeoutError' || value.code === 'ETIMEDOUT') return 'timeout';
     if (value.name === 'TypeError' || value.code === 'ECONNRESET' || value.code === 'ENOTFOUND') return 'network';
@@ -159,10 +161,12 @@ export function buildGeminiContents(history: SafeHistoryMessage[], currentMessag
 
 export function createGeminiChatHandler(deps: {
   env: Record<string, string | undefined>;
+  rateLimitMode?: string;
   verifyToken: (token: string) => Promise<{ uid: string }>;
   getTodayMood: (uid: string, token: string) => Promise<string | undefined>;
+  getTodayContext?: (uid: string, token: string) => Promise<string>;
   generate: (contents: ReturnType<typeof buildGeminiContents>, systemInstruction: string) => Promise<string>;
-  limiter?: ReturnType<typeof createInMemoryRateLimiter>;
+  limiter?: { take: (uid: string) => boolean | Promise<boolean> };
   now?: () => number;
 }) {
   const limiter = deps.limiter ?? createInMemoryRateLimiter();
@@ -172,7 +176,7 @@ export function createGeminiChatHandler(deps: {
   }) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (req.method === 'GET') return res.status(200).json({ enabled: isGeminiEnabled(deps.env), freeTier: deps.env.VERCEL_ENV === 'preview' });
+    if (req.method === 'GET') return res.status(200).json({ enabled: isGeminiEnabled(deps.env), dataPolicy: ['free','paid'].includes(deps.env.GEMINI_DATA_POLICY??'')?deps.env.GEMINI_DATA_POLICY:'unknown', ...(deps.rateLimitMode?{rateLimitMode:deps.rateLimitMode}:{}) });
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ error: 'method_not_allowed' }); }
     if (!isGeminiEnabled(deps.env)) return res.status(503).json({ error: 'disabled', category: 'disabled' });
     const authHeader = req.headers.authorization;
@@ -189,14 +193,15 @@ export function createGeminiChatHandler(deps: {
     const history = sanitizeHistory(body.history);
     const urgent = immediateSafetyReply(message);
     if (urgent) return res.status(200).json({ reply: urgent, provider: 'fallback', safety: true });
-    if (!limiter.take(identity.uid)) return res.status(429).json({ error: 'temporarily_unavailable', category: 'rate_limited' });
-    const mood = await deps.getTodayMood(identity.uid, token).catch(() => undefined);
+    try { if (!await limiter.take(identity.uid)) return res.status(429).json({ error: 'temporarily_unavailable', category: 'rate_limited' }); }
+    catch { return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'}); }
+    const [mood,extraContext] = await Promise.all([deps.getTodayMood(identity.uid, token).catch(() => undefined),deps.getTodayContext?.(identity.uid, token).catch(()=> '') ?? Promise.resolve('')]);
     const contextText = mood ? `\n\n今日のCheck（気分のみ・参考情報）: ${mood}\n必要な場合に限り自然に参考にし、ユーザーの状態を断定しないこと。` : '';
     try {
       const started = deps.now?.() ?? Date.now();
-      const reply = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${contextText}`)).trim();
+      const reply = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${contextText}${extraContext}`)).trim();
       const responseTimeMs = Math.max(0, (deps.now?.() ?? Date.now()) - started);
-      if (!reply) return res.status(502).json({ error: 'temporarily_unavailable', category: 'provider_error' });
+      if (!reply) return res.status(502).json({ error: 'temporarily_unavailable', category: 'invalid_response' });
       return res.status(200).json({ reply: Array.from(reply).slice(0, 700).join(''), provider: 'gemini', responseTimeMs });
     } catch (error) {
       const category = classifyChatError(error);

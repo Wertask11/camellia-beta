@@ -150,8 +150,8 @@ function TodayOneFlow({
   /* 2/3: one plan in front, two quiet ones. 何もしない lives only in 今日どうする？. */
   const plans = useMemo(() => todayPlans(state, displayDate), [state, displayDate]);
   useEffect(() => {
-    if (state.checkins.length) onProposals(plans.map(r => r.action.id));
-  }, [plans, state.checkins.length, onProposals]);
+    if (checked) onProposals(plans.map(r => r.action.id));
+  }, [plans, checked, onProposals]);
   const reflectionViewSent = useRef('');
   useEffect(() => {
     if (!dailyReflection) return;

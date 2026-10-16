@@ -87,7 +87,7 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
   const band = getTimeBand(date);
   /* 使える時間に収まるものだけにする。ただし収まるものが少なすぎるときは絞らず、
      長いものを下げるだけにする（1分と答えた人に「何もしない」しか出なくなるため）。 */
-  const inCategory = ACTIONS.filter((action) => (!category || action.category === category) && (!action.requires || LIVE_DESTINATIONS.has(action.requires)));
+  const inCategory = ACTIONS.filter((action) => (!category || action.category === category) && (!action.requires || LIVE_DESTINATIONS.has(action.requires)) && (!action.destination || LIVE_DESTINATIONS.has(action.destination)));
   const fits = inCategory.filter(action=>!state.profile.availableMinutes||action.minutes<=state.profile.availableMinutes);
   const pool = fits.filter(action=>action.id!=='do-nothing').length >= limit ? fits : inCategory;
   return pool
@@ -106,7 +106,7 @@ export function recommend(state: CamelliaState, date = new Date(), category?: Ca
     .reduce<Recommendation[]>((picked,item)=>{
       if(picked.length>=limit)return picked;
       const same=picked.filter(x=>x.action.category===item.action.category).length;
-      if(!category&&same>=2)return picked;
+      if(!category&&limit<=4&&same>=2)return picked;
       picked.push(item);return picked;
     },[]);
 }

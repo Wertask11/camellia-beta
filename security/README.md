@@ -1,0 +1,9 @@
+# Existing Firestore boundary
+
+Phase 1 uses `camellia_admin/release_phase1/{collection}/{document}` for all community records and shared rate counters. The existing SchoolPark rules exclude `camellia_admin` from the recursive generic allow and have no client allow for that namespace. All client access must be denied, including moderator custom claims. Verified server API calls use Admin SDK; ownership, active membership, pseudonymous IDs, input allowlists and moderation claims are enforced there.
+
+`tests/fixtures/schoolpark.firestore.rules` is a read-only snapshot of the existing SchoolPark rules for emulator regression. It is NOT a replacement deployment configuration. Do not deploy this snapshot over SchoolPark rules. No existing Firestore rules or SchoolPark services are changed by this PR. Before enabling live, confirm the actual deployed rules retain the tested exclusion (local repository inspection is not proof of deployed rules).
+
+Required composite indexes: `circle_posts(circleId ASC, createdAt DESC)` `circle_comments(postId ASC, createdAt ASC)` and `circle_reports(status ASC, createdAt DESC)` under the protected namespace. Configure collection-group indexes using `security/firestore.indexes.json`; verify actual queries before LIVE. Enable Firestore TTL on collection group `rate_windows` field `expiresAt`. TTL is for cleanup, not enforcement.
+
+Server credentials must target emusch-2a111 with least-privilege Firestore/Auth permissions. `FIREBASE_SERVICE_ACCOUNT_JSON` is server-only. Never prefix it with VITE_/NEXT_PUBLIC_, commit it, or paste it in a report. Set a separate stable 32+ character `CAMELLIA_CIRCLE_SIGNING_SECRET`; rotating it changes pseudonymous author IDs and needs migration. Only a trusted Firebase administrator can assign `camelliaModerator: true` custom claims; body fields, display names and client flags cannot grant moderation.

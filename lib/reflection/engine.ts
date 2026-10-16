@@ -55,36 +55,37 @@ const compareNumber = (
   if (current === undefined || previous === undefined) return undefined;
   const diff = current - previous;
   if (Math.abs(diff) < (label === '睡眠' ? 0.75 : 1))
-    return `${label}は昨日とあまり変わっていません。`;
+    return `${label}の入力は昨日と同じくらいでした。`;
   if (label === '気持ち')
     return diff > 0
-      ? '昨日より、気持ちは少し軽そうです。'
-      : '昨日より、気持ちは少し重めのようです。';
+      ? '気分の入力は、昨日より少し上向きでした。'
+      : '気分の入力は、昨日より少し低めでした。';
   return diff > 0
     ? `${label}は昨日より少し${unit || '高め'}です。`
     : `${label}は昨日より少し${unit ? '少なめ' : '低め'}です。`;
 };
 
 function todayMessage(check: Checkin) {
-  if (check.mood >= 4) return '今日は、気持ちに少し余裕がありそうです。';
-  if (check.mood <= 2)
-    return '今日は、気持ちに少し負担があるのかもしれません。';
-  if (check.body === '疲れ気味' || check.body === '悪い')
-    return '今日は、身体の疲れを感じているようです。';
-  return '今日は、比較的穏やかな状態のようです。';
+  return `今日の気分は「${['','つらい','少しつらい','普通','良い','とても良い'][check.mood]}」の記録でした。今の感覚を優先してください。`;
+}
+
+export function currentWeekChecks(checks: Checkin[], now: Date) {
+  const weekday = new Date(now.getTime() + 9 * 3600000).getUTCDay();
+  const monday = jstDayOffset(now, -((weekday + 6) % 7));
+  return checks.filter(check => jstDate(new Date(check.createdAt)) >= monday && jstDate(new Date(check.createdAt)) <= jstDate(now));
 }
 
 function recentMessages(checks: Checkin[]) {
   const messages: string[] = [];
   const moods = checks.map((x) => x.mood);
   if (Math.max(...moods) - Math.min(...moods) <= 1)
-    messages.push(`この${checks.length}回の記録では、気持ちは比較的安定しています。`);
+    messages.push(`この${checks.length}回の記録では、気分の入力は1段階以内の範囲でした。`);
   const sleep = checks.flatMap((x) => (x.sleep === undefined ? [] : [x.sleep]));
   if (
     sleep.length >= 2 &&
     sleep.filter((x) => x < 6).length >= Math.ceil(sleep.length * 0.6)
   )
-    messages.push('最近は、睡眠が少なめの日が続いています。');
+    messages.push(`直近${checks.length}回のうち、睡眠が6時間未満の記録が${sleep.filter(x=>x<6).length}回ありました。`);
   const bodies = checks.flatMap((x) => (x.body ? [bodyScore[x.body]] : []));
   if (
     bodies.length >= 2 &&
@@ -92,7 +93,7 @@ function recentMessages(checks: Checkin[]) {
       bodies.slice(0, -1).reduce((a, b) => a + b, 0) / (bodies.length - 1)
   )
     messages.push(
-      `この${checks.length}回では、今日は身体の疲れが少し高めです。`,
+      `この${checks.length}回では、今日は身体の疲れの入力が少し高めでした。`,
     );
   return messages;
 }
@@ -108,23 +109,14 @@ function weeklyMessages(checks: Checkin[]) {
   ).length;
   if (tiredAndStressed >= 2)
     messages.push(
-      '最近は、ストレスと身体の疲れが同時に高い日がいくつかありました。',
+      '最近は、ストレスと身体の疲れを同時に高めと記録した日がいくつかありました。',
     );
   const secondHalf = checks.slice(Math.floor(checks.length / 2));
   const tiredLate = secondHalf.filter(
     (x) => x.body && bodyScore[x.body] <= 2,
   ).length;
   if (tiredLate >= Math.ceil(secondHalf.length / 2))
-    messages.push('直近の後半には、身体の疲れが高めの日がありました。');
-  let comparable = 0,
-    lowSleepLowMood = 0;
-  for (let i = 1; i < checks.length; i++) {
-    if (checks[i - 1].sleep === undefined) continue;
-    comparable++;
-    if (checks[i - 1].sleep! < 6 && checks[i].mood <= 2) lowSleepLowMood++;
-  }
-  if (comparable >= 3 && lowSleepLowMood >= 2)
-    messages.push('睡眠が少なかった次の記録で、気分が低めの日がありました。');
+    messages.push('直近の後半には、身体の疲れを高めと記録した日がありました。');
   return messages;
 }
 
@@ -142,30 +134,33 @@ export function buildDailyReflection(
     (x) => jstDate(new Date(x.createdAt)) === jstDayOffset(now, -1),
   );
   const recent = checks.slice(-3);
-  const weekly = checks.slice(-7);
+  const weekly = currentWeekChecks(checks, now);
   const messages = [todayMessage(today)];
+  const recentDays = new Set(recent.map(c => jstDate(new Date(c.createdAt))));
+  const selected = state.actions?.filter(a => a.status !== 'skipped' && recentDays.has(jstDate(new Date(a.createdAt)))).length ?? 0;
   const yesterdayMessages = yesterday ? [
     compareNumber('気持ち', today.mood, yesterday.mood),
     compareNumber('睡眠', today.sleep, yesterday.sleep, '長め'),
     today.body && yesterday.body ? compareNumber('身体の疲れ', 5 - bodyScore[today.body], 5 - bodyScore[yesterday.body]) : undefined,
     today.stress && yesterday.stress ? compareNumber('ストレス', stressScore[today.stress], stressScore[yesterday.stress]) : undefined,
-  ].filter((message): message is string => Boolean(message)).slice(0, 2) : [];
+  ].filter((message): message is string => Boolean(message)).slice(0, 4) : [];
   let stage: ReflectionStage = 'first_day';
 
   if (!prior.length) {
     messages.push(
       '今日が、最初の一日です。今日の記録が、明日のあなたを知る手がかりになります。明日またCheckすると、今日との違いが少し見えてきます。',
     );
-  } else if (weekly.length >= 7) {
+  } else if (weekly.length >= 5) {
     stage = 'weekly';
     messages.push(...weeklyMessages(weekly));
     if (messages.length === 1)
       messages.push(
-        '直近7回の記録では、ひとつに決めつけられるほどの大きな偏りはまだ見えていません。',
+        `今週は${weekly.length}日分の記録があります。大きな傾向は決めつけず、今日の感覚も大切にしてください。`,
       );
   } else if (recent.length >= 3) {
     stage = 'recent';
     messages.push(...recentMessages(recent));
+    if (selected) messages.push(`この3回の記録の日に、過ごし方を${selected}件選んでいます。`);
     if (messages.length === 1 && yesterday)
       messages.push(compareNumber('気持ち', today.mood, yesterday.mood)!);
   } else if (yesterday) {
@@ -181,7 +176,7 @@ export function buildDailyReflection(
     historyDays: checks.length,
     title:
       stage === 'weekly'
-        ? '最近のあなたのパターン'
+        ? '今週のあなた'
         : stage === 'recent'
           ? '最近のあなた'
           : '今日のあなた',
