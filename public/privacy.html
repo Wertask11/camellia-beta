@@ -47,7 +47,7 @@
 <p>行動の提案に表示する一部の画像は、Unsplash（images.unsplash.com）から読み込みます。その際、IPアドレスやブラウザの種類等の通信情報が同サービスに送られます。記録の内容は送られません。</p>
 <p>SchoolPark Passportとの連携および運営管理は、運営者（SchoolPark）が行います。各事業者のプライバシー情報・利用条件：<a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase</a>、<a href="https://policies.google.com/privacy" rel="noopener">Googleプライバシーポリシー</a>、<a href="https://vercel.com/legal/privacy-policy" rel="noopener">Vercel</a>、<a href="https://render.com/privacy" rel="noopener">Render</a>、<a href="https://www.lycorp.co.jp/ja/company/privacypolicy/" rel="noopener">LINEヤフー</a>、<a href="https://posthog.com/privacy" rel="noopener">PostHog</a>。</p>
 
-<h2>Circleの記録と公開範囲</h2><p>機能が公開された環境では、Circle専用の表示名、参加・退出、本人が投稿欄に入力した文章、コメント、リアクションをFirestoreへ保存します。投稿・コメントはCircle参加者に見えます。Check・会話・生理情報・My Tree・Memoryは自動投稿しません。内部の認証IDは公開せず、Circle専用の識別子に分離します。通報とブロックは相手へ通知せず、通報者・ブロック履歴は公開しません。運営は権限を確認したAPIから通報を確認・削除できます。</p><p>自分の文章はCircleから編集・削除できます。退出やMyの個人記録削除ではCircleの文章・通報・運営監査は削除されません。退出後も「自分の投稿・コメント」から削除でき、その他の削除は問い合わせ窓口へ申請できます。投稿・コメント本文と表示名はPostHogやGeminiへ送りません。安全確保のため通報と監査は別に保存します。</p><h2>写真の配信</h2><p>Discover等の写真はUnsplashの画像配信サーバー（images.unsplash.com）から取得します。画像の読込みに伴い、IPアドレス等の通信情報が配信元へ届きます。会話・Check・プロフィールを画像URLに付加しません。</p><h2>5. 分析サービスへ送信する情報</h2>
+<h2>Circleの記録と公開範囲</h2><p>機能が公開された環境では、Circle専用の表示名、参加・退出、本人が投稿欄に入力した文章、コメント、リアクションをFirestoreへ保存します。投稿・コメントはCircle参加者に見えます。Check・会話・生理情報・My Tree・Memoryは自動投稿しません。内部の認証IDは公開せず、Circle専用の識別子に分離します。通報とブロックは相手へ通知せず、通報者・ブロック履歴は公開しません。運営は権限を確認したAPIから通報を確認・削除できます。</p><p>自分の文章はCircleから編集・削除できます。退出やMyの個人記録削除ではCircleの文章・通報・運営監査は削除されません。退出後も「自分の投稿・コメント」から削除でき、その他の削除は問い合わせ窓口へ申請できます。投稿・コメント本文と表示名はPostHogやGeminiへ送りません。安全確保のため通報と監査は別に保存します。</p><h2>5. 分析サービスへ送信する情報</h2>
 <p>PostHogには、許可リストに基づくイベント名、機能ID、PostHogが端末ごとに発行するランダムな識別子等を送信します。名前、生年月日、Firebase UID、Passport ID、LINE内部識別子、投稿本文、コメント本文、Circleの表示名、Checkの入力値、会話本文、Memoryの本文、My Treeの人物名・本文は送信しない設計です。PostHogの識別子はFirebaseアカウントを横断する本人識別子ではありません。ページのURLは、ログインの戻り値等を含まないよう、クエリを除いて送信します。通信の性質上、IPアドレスやブラウザの種類等の通信情報はPostHogに届きます。画面の録画（セッション録画）や、画面操作の自動収集は行っていません。</p>
 
 <h2>6. 慎重な取扱いを要する情報</h2>
@@ -69,6 +69,7 @@
 <h2>11. 利用対象・医療サービスではないこと</h2>
 <p>本サービスは18歳以上45歳以下の女性を対象とするウェルビーイングサービスです。医療機関、診断、治療、心理療法または緊急相談の代替ではありません。</p>
 
+<h2>写真の配信</h2><p>Discover等の写真はUnsplashの画像配信サーバー（images.unsplash.com）から取得します。画像の読込みに伴い、IPアドレス等の通信情報が配信元へ届きます。会話・Check・プロフィールを画像URLに付加しません。</p>
 <h2>12. 改定・問い合わせ先</h2>
 <p>本ポリシーを変更する場合、変更内容と効力発生日を本サービス上で周知します。</p>
 <p>運営者：合同会社型DAO SchoolPark（LLC.DAO School Park）<br>代表者：浅加 天輝<br>所在地：〒813-0042 福岡県福岡市東区舞松原5-2-16 ラムセス7 101号室<br>問い合わせ先：<a href="mailto:takakiasaka1@gmail.com">takakiasaka1@gmail.com</a></p>
