@@ -38,3 +38,5 @@ lint/typecheck/unit/buildとエミュレータ、5幅のlocal fixtureを別々�
 `/?open=place-demo` はログイン不要の読み取り専用デモ。3つの架空例を「デモ・実在の掲載ではない」と常時明示し、参考写真の意味も説明します。予約/地図/保存/店舗への送信/Place analyticsは動かしません。APIやFirestoreへデータを投入せず、status=draft・公式URL空の別ファイル data/place-demo.ts から表示します。後から同ファイルを編集できます。実在Place公開とは別で、REAL PUBLISHED PLACE PASSの件数には数えません。
 
 デモ追加の検証：実際のapp/page入口を未ログイン・認証/API差し替えなしでChromium375/390/412/768/1280から開き、3例の一覧、カテゴリ絞り込み、詳細URL再読み込み、外部リンク/保存操作なし、Place API通信0を確認。参照写真の配信先はこの実行環境でブロックされるため、写真の実表示は本人のPreview確認が必要です。
+
+2026-10-16 公開確認用：実在掲載がOFFでもDiscoverのPlace入口から説明用デモを開けます。`/?open=place` もOFF時はログイン不要のデモへ接続します。実在掲載ON時は従来の認証・公開済みデータのみの画面です。デモをpublished扱いしたりFirestoreへ投入する変更はありません。

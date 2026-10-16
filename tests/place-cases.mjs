@@ -1,3 +1,5 @@
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 const root = process.cwd(),
@@ -75,6 +77,11 @@ try {
     assert.equal(demo.sponsored, false);
     assert.equal(demo.partnerStatus, 'none');
   }
+  const {DiscoverScreen} = await server.ssrLoadModule('/screens/DiscoverScreen.tsx');
+  const noop=()=>{};
+  const html=renderToStaticMarkup(createElement(DiscoverScreen,{state:emptyState(),onCategory:noop,onOpenAction:noop,onOpenSecondary:noop}));
+  assert.ok(html.includes('デモを見る'), 'Place demo has a Discover entry while real publishing stays disabled');
+  assert.ok(!html.includes('Place（準備中）'));
   console.log(
     'Place validation and privacy boundaries PASS. No real place published.',
   );
