@@ -14,12 +14,18 @@ type Response = {
 export default async function circle(req: Request, res: Response) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  const enabled =
-    process.env.CAMELLIA_CIRCLE_ENABLED === 'true' &&
-    adminConfigured() &&
-    (process.env.CAMELLIA_CIRCLE_SIGNING_SECRET?.length ?? 0) >= 32;
+  const configurationStatus =
+    process.env.CAMELLIA_CIRCLE_ENABLED !== 'true'
+      ? 'disabled'
+      : !adminConfigured()
+        ? 'storage_not_configured'
+        : (process.env.CAMELLIA_CIRCLE_SIGNING_SECRET?.length ?? 0) < 32
+          ? 'signing_not_configured'
+          : 'ready';
+  const enabled = configurationStatus === 'ready';
   if (req.method === 'GET' && req.query?.status === '1')
-    return res.status(200).json({ enabled });
+    // Configuration labels only: never return secret values, identities or SDK errors.
+    return res.status(200).json({ enabled, configurationStatus });
   if (!enabled) return res.status(503).json({ error: 'COMMUNITY_UNAVAILABLE' });
   if (req.method !== 'GET' && req.method !== 'POST')
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
@@ -72,14 +78,12 @@ export default async function circle(req: Request, res: Response) {
         return res.status(200).json({ blocks: await service.blocks(identity) });
       if (req.query?.moderation === '1') {
         const reports = await service.moderation(identity, undefined, cursor);
-        return res
-          .status(200)
-          .json({
-            reports,
-            nextReportCursor: Array.isArray(reports)
-              ? reports[0]?.nextCursor
-              : undefined,
-          });
+        return res.status(200).json({
+          reports,
+          nextReportCursor: Array.isArray(reports)
+            ? reports[0]?.nextCursor
+            : undefined,
+        });
       }
       const id =
         typeof req.query?.circle === 'string' ? req.query.circle : undefined;
