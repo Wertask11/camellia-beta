@@ -14,8 +14,10 @@ try{
  const probe=createFeedQueryProbe(async()=>'unit-only-not-real',request,()=>time);
  assert.deepEqual(await Promise.all([probe(),probe()]),['index_required','index_required']);assert.equal(calls,1);await probe();assert.equal(calls,1);time=60001;await probe();assert.equal(calls,2);
  for(const [status,expected] of [[200,'ready'],[401,'credential_rejected'],[403,'permission_denied'],[500,'unavailable']]){
-  const value=await createFeedQueryProbe(async()=>'unit-only',async()=>new Response('{}',{status}))();assert.equal(value,expected);
+  const value=await createFeedQueryProbe(async()=>'unit-only',async()=>new Response(JSON.stringify([{explainMetrics:{planSummary:{indexesUsed:[]}}}]),{status}))();assert.equal(value,expected);
  }
+ for(const status of [200,400])assert.equal(await createFeedQueryProbe(async()=>'unit-only',async()=>Response.json([{error:{status:'FAILED_PRECONDITION',message:'unit query needs index'}}],{status}))(),'index_required');
+ for(const body of [{},[],[{document:{fields:{privateText:'never expose this'}}}],[{error:{status:'INTERNAL',message:'never expose this'}}]])assert.equal(await createFeedQueryProbe(async()=>'unit-only',async()=>Response.json(body))(),'unavailable','HTTP success alone does not prove a valid plan');
  assert.equal(await createFeedQueryProbe(async()=>{throw new Error('private upstream text');})(),'unavailable');
  console.log('Feed readiness PASS: fixed plan-only query, no record execution, no echo of upstream content or credentials, shared cache and status mapping. Live Firestore not tested here.');
 }finally{await server.close();}

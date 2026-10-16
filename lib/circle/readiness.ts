@@ -27,11 +27,14 @@ export function createFeedQueryProbe(
           explainOptions: { analyze: false },
         }),
       });
-      if (response.ok) { await response.body?.cancel(); return 'ready'; }
       if (response.status === 401) return 'credential_rejected';
       if (response.status === 403) return 'permission_denied';
-      const body = await response.json().catch(() => ({})) as { error?: { status?: string; message?: string } };
-      if (body.error?.status === 'FAILED_PRECONDITION' && /index/i.test(body.error.message ?? '')) return 'index_required';
+      type Entry = { error?: { status?: string; message?: string }; explainMetrics?: { planSummary?: unknown }; document?: unknown };
+      const body = await response.json().catch(() => ({})) as Entry | Entry[];
+      const entries = Array.isArray(body) ? body : [body];
+      const error = entries.find(entry => entry?.error)?.error;
+      if (error?.status === 'FAILED_PRECONDITION' && /index|インデックス/i.test(error.message ?? '')) return 'index_required';
+      if (response.ok && !error && !entries.some(entry => entry?.document) && entries.some(entry => entry?.explainMetrics?.planSummary)) return 'ready';
       return 'unavailable';
     } catch { return 'unavailable'; }
   };
