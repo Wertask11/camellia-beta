@@ -1,7 +1,7 @@
 /** Places in Camellia that are live in this release. In β2, Circle and Place are coming soon: their own
  * screens say so, and actions never send someone there until the place is live. */
 // Enable only after authenticated multi-user / rules / moderation acceptance. Place stays off.
-export const LIVE_DESTINATIONS: ReadonlySet<'circle' | 'place'> = new Set(import.meta.env?.VITE_CIRCLE_ENABLED === 'true' ? ['circle'] : []);
+export const LIVE_DESTINATIONS: ReadonlySet<'circle' | 'place'> = new Set([...(import.meta.env?.VITE_CIRCLE_ENABLED === 'true' ? ['circle' as const] : []),...(import.meta.env?.VITE_PLACE_ENABLED === 'true' ? ['place' as const] : [])]);
 
 /* UI switches for the Today one-flow release (Camellia β2 UI/UX audit, 2026-10-09).
    Both are on by default. Setting VITE_TODAY_ONE_FLOW=off (or VITE_ADAPTIVE_STAGE_UI=off) at build time

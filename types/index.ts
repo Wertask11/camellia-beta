@@ -209,6 +209,7 @@ export type ReflectionStage =
   | 'recent'
   | 'weekly';
 export type AnalyticsEventName =
+  | 'place_view' | 'place_save' | 'place_external_open' | 'place_booking_open' | 'place_map_open'
   | 'session_start'
   | 'welcome_view'
   | 'welcome_continue'
