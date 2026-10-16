@@ -54,3 +54,7 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 ### Server SDK互換性
 
 `firebase-admin`は`13.10.0`へ固定しています。14系の認証依存（jwks-rsa4→jose6）は同期require(ESM)に依存し、これが無効なserverless runtimeでERR_REQUIRE_ESMになります。更新時は`node tests/server-sdk-compatibility.mjs`とFirestore emulatorを通してください。Gemini公式SDKは変更していません。
+
+### Place Phase 2C
+
+[掲載・審査・公開の運営手順と保存/削除の境界](docs/place-mvp.md)。新しい実在Placeの公開は運営確認と専用権限が必要です。架空データの自動投入はありません。

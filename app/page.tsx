@@ -16,6 +16,8 @@ import { onAuthStateChanged, type User } from 'firebase/auth';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
 import { TreeScreen } from '@/screens/TreeScreen';
+import {PlaceScreen} from '@/screens/PlaceScreen';
+import {validSlug} from '@/lib/place/model';
 import { CircleScreen } from '@/screens/CircleScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { TodayScreen } from '@/screens/TodayScreen';
@@ -56,6 +58,9 @@ export default function Page() {
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
   const [secondary, setSecondary] = useState<'circle' | 'place'>();
+  const [placeEntry,setPlaceEntry]=useState<{slug?:string;savedOnly?:boolean}>();
+  useEffect(()=>{let active=true;queueMicrotask(()=>{try{const url=new URL(location.href);let pending;if(url.searchParams.get('open')==='place'){const slug=url.searchParams.get('place');pending={slug:validSlug(slug)?slug:undefined,at:Date.now()};localStorage.setItem('camellia-pending-place',JSON.stringify(pending));}else pending=JSON.parse(localStorage.getItem('camellia-pending-place')||'null');if(active&&pending&&Date.now()-pending.at<1800000){setPlaceEntry({slug:pending.slug});setSecondary('place');}}catch{/* Root navigation works without saved destination. */}});return()=>{active=false;};},[]);
+  useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))try{localStorage.removeItem('camellia-pending-place');}catch{/* No effect on personal records. */}},[accountReady,accountUser,store.state.profile]);
   const [privacy, setPrivacy] = useState(false);
   const [treeContext,setTreeContext]=useState<TreeLeaf>();
   const [feature, setFeature] = useState<'fortune' | 'tree'>();
@@ -196,7 +201,7 @@ export default function Page() {
   if (secondary)
     return (
       <div className="app-shell">
-        {secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen onBack={()=>setSecondary(undefined)} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/>}
+        {secondary === 'place' && LIVE_DESTINATIONS.has('place') ? <PlaceScreen initialSlug={placeEntry?.slug} savedOnly={placeEntry?.savedOnly} onTrack={store.track} onBack={()=>{setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/> : secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen onBack={()=>setSecondary(undefined)} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>setSecondary(undefined)}/>}
       </div>
     );
   if (privacy)
@@ -325,7 +330,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen
+        <MyScreen onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}

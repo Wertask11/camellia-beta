@@ -27,6 +27,7 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
           サービス改善のための操作イベントはPostHogへ送信されます。許可した計測項目だけを使い、会話本文、返答本文、Memory本文、Checkの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
         </p>
       </section>
+<section className="panel"><h2>Placeについて</h2><p>公開済みの場所だけを掲載し、保存した場所のIDは個人記録として同期・削除されます。外部サイト・予約・地図・写真配信元へ接続する際には通信情報が届きますが、Checkや会話は付加しません。位置情報は取得しません。広告・提携は表示します。</p></section>
       <section className="panel"><h2>Circleについて</h2><p>Circle専用の表示名と、自分で投稿欄に書いた文章だけを参加者に公開します。Checkや会話、My Treeは自動投稿しません。通報・ブロックは相手へ通知しません。退出やMyの記録削除ではCircleの文章は消えません。Circleの「自分の投稿・コメント」から削除できます。通報・運営監査は別途保存します。<a href="/community-guidelines.html" target="_blank" rel="noopener">ガイドライン</a></p></section>
       <section className="panel">
         <h2>My Treeについて</h2>
