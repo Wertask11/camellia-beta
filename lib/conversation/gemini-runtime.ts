@@ -11,6 +11,7 @@ import {
   verifyFirebaseIdToken,
 } from './gemini-server.js';
 
+import { CONVERSATION_RESPONSE_SCHEMA } from './action-bridge.js';
 import { adminConfigured, serverAdmin } from '../server/admin.js';
 import { createSharedRateLimiter } from '../server/shared-limit.js';
 import { getSafeTodayContext } from './today-server.js';
@@ -65,6 +66,8 @@ const handler = createGeminiChatHandler({
       config: {
         systemInstruction,
         temperature: 0.7,
+        responseMimeType: 'application/json',
+        responseJsonSchema: CONVERSATION_RESPONSE_SCHEMA,
         // This limit includes internal thinking; 256 can yield no visible text.
         maxOutputTokens: model.includes('flash-lite') ? 512 : 2048,
         thinkingConfig: { thinkingLevel: model.includes('flash-lite') ? ThinkingLevel.MINIMAL : ThinkingLevel.LOW },
