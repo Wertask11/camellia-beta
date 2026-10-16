@@ -1,6 +1,7 @@
 import { useState,useSyncExternalStore } from 'react';
 import {getSyncStatus,subscribeSyncStatus,flushSchoolParkSync} from '@/lib/schoolpark/sync';
 import {buildDailyReflection,currentWeekChecks,dailyCheckins} from '@/lib/reflection/engine';
+import {LIVE_DESTINATIONS} from '@/lib/features';
 import { ACTIONS } from '@/data/actions';
 import { generateInsights } from '@/lib/insight/engine';
 import { AccountSettings } from '@/components/AccountSettings';
@@ -8,7 +9,7 @@ import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
 import type { CamelliaState } from '@/types';
 
-export function MyScreen({state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
@@ -30,6 +31,8 @@ export function MyScreen({state,devNight,onEditProfile,onForget,onReset,onInsigh
     {sync.phase==='error'&&<div className="my-alert" role="alert"><p>この端末の記録は残っています。もう一度確認すると、アカウントにも保存されます。</p><button className="text-button" onClick={()=>void flushSchoolParkSync()}>もう一度確認する</button></div>}
     <section className="panel my-recent"><h2>最近の私</h2>{reflection?<><p>{reflection.messages[0]}</p><p>{reflection.messages[1]}</p></>:<p>今日のCheckから、自分の記録が少しずつ積み重なります。</p>}<h3>今週の振り返り</h3><p>今週（月曜から）は{week.length}日分のCheckがあります。{week.length<5?'まだ分からないこともあります。':'入力した日々を、今の実感と照らしてみましょう。'}</p></section>
     <button className="my-tree-entry" onClick={onTree}><span className="tree-mini">♧</span><span><b>My Tree</b><small>人とのつながりから、自分を知る</small></span><strong>振り返る →</strong></button>
+    {LIVE_DESTINATIONS.has('circle')&&onCircles&&<button className="secondary-button" onClick={onCircles}>参加中のCircleを見る →</button>}
+    {LIVE_DESTINATIONS.has('place')&&onPlaces&&<button className="secondary-button" onClick={onPlaces}>保存したPlaceを見る →</button>}
     <section className="insights"><p className="eyebrow">Camelliaがあなたについて気づいたこと</p><h2>これまでの記録からの気づき</h2>{insights.length?insights.map(i=><article className="insight-card" key={i.key}><p className="eyebrow">事実</p><p>{i.fact??i.text}</p><p className="eyebrow">仮説・受け取り方</p><p>{i.hypothesis??'この記録だけで理由は決められません。'}</p><small>{i.periodStart&&i.periodEnd?`${i.periodStart}〜${i.periodEnd} · `:''}{i.sampleSize}件の記録。因果関係を示すものではありません。</small><div><button onClick={()=>onInsight(i.key,'correct')}>合ってる</button><button onClick={()=>onInsight(i.key,'incorrect')}>ちょっと違う</button></div></article>):<div className="empty"><b>まだ分からないこともたくさんあります。</b><br/>少しずつ一緒に見つけていきましょう。</div>}</section>
     <details className="my-profile"><summary>プロフィール</summary><section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section></details>
     <details className="account-records"><summary>アカウントと記録 <span>{sync.phase==='saved'?'保存済み':sync.phase==='error'?'確認が必要':sync.phase==='pending'?'保存中':'確認中'}</span></summary>
@@ -46,6 +49,6 @@ export function MyScreen({state,devNight,onEditProfile,onForget,onReset,onInsigh
     <section className="panel display-settings"><h2>表示</h2><label className="switch-row"><input type="checkbox" checked={lessExplain} onChange={e=>toggleExplain(e.target.checked)}/> 説明を少なめにする</label><p className="meta">画面の補足の文章を減らします。あなたが選ぶ設定で、年齢などから自動では変えません。この端末だけに保存します。</p></section>
     <details><summary>その他</summary><p className="meta">この端末の個人記録を書き出せます。会話・My Tree等を含むため、ファイルの共有に気をつけてください。Circle本文・Placeのサーバー保存記録は含みません。</p><button className="settings-link" onClick={exportPersonal}>個人記録をファイルに保存する</button><button className="settings-link" onClick={onPrivacy}>プライバシーと保存データ</button>{import.meta.env.DEV&&<label className="dev-toggle"><input type="checkbox" checked={devNight} onChange={e=>onDevNight(e.target.checked)}/> 開発用：夜の振り返りを表示</label>}<button className="danger-link" onClick={()=>setConfirmDelete(true)}>保存データを削除する</button></details>
     {deleteResult&&<output className="empty">{deleteResult}</output>}
-    {confirmDelete&&<div className="modal-backdrop"><section className="sheet compact"><h2>保存データを削除しますか？</h2><p>端末内のプロフィール、記録、会話を削除します。ログイン中のCamelliaアカウントに同期済みの記録がある場合は、その記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。Circleの投稿・コメント・通報・運営監査、Placeの公開情報・掲載監査、運営用の管理記録・返信とPostHogへ送信済みの操作イベントは削除されません。Circleの自分の文章はCircleから削除できます。この操作は元に戻せません。</p>{deleteError&&<p className="auth-error" role="alert">{deleteError}</p>}<div className="sheet-actions"><button disabled={deleting} onClick={()=>setConfirmDelete(false)}>キャンセル</button><button className="danger-button" disabled={deleting} onClick={()=>void deleteData()}>{deleting?'削除しています…':'削除する'}</button></div></section></div>}
+    {confirmDelete&&<div className="modal-backdrop"><section className="sheet compact"><h2>保存データを削除しますか？</h2><p>端末内のプロフィール、記録、会話、保存したPlaceを削除します。ログイン中のCamelliaアカウントに同期済みの記録がある場合は、その記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。Circleの投稿・コメント・通報・運営監査、Placeの公開情報・掲載監査、運営用の管理記録・返信とPostHogへ送信済みの操作イベントは削除されません。Circleの自分の文章はCircleから削除できます。この操作は元に戻せません。</p>{deleteError&&<p className="auth-error" role="alert">{deleteError}</p>}<div className="sheet-actions"><button disabled={deleting} onClick={()=>setConfirmDelete(false)}>キャンセル</button><button className="danger-button" disabled={deleting} onClick={()=>void deleteData()}>{deleting?'削除しています…':'削除する'}</button></div></section></div>}
   </main>
 }

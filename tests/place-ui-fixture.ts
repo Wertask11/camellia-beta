@@ -1,0 +1,5 @@
+/** Local UI fixture. This fictional place is never sent to any deployed database. */
+import type {Place} from '@/lib/place/model';
+let saved=false;
+const place:Place={id:'fixture-only',slug:'fixture-only',name:'画面検証用（架空・非公開）',category:'本屋',shortDescription:'ローカル画面の検証だけに使う場所です。',description:'ここは実在する店舗ではありません。実際の掲載には使いません。',region:'福岡県',area:'検証エリア',address:'ローカル検証のみ',priceRange:'検証のみ',duration:'自由',openingHours:'検証のみ',officialUrl:'https://example.com/',instagramUrl:'',bookingUrl:'',mapUrl:'https://example.com/map',imageUrls:[],tags:[],recommendedFor:['quiet'],partnerStatus:'none',sponsored:false,specialOffer:'',status:'published',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+export async function placeRequest(query='',body?:Record<string,unknown>){await new Promise(resolve=>setTimeout(resolve,20));if(body){saved=body.saved===true;return{saved};}if(query.includes('operatorStatus'))return{operator:false};if(query.includes('slug'))return{place:{...place,saved}};return{places:[{...place,saved}]};}

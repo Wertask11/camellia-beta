@@ -1,5 +1,9 @@
 import { createHmac } from 'node:crypto';
-import type { Firestore, Transaction } from 'firebase-admin/firestore';
+import {
+  FieldPath,
+  type Firestore,
+  type Transaction,
+} from 'firebase-admin/firestore';
 import { SERVER_ROOT } from '../server/admin.js';
 import {
   CIRCLES,
@@ -38,6 +42,39 @@ function text(value: unknown, max = 500) {
   );
   return clean;
 }
+
+const PAGE_SIZE = 20;
+type Cursor = { at: string; id: string };
+function decodeCursor(
+  value: string | undefined,
+  scope: string,
+): Cursor | undefined {
+  if (!value) return undefined;
+  try {
+    requireValue(value.length <= 700 && /^[A-Za-z0-9_-]+$/.test(value));
+    const item = JSON.parse(Buffer.from(value, 'base64url').toString());
+    requireValue(
+      item.scope === scope &&
+        typeof item.at === 'string' &&
+        Number.isFinite(Date.parse(item.at)) &&
+        /^[\w-]{1,160}$/.test(item.id),
+    );
+    return { at: item.at, id: item.id };
+  } catch {
+    throw new CircleError(400, 'INVALID_CURSOR');
+  }
+}
+function nextCursor(
+  scope: string,
+  docs: Array<{ id: string; data: () => Record<string, unknown> }>,
+) {
+  if (docs.length <= PAGE_SIZE) return undefined;
+  const last = docs[PAGE_SIZE - 1];
+  return Buffer.from(
+    JSON.stringify({ scope, at: last.data().createdAt, id: last.id }),
+  ).toString('base64url');
+}
+
 export class CircleService {
   constructor(
     private db: Firestore,
@@ -83,22 +120,90 @@ export class CircleService {
       mine: data.uid === identity.uid,
     };
   }
+  private async withReactions(
+    items: ReturnType<CircleService['publicPost']>[],
+    identity: CircleIdentity,
+    kind: 'post' | 'comment',
+  ) {
+    if (!items.length) return [];
+    const reactions = await this.db.getAll(
+      ...items.map((item) =>
+        this.col('circle_reactions').doc(
+          `${kind}_${item.id}_${this.author(identity.uid)}`,
+        ),
+      ),
+    );
+    return items.map((item, index) => ({
+      ...item,
+      myReaction: REACTIONS.includes(reactions[index].data()?.reaction)
+        ? reactions[index].data()?.reaction
+        : null,
+    }));
+  }
   async list(identity: CircleIdentity) {
     const memberships = await this.col('circle_memberships')
       .where('uid', '==', identity.uid)
       .get();
-    return CIRCLES.map((c) => ({
-      ...c,
-      joined: memberships.docs.some(
-        (d) => d.data().circleId === c.id && d.data().active === true,
-      ),
-    }));
+    return Promise.all(
+      CIRCLES.map(async (c) => ({
+        ...c,
+        joined: memberships.docs.some(
+          (d) => d.data().circleId === c.id && d.data().active === true,
+        ),
+        daysSinceJoin: (() => {
+          const joined = memberships.docs
+            .find((d) => d.data().circleId === c.id && d.data().active === true)
+            ?.data().joinedAt;
+          const jstDay = (date: number) =>
+            Date.parse(new Date(date + 9 * 3600000).toISOString().slice(0, 10));
+          return typeof joined === 'string'
+            ? Math.max(
+                0,
+                Math.floor(
+                  (jstDay(Date.now()) - jstDay(Date.parse(joined))) / 86400000,
+                ),
+              )
+            : undefined;
+        })(),
+        memberCount: (
+          await this.col('circle_memberships')
+            .where('circleId', '==', c.id)
+            .where('active', '==', true)
+            .count()
+            .get()
+        ).data().count,
+      })),
+    );
   }
+  async ownPage(
+    identity: CircleIdentity,
+    kind: 'post' | 'comment',
+    cursor?: string,
+  ) {
+    const scope = `own:${kind}:${this.author(identity.uid)}`;
+    const after = decodeCursor(cursor, scope);
+    let query = this.col(kind === 'post' ? 'circle_posts' : 'circle_comments')
+      .where('uid', '==', identity.uid)
+      .orderBy('createdAt', 'desc')
+      .orderBy(FieldPath.documentId(), 'desc')
+      .limit(PAGE_SIZE + 1);
+    if (after) query = query.startAfter(after.at, after.id);
+    const result = await query.get();
+    return {
+      own: result.docs
+        .slice(0, PAGE_SIZE)
+        .filter((d) => d.data().status === 'active')
+        .map((d) => ({ ...this.publicPost(d.id, d.data(), identity), kind })),
+      nextOwnCursor: nextCursor(scope, result.docs),
+    };
+  }
+
   async own(identity: CircleIdentity) {
     const results = await Promise.all(
       ['circle_posts', 'circle_comments'].map(async (collection) => {
         const records = await this.col(collection)
           .where('uid', '==', identity.uid)
+          .limit(PAGE_SIZE)
           .get();
         return records.docs
           .filter((d) => d.data().status === 'active')
@@ -139,6 +244,7 @@ export class CircleService {
       circleId: circle,
       displayName,
       active: true,
+      joinedAt: new Date().toISOString(),
       guidelinesVersion: GUIDELINES_VERSION,
       updatedAt: new Date().toISOString(),
     });
@@ -155,46 +261,77 @@ export class CircleService {
     });
     return { ok: true };
   }
-  async feed(identity: CircleIdentity, circle: string, postId?: string) {
+  async feed(
+    identity: CircleIdentity,
+    circle: string,
+    postId?: string,
+    cursor?: string,
+  ) {
     await this.db.runTransaction((tx) =>
       this.requireMember(tx, identity, circle),
     );
-    const author = this.author(identity.uid);
     const blocks = await this.col('circle_blocks')
-      .where('ownerId', '==', author)
+      .where('ownerId', '==', this.author(identity.uid))
       .get();
     const blocked = new Set(blocks.docs.map((d) => d.data().targetId));
-    const posts = await this.col('circle_posts')
-      .where('circleId', '==', circle)
-      .orderBy('createdAt', 'desc')
-      .limit(40)
-      .get();
-    const visible = posts.docs
-      .filter(
-        (d) => d.data().status === 'active' && !blocked.has(d.data().authorId),
-      )
-      .map((d) => this.publicPost(d.id, d.data(), identity));
-    let comments: ReturnType<CircleService['publicPost']>[] = [];
+    const visible = (d: { data: () => Record<string, unknown> | undefined }) =>
+      d.data()?.status === 'active' && !blocked.has(d.data()?.authorId);
     if (postId) {
+      const parent = await this.col('circle_posts').doc(postId).get();
       requireValue(
-        visible.some((p) => p.id === postId),
+        parent.exists && parent.data()?.circleId === circle && visible(parent),
         404,
         'NOT_FOUND',
       );
-      const result = await this.col('circle_comments')
+      const scope = `comments:${circle}:${postId}`;
+      const after = decodeCursor(cursor, scope);
+      let query = this.col('circle_comments')
         .where('postId', '==', postId)
         .orderBy('createdAt', 'asc')
-        .limit(60)
-        .get();
-      comments = result.docs
-        .filter(
-          (d) =>
-            d.data().status === 'active' && !blocked.has(d.data().authorId),
-        )
-        .map((d) => this.publicPost(d.id, d.data(), identity));
+        .orderBy(FieldPath.documentId(), 'asc')
+        .limit(PAGE_SIZE + 1);
+      if (after) query = query.startAfter(after.at, after.id);
+      const result = await query.get();
+      return {
+        posts: await this.withReactions(
+          [this.publicPost(parent.id, parent.data()!, identity)],
+          identity,
+          'post',
+        ),
+        comments: await this.withReactions(
+          result.docs
+            .slice(0, PAGE_SIZE)
+            .filter(visible)
+            .map((d) => this.publicPost(d.id, d.data(), identity)),
+          identity,
+          'comment',
+        ),
+        nextCursor: nextCursor(scope, result.docs),
+      };
     }
-    return { posts: visible, comments };
+    const scope = `posts:${circle}`;
+    const after = decodeCursor(cursor, scope);
+    let query = this.col('circle_posts')
+      .where('circleId', '==', circle)
+      .orderBy('createdAt', 'desc')
+      .orderBy(FieldPath.documentId(), 'desc')
+      .limit(PAGE_SIZE + 1);
+    if (after) query = query.startAfter(after.at, after.id);
+    const result = await query.get();
+    return {
+      posts: await this.withReactions(
+        result.docs
+          .slice(0, PAGE_SIZE)
+          .filter(visible)
+          .map((d) => this.publicPost(d.id, d.data(), identity)),
+        identity,
+        'post',
+      ),
+      comments: [],
+      nextCursor: nextCursor(scope, result.docs),
+    };
   }
+
   async write(
     identity: CircleIdentity,
     circle: string,
@@ -307,16 +444,27 @@ export class CircleService {
       );
       await this.requireMember(tx, identity, item.data()!.circleId);
       const existing = await tx.get(report);
-      if (!existing.exists)
-        tx.set(report, {
-          reporterUid: identity.uid,
-          targetKind: kind,
-          targetId: id,
-          circleId: item.data()!.circleId,
-          reason,
-          status: 'open',
-          createdAt: new Date().toISOString(),
-        });
+      if (existing.exists) return;
+      const quota = this.col('circle_report_limits').doc(
+        this.author(identity.uid),
+      );
+      const previous = await tx.get(quota);
+      const window = Math.floor(Date.now() / 300000);
+      const used =
+        previous.data()?.window === window
+          ? Number(previous.data()?.count ?? 0)
+          : 0;
+      requireValue(used < 10, 429, 'SLOW_DOWN');
+      tx.set(quota, { window, count: used + 1 });
+      tx.set(report, {
+        reporterUid: identity.uid,
+        targetKind: kind,
+        targetId: id,
+        circleId: item.data()!.circleId,
+        reason,
+        status: 'open',
+        createdAt: new Date().toISOString(),
+      });
     });
     return { ok: true };
   }
@@ -349,7 +497,7 @@ export class CircleService {
     const ref = this.col('circle_reactions').doc(
       `${kind}_${id}_${this.author(identity.uid)}`,
     );
-    await this.db.runTransaction(async (tx) => {
+    const selected = await this.db.runTransaction(async (tx) => {
       const item = await tx.get(target);
       requireValue(
         item.exists && item.data()?.status === 'active',
@@ -358,27 +506,37 @@ export class CircleService {
       );
       await this.requireMember(tx, identity, item.data()!.circleId);
       const current = await tx.get(ref);
-      if (current.data()?.reaction === reaction) tx.delete(ref);
-      else
+      if (current.data()?.reaction === reaction) {
+        tx.delete(ref);
+        return null;
+      } else
         tx.set(ref, {
           actorId: this.author(identity.uid),
           targetId: id,
           reaction,
           updatedAt: new Date().toISOString(),
         });
+      return reaction as string;
     });
-    return { ok: true };
+    return { ok: true, reaction: selected };
   }
-  async moderation(identity: CircleIdentity, body?: Record<string, unknown>) {
+  async moderation(
+    identity: CircleIdentity,
+    body?: Record<string, unknown>,
+    cursor?: string,
+  ) {
     requireValue(identity.moderator, 403, 'MODERATOR_REQUIRED');
     if (!body) {
-      const queue = await this.col('circle_reports')
+      const after = decodeCursor(cursor, 'moderation');
+      let query = this.col('circle_reports')
         .where('status', '==', 'open')
         .orderBy('createdAt', 'desc')
-        .limit(50)
-        .get();
+        .orderBy(FieldPath.documentId(), 'desc')
+        .limit(PAGE_SIZE + 1);
+      if (after) query = query.startAfter(after.at, after.id);
+      const queue = await query.get();
       return Promise.all(
-        queue.docs.map(async (d) => {
+        queue.docs.slice(0, PAGE_SIZE).map(async (d) => {
           const data = d.data();
           const target = await this.col(
             data.targetKind === 'post' ? 'circle_posts' : 'circle_comments',
@@ -389,43 +547,79 @@ export class CircleService {
             id: d.id,
             targetKind: data.targetKind,
             targetId: data.targetId,
+            circleId: data.circleId,
+            authorId: target.data()?.authorId ?? '',
             reason: data.reason,
             status: data.status,
             createdAt: data.createdAt,
             text: target.data()?.text ?? '',
+            nextCursor: nextCursor('moderation', queue.docs),
           };
         }),
       );
     }
     const id = typeof body.reportId === 'string' ? body.reportId : '';
-    requireValue(id.length > 0 && !id.includes('/'));
+    requireValue(/^[\w-]{1,260}$/.test(id));
+    const action = body.action ?? 'remove';
+    requireValue(action === 'remove' || action === 'dismiss');
+    const note = typeof body.note === 'string' ? body.note.trim() : '';
+    requireValue(Array.from(note).length <= 200);
     const report = this.col('circle_reports').doc(id);
     await this.db.runTransaction(async (tx) => {
       const item = await tx.get(report);
       requireValue(item.exists, 404, 'NOT_FOUND');
       const data = item.data()!;
+      requireValue(data.status === 'open', 409, 'ALREADY_REVIEWED');
       requireValue(data.targetKind === 'post' || data.targetKind === 'comment');
       const target = this.col(
         data.targetKind === 'post' ? 'circle_posts' : 'circle_comments',
       ).doc(data.targetId);
       const original = await tx.get(target);
       requireValue(original.exists, 404, 'NOT_FOUND');
-      tx.update(target, {
-        text: '',
-        status: 'removed',
-        updatedAt: new Date().toISOString(),
-      });
+      const now = new Date().toISOString();
+      if (action === 'remove')
+        tx.update(target, { text: '', status: 'removed', updatedAt: now });
       tx.update(report, {
-        status: 'resolved',
-        resolvedAt: new Date().toISOString(),
+        status: action === 'dismiss' ? 'dismissed' : 'resolved',
+        resolvedAt: now,
       });
       tx.set(this.col('circle_moderation_audit').doc(), {
         moderatorUid: identity.uid,
         targetId: data.targetId,
+        targetKind: data.targetKind,
+        authorId: original.data()?.authorId ?? '',
         reportId: id,
-        at: new Date().toISOString(),
+        action,
+        note,
+        createdAt: now,
       });
     });
     return { ok: true };
+  }
+  async moderationHistory(identity: CircleIdentity, cursor?: string) {
+    requireValue(identity.moderator, 403, 'MODERATOR_REQUIRED');
+    const after = decodeCursor(cursor, 'audit');
+    let query = this.col('circle_moderation_audit')
+      .orderBy('createdAt', 'desc')
+      .orderBy(FieldPath.documentId(), 'desc')
+      .limit(PAGE_SIZE + 1);
+    if (after) query = query.startAfter(after.at, after.id);
+    const result = await query.get();
+    return {
+      audits: result.docs.slice(0, PAGE_SIZE).map((d) => {
+        const item = d.data();
+        return {
+          id: d.id,
+          action: item.action,
+          note: item.note,
+          targetId: item.targetId,
+          targetKind: item.targetKind,
+          authorId: item.authorId,
+          createdAt: item.createdAt,
+          moderatorId: this.author(item.moderatorUid),
+        };
+      }),
+      nextAuditCursor: nextCursor('audit', result.docs),
+    };
   }
 }

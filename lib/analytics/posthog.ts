@@ -7,7 +7,8 @@ import type {
 } from '@/types';
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
-  circle_view: [], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
+  place_view:['place_id'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
+  circle_view: ['circle_id', 'days_since_join'], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
   session_start: [],
   welcome_view: ['period'],
   welcome_continue: ['period'],
@@ -93,6 +94,8 @@ export function sanitizeEventProperties(
   const safe: Record<string, string | number | boolean> = {};
   for (const key of allowed) {
     const value = source[key];
+    if (key === 'days_since_join' && (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 36500)) continue;
+    if (key === 'place_id' && (typeof value !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(value))) continue;
     if (key === 'circle_id' && !['tired','alone-time','working','self','rest','interests'].includes(String(value))) continue;
     if (event.name === 'conversation_starter_selected' && !['today', 'vent', 'organize', 'check'].includes(String(value))) continue;
     if (key === 'provider' && !['gemini', 'fallback'].includes(String(value))) continue;

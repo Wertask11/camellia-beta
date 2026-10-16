@@ -24,10 +24,11 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
         </p>
         <p>
           外部AIを使う環境では、返答を作るために会話本文とGeminiで返答した直近最大8件の文脈、今日の気分、Todayの進行段階と選択した過ごし方をGoogleのGemini APIへ送信します。保存されたMemory・My Tree・生理情報は参照しません。本文に入力した個人情報は送信される場合があり、無料枠を利用する場合は送信先のサービス改善に利用される場合があります。
-          サービス改善のための操作イベントはPostHogへ送信されます。許可した計測項目だけを使い、会話本文、返答本文、Memory本文、Checkの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
+          サービス改善のための操作イベントはPostHogへ送信されます。許可した計測項目と、ランダムなプロフィールIDを加工した分析用IDを使います。このIDは別端末への記録復元時に引き継がれる場合があり、利用継続の分析にも使います。会話本文、返答本文、Memory本文、Checkの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
         </p>
       </section>
-      <section className="panel"><h2>Circleについて</h2><p>Circle専用の表示名と、自分で投稿欄に書いた文章だけを参加者に公開します。Checkや会話、My Treeは自動投稿しません。通報・ブロックは相手へ通知しません。退出やMyの記録削除ではCircleの文章は消えません。Circleの「自分の投稿・コメント」から削除できます。通報・運営監査は別途保存します。<a href="/community-guidelines.html" target="_blank" rel="noopener">ガイドライン</a></p></section>
+<section className="panel"><h2>Placeについて</h2><p>公開済みの場所だけを掲載し、保存した場所のIDは個人記録として同期・削除されます。外部サイト・予約・地図・写真配信元へ接続する際には通信情報が届きますが、Checkや会話は付加しません。位置情報は取得しません。広告・提携は表示します。</p></section>
+      <section className="panel"><h2>Circleについて</h2><p>Circle専用の表示名と、自分で投稿欄に書いた文章だけを参加者に公開します。Checkや会話、My Treeは自動投稿しません。通報・ブロックは相手へ通知しません。退出やMyの記録削除ではCircleの文章は消えません。Circleの「自分の投稿・コメント」から削除できます。運営は通報の対象本文・公開ID・理由・日時を確認でき、対応内容・メモ・担当者・日時を監査記録として別途保存します。<a href="/community-guidelines.html" target="_blank" rel="noopener">ガイドライン</a></p></section>
       <section className="panel">
         <h2>My Treeについて</h2>
         <p>
