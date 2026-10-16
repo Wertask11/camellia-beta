@@ -1,4 +1,5 @@
 import { createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto';
+import { parseConversationReply, ACTION_BRIDGE_INSTRUCTION } from './action-bridge.js';
 import { immediateSafetyReply } from './safety.js';
 
 export { immediateSafetyReply } from './safety.js';
@@ -199,10 +200,12 @@ export function createGeminiChatHandler(deps: {
     const contextText = mood ? `\n\n今日のCheck（気分のみ・参考情報）: ${mood}\n必要な場合に限り自然に参考にし、ユーザーの状態を断定しないこと。` : '';
     try {
       const started = deps.now?.() ?? Date.now();
-      const reply = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${contextText}${extraContext}`)).trim();
+      const generated = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${contextText}${extraContext}${ACTION_BRIDGE_INSTRUCTION}`)).trim();
+      const parsed = generated ? parseConversationReply(generated,message) : {reply:''};
+      const reply=parsed.reply;
       const responseTimeMs = Math.max(0, (deps.now?.() ?? Date.now()) - started);
       if (!reply) return res.status(502).json({ error: 'temporarily_unavailable', category: 'invalid_response' });
-      return res.status(200).json({ reply: Array.from(reply).slice(0, 700).join(''), provider: 'gemini', responseTimeMs });
+      return res.status(200).json({ ...parsed, provider: 'gemini', responseTimeMs });
     } catch (error) {
       const category = classifyChatError(error);
       const status = category === 'rate_limited' ? 429 : category === 'timeout' ? 504 : category === 'invalid_request' ? 400 : 502;
