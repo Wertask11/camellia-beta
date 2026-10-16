@@ -4,6 +4,7 @@ import {
   serverAdmin,
 } from '../../lib/server/admin.js';
 import { CircleError, CircleService } from '../../lib/circle/service.js';
+import { credentialInputFormat } from '../../lib/server/credential-json.js';
 
 type Request = {
   method?: string;
@@ -27,13 +28,16 @@ export default async function circle(req: Request, res: Response) {
           ? 'signing_not_configured'
           : 'ready';
   const enabled = configurationStatus === 'ready';
-  if (req.method === 'GET' && req.query?.status === '1')
+  if (req.method === 'GET' && req.query?.status === '1') {
+    const storageStatus = enabled ? adminInitializationStatus() : undefined;
     // Configuration labels only: never return secret values, identities or SDK errors.
     return res.status(200).json({
       enabled,
       configurationStatus,
-      ...(enabled ? { storageStatus: adminInitializationStatus() } : {}),
+      ...(enabled ? { storageStatus } : {}),
+      ...(storageStatus === 'invalid_json' ? { credentialFormat: credentialInputFormat(process.env.FIREBASE_SERVICE_ACCOUNT_JSON) } : {}),
     });
+  }
   if (!enabled) return res.status(503).json({ error: 'COMMUNITY_UNAVAILABLE' });
   if (req.method !== 'GET' && req.method !== 'POST')
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
