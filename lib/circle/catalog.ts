@@ -39,7 +39,7 @@ export const REPORT_REASONS = [
   '不適切',
   'その他',
 ] as const;
-export const GUIDELINES_VERSION = '2026-10-15';
+export const GUIDELINES_VERSION = '2026-10-16';
 export type CirclePost = {
   id: string;
   circleId: string;
@@ -49,4 +49,35 @@ export type CirclePost = {
   createdAt: string;
   updatedAt: string;
   mine: boolean;
+  myReaction?: string | null;
+};
+
+export type CircleSummary = {
+  id: string;
+  name: string;
+  description: string;
+  joined: boolean;
+  memberCount: number;
+  daysSinceJoin?: number;
+};
+export type CircleReport = {
+  id: string;
+  reason: string;
+  status: string;
+  targetId: string;
+  targetKind: 'post' | 'comment';
+  circleId: string;
+  authorId: string;
+  createdAt: string;
+  text: string;
+};
+export type CircleAudit = {
+  id: string;
+  action: 'remove' | 'dismiss';
+  note: string;
+  targetId: string;
+  targetKind: 'post' | 'comment';
+  authorId: string;
+  createdAt: string;
+  moderatorId: string;
 };

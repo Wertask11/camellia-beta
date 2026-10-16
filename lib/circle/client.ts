@@ -1,4 +1,9 @@
-import type { CirclePost } from './catalog';
+import type {
+  CirclePost,
+  CircleSummary,
+  CircleReport,
+  CircleAudit,
+} from './catalog';
 import { schoolParkAuth } from '../schoolpark/firebase';
 export async function circleRequest(
   query = '',
@@ -29,24 +34,19 @@ export async function circleRequest(
     );
   })) as {
     error?: string;
-    circles: Array<{
-      id: string;
-      name: string;
-      description: string;
-      joined: boolean;
-    }>;
+    circles: CircleSummary[];
+    nextCursor?: string;
+    nextOwnCursor?: string;
+    nextReportCursor?: string;
+    nextAuditCursor?: string;
+    audits: CircleAudit[];
     moderator: boolean;
+    reaction?: string | null;
     posts: CirclePost[];
     comments: CirclePost[];
     own: Array<CirclePost & { kind: 'post' | 'comment' }>;
     blocks: string[];
-    reports: Array<{
-      id: string;
-      reason: string;
-      status: string;
-      targetId: string;
-      text: string;
-    }>;
+    reports: CircleReport[];
   };
   if (!response.ok) {
     const errors: Record<string, string> = {
@@ -61,6 +61,8 @@ export async function circleRequest(
       SLOW_DOWN: '少し時間をあけて、また試してみてください。',
       RESERVED_NAME: '運営と誤解されない表示名を選んでください。',
       INVALID_INPUT: '入力内容を確認してください。',
+      INVALID_CURSOR: '一覧を読み直してください。',
+      ALREADY_REVIEWED: '別の担当者が対応済みです。一覧を読み直してください。',
       NOT_OWNER: 'この操作はできません。',
       MODERATOR_REQUIRED: '運営担当者のみ利用できます。',
     };
