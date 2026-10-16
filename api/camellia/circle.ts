@@ -44,35 +44,57 @@ export default async function circle(req: Request, res: Response) {
       return res.status(403).json({ error: 'PROFILE_REQUIRED' });
     const identity = {
       uid: decoded.uid,
-      moderator: decoded.camelliaModerator === true,
+      moderator:
+        decoded.camelliaModerator === true || decoded.camelliaAdmin === true,
     };
     const service = new CircleService(
       db,
       process.env.CAMELLIA_CIRCLE_SIGNING_SECRET!,
     );
     if (req.method === 'GET') {
-      if (req.query?.own === '1')
-        return res.status(200).json({ own: await service.own(identity) });
-      if (req.query?.blocks === '1')
-        return res.status(200).json({ blocks: await service.blocks(identity) });
-      if (req.query?.moderation === '1')
+      const cursor =
+        typeof req.query?.cursor === 'string' ? req.query.cursor : undefined;
+      if (req.query?.audit === '1')
         return res
           .status(200)
-          .json({ reports: await service.moderation(identity) });
-      const id =
-        typeof req.query?.circle === 'string' ? req.query.circle : undefined;
-      if (!id)
+          .json(await service.moderationHistory(identity, cursor));
+      if (req.query?.own === '1')
+        return res
+          .status(200)
+          .json(
+            await service.ownPage(
+              identity,
+              req.query?.kind === 'comment' ? 'comment' : 'post',
+              cursor,
+            ),
+          );
+      if (req.query?.blocks === '1')
+        return res.status(200).json({ blocks: await service.blocks(identity) });
+      if (req.query?.moderation === '1') {
+        const reports = await service.moderation(identity, undefined, cursor);
         return res
           .status(200)
           .json({
-            circles: await service.list(identity),
-            moderator: identity.moderator,
+            reports,
+            nextReportCursor: Array.isArray(reports)
+              ? reports[0]?.nextCursor
+              : undefined,
           });
+      }
+      const id =
+        typeof req.query?.circle === 'string' ? req.query.circle : undefined;
+      if (!id)
+        return res.status(200).json({
+          circles: await service.list(identity),
+          moderator: identity.moderator,
+        });
       const post =
         typeof req.query?.post === 'string' ? req.query.post : undefined;
       if (post && !/^[\w-]{1,160}$/.test(post))
         throw new CircleError(400, 'INVALID_INPUT');
-      return res.status(200).json(await service.feed(identity, id, post));
+      return res
+        .status(200)
+        .json(await service.feed(identity, id, post, cursor));
     }
     const body =
       req.body && typeof req.body === 'object' && !Array.isArray(req.body)
