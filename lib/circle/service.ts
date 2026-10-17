@@ -4,6 +4,7 @@ import {
   FieldValue,
   type Firestore,
   type Transaction,
+  type DocumentReference,
 } from 'firebase-admin/firestore';
 import { SERVER_ROOT } from '../server/admin.js';
 import {
@@ -11,6 +12,7 @@ import {
   GUIDELINES_VERSION,
   REACTIONS,
   REPORT_REASONS,
+  type CircleReactionCounts,
 } from './catalog.js';
 export type CircleIdentity = { uid: string; moderator: boolean };
 export class CircleError extends Error {
@@ -45,6 +47,15 @@ function text(value: unknown, max = 500) {
 }
 
 const PAGE_SIZE = 20;
+const emptyReactionCounts = (): CircleReactionCounts => ({
+  'わかる': 0, 'そっと応援': 0, '参考になった': 0,
+});
+function storedReactionCounts(data: Record<string, unknown>) {
+  const counts = data.receivedReactionCounts as CircleReactionCounts | undefined;
+  return data.reactionCountsVersion === 1 && counts && REACTIONS.every(
+    (reaction) => Number.isSafeInteger(counts[reaction]) && counts[reaction] >= 0,
+  ) ? Object.fromEntries(REACTIONS.map((reaction) => [reaction, counts[reaction]])) as CircleReactionCounts : undefined;
+}
 type Cursor = { at: string; id: string };
 function decodeCursor(
   value: string | undefined,
@@ -132,6 +143,38 @@ export class CircleService {
       mine: data.uid === identity.uid,
     };
   }
+  /** Old posts are initialized once, without a new composite index or exposing actors. */
+  private async reactionCounts(
+    tx: Transaction,
+    data: Record<string, unknown>,
+    kind: 'post' | 'comment',
+    id: string,
+  ): Promise<CircleReactionCounts> {
+    const stored = storedReactionCounts(data);
+    if (stored) return stored;
+    const counts = emptyReactionCounts();
+    const prefix = `${kind}_${id}_`;
+    const existing = await tx.get(this.col('circle_reactions')
+      .orderBy(FieldPath.documentId()).startAt(prefix).endBefore(`${prefix}\uf8ff`));
+    const owner = this.author(String(data.uid));
+    for (const record of existing.docs) {
+      const item = record.data();
+      if (item.targetId !== id || record.id !== `${prefix}${item.actorId}` || item.actorId === owner) continue;
+      if (REACTIONS.includes(item.reaction)) counts[item.reaction as keyof CircleReactionCounts]++;
+    }
+    return counts;
+  }
+  private async receivedReactions(identity: CircleIdentity, kind: 'post' | 'comment', id: string) {
+    const target: DocumentReference = this.col(kind === 'post' ? 'circle_posts' : 'circle_comments').doc(id);
+    return this.db.runTransaction(async (tx) => {
+      const item = await tx.get(target);
+      const data = item.data();
+      if (!data || data.uid !== identity.uid || data.status !== 'active') return undefined;
+      const counts = await this.reactionCounts(tx, data, kind, id);
+      if (!storedReactionCounts(data)) tx.update(target, { receivedReactionCounts: counts, reactionCountsVersion: 1 });
+      return counts;
+    });
+  }
   private async withReactions(
     items: ReturnType<CircleService['publicPost']>[],
     identity: CircleIdentity,
@@ -145,12 +188,13 @@ export class CircleService {
         ),
       ),
     );
-    return items.map((item, index) => ({
+    return Promise.all(items.map(async (item, index) => ({
       ...item,
       myReaction: REACTIONS.includes(reactions[index].data()?.reaction)
         ? reactions[index].data()?.reaction
         : null,
-    }));
+      ...(item.mine ? { receivedReactions: await this.receivedReactions(identity, kind, item.id) } : {}),
+    })));
   }
   async list(identity: CircleIdentity) {
     const memberships = await this.col('circle_memberships')
@@ -202,10 +246,11 @@ export class CircleService {
     if (after) query = query.startAfter(after.at, after.id);
     const result = await query.get();
     return {
-      own: result.docs
+      own: (await this.withReactions(result.docs
         .slice(0, PAGE_SIZE)
         .filter((d) => d.data().status === 'active')
-        .map((d) => ({ ...this.publicPost(d.id, d.data(), identity), kind })),
+        .map((d) => this.publicPost(d.id, d.data(), identity)), identity, kind))
+        .map((item) => ({ ...item, kind })),
       nextOwnCursor: nextCursor(scope, result.docs),
     };
   }
@@ -390,6 +435,8 @@ export class CircleService {
         ...(comment ? { postId: body.postId } : {}),
         text: content,
         status: 'active',
+        receivedReactionCounts: emptyReactionCounts(),
+        reactionCountsVersion: 1,
         createdAt: now,
         updatedAt: now,
       });
@@ -521,8 +568,17 @@ export class CircleService {
       );
       await this.requireMember(tx, identity, item.data()!.circleId);
       const current = await tx.get(ref);
+      const data = item.data()!;
+      const counts = await this.reactionCounts(tx, data, kind, id);
+      const previous = current.data()?.reaction;
+      const next = previous === reaction ? null : reaction as (typeof REACTIONS)[number];
+      if (data.uid !== identity.uid) {
+        if (REACTIONS.includes(previous)) counts[previous as keyof CircleReactionCounts] = Math.max(0, counts[previous as keyof CircleReactionCounts] - 1);
+        if (next) counts[next]++;
+      }
+      tx.update(target, { receivedReactionCounts: counts, reactionCountsVersion: 1 });
       this.changed(tx, item.data()!.circleId);
-      if (current.data()?.reaction === reaction) {
+      if (next === null) {
         tx.delete(ref);
         return null;
       } else

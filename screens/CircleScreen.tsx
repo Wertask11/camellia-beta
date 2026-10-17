@@ -14,6 +14,13 @@ import {
 import type { AnalyticsEventName } from '@/types';
 type Circle = CircleSummary;
 type Report = CircleReport;
+function ReceivedReactions({ item }: { item: CirclePost }) {
+  if (!item.mine || !item.receivedReactions) return null;
+  const received = REACTIONS.filter((reaction) => (item.receivedReactions?.[reaction] ?? 0) > 0);
+  return <output className="circle-received" aria-atomic="true">
+    {received.length ? `届いた気持ち：${received.map((reaction) => `${reaction} ${item.receivedReactions![reaction]}`).join(' ／ ')}` : '届いた気持ちは、ここに表示されます。'}
+  </output>;
+}
 export function CircleScreen({
   onBack,
   onTrack,
@@ -356,6 +363,7 @@ export function CircleScreen({
         </time>
       </header>
       <p>{item.text}</p>
+      <ReceivedReactions item={item} />
       <div className="circle-controls">
         {REACTIONS.map((reaction) => (
           <button
@@ -651,6 +659,7 @@ export function CircleScreen({
           {own.map((item) => (
             <article className="panel" key={item.id}>
               <p>{item.text}</p>
+              <ReceivedReactions item={item} />
               <button
                 disabled={busy}
                 onClick={() =>

@@ -5,6 +5,10 @@ let joined=false, reaction:string|null=null;
 let version=0, ownFailures=0;
 export const stats={revisionReads:0,feedReads:0};
 const post={id:'fixture-post',circleId:'tired',authorId:'a'.repeat(32),displayName:'テスト表示名',text:'今日は短い一言から。',createdAt:now,updatedAt:now,mine:false};
+const zero=()=>({'わかる':0,'そっと応援':0,'参考になった':0});
+let receivedPost=zero(),receivedComment=zero();
+window.addEventListener('fixture:received',((event:CustomEvent)=>{if(event.detail.kind==='post')receivedPost=event.detail.counts;else receivedComment=event.detail.counts;version++;}) as EventListener);
+const receivedItem=(item:typeof post,kind:'post'|'comment')=>({...item,...(location.hash==='#received'?{mine:true,receivedReactions:kind==='post'?receivedPost:receivedComment}:{})});
 let reports=[{id:'fixture-report',targetId:post.id,targetKind:'post',circleId:'tired',authorId:post.authorId,createdAt:now,text:post.text,reason:'その他',status:'open'}];
 const audits:unknown[]=[];
 const comments=[{...post,id:'fixture-comment',text:'そっと読んでいます。'}];
@@ -27,12 +31,12 @@ export async function circleRequest(query='',body?:Record<string,unknown>) {
  if(params.has('audit'))return {audits};
  if(params.has('own')){
   if(location.hash==='#own-error'&&ownFailures++===0)throw new Error('文章を読み込めませんでした。');
-  return {own:own.filter(item=>item.kind===(params.get('kind')??'post'))};
+  return {own:own.filter(item=>item.kind===(params.get('kind')??'post')).map(item=>({...item,receivedReactions:{'わかる':1,'そっと応援':2,'参考になった':0}}))};
  }
  if(params.has('blocks'))return {blocks:[]};
  if(params.has('circle')&&location.hash==='#feed-error')throw new Error('投稿を読み込めませんでした。');
  if(params.has('version')){stats.revisionReads++;return {version};}
  if(params.has('post')&&removed)throw Object.assign(new Error('この文章は削除されています。'),{code:'NOT_FOUND'});
- if(params.has('circle')){stats.feedReads++;return {version,posts:removed?[]:[{...post,id:params.has('post')||!params.has('cursor')?post.id:'fixture-older-post',myReaction:reaction}],comments:params.has('post')?comments:[],nextCursor:params.has('post')||params.has('cursor')?undefined:'fixture-next'};}
+ if(params.has('circle')){stats.feedReads++;return {version,posts:removed?[]:[{...receivedItem(post,'post'),id:params.has('post')||!params.has('cursor')?post.id:'fixture-older-post',myReaction:reaction}],comments:params.has('post')?comments.map(c=>receivedItem(c,'comment')):[],nextCursor:params.has('post')||params.has('cursor')?undefined:'fixture-next'};}
  return {circles:CIRCLES.map(c=>({...c,joined:c.id==='tired'&&joined,memberCount:2,daysSinceJoin:1})),moderator:true};
 }
