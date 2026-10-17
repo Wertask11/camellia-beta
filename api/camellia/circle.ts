@@ -114,6 +114,8 @@ export default async function circle(req: Request, res: Response) {
         });
       const post =
         typeof req.query?.post === 'string' ? req.query.post : undefined;
+      if (req.query?.version === '1')
+        return res.status(200).json(await service.version(identity, id));
       if (post && !/^[\w-]{1,160}$/.test(post))
         throw new CircleError(400, 'INVALID_INPUT');
       return res

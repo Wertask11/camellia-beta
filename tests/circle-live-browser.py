@@ -1,0 +1,22 @@
+"""Real Circle component, explicit local data fixture. Never live authentication acceptance."""
+import json,pathlib
+from playwright.sync_api import sync_playwright
+out=pathlib.Path('work/circle-live/browser');out.mkdir(parents=True,exist_ok=True);results=[]
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage'])
+ for width,height in [(375,812),(390,844),(412,915),(768,1024),(1280,900)]:
+  ctx=b.new_context(viewport={'width':width,'height':height});ctx.route('**/*',lambda r:r.continue_() if r.request.url.startswith('http://127.0.0.1:4176/') else r.abort());page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+  page.goto('http://127.0.0.1:4176/circle-fixture');page.locator('.circle-card').first.click();page.get_by_role('textbox',name='Circleだけの表示名（本名は使わないでください）').fill('検証の葉');page.get_by_role('checkbox').check();page.get_by_role('button',name='参加する',exact=True).click();page.locator('.circle-post').first.wait_for();page.get_by_role('button',name='コメント',exact=True).first.click();page.get_by_text('そっと読んでいます。',exact=True).wait_for()
+  textarea=page.get_by_role('textbox',name='コメントを書く');textarea.fill('まだ送っていない文章');stats='async()=>({...((await import("/tests/circle-ui-fixture.ts")).stats)})'
+  baseline=page.evaluate(stats);page.wait_for_timeout(3400);unchanged=page.evaluate(stats);assert unchanged['revisionReads']>baseline['revisionReads'];assert unchanged['feedReads']==baseline['feedReads'],'unchanged heartbeat must not reread posts'
+  page.evaluate("window.dispatchEvent(new Event('fixture:new-comment'))");page.get_by_text('別の利用者から届いたコメントです。',exact=True).wait_for(timeout=8000);assert textarea.input_value()=='まだ送っていない文章';assert textarea.evaluate('(e)=>document.activeElement===e');assert page.get_by_text('別の利用者から届いたコメントです。',exact=True).count()==1
+  page.screenshot(path=str(out/f'{width}-incoming-comment.png'),full_page=True)
+  page.evaluate("Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'})");hidden=page.evaluate(stats);page.wait_for_timeout(3400);assert page.evaluate(stats)['revisionReads']==hidden['revisionReads'],'background tabs must pause requests'
+  page.evaluate("Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});document.dispatchEvent(new Event('visibilitychange'))");page.wait_for_function('async(before)=>(await import("/tests/circle-ui-fixture.ts")).stats.revisionReads>before',arg=hidden['revisionReads'],timeout=8000)
+  page.evaluate("window.dispatchEvent(new Event('fixture:remove-post'))");page.get_by_role('status').filter(has_text='この文章は削除されたか、今は表示できません。投稿一覧へ戻って確認してください。').wait_for(timeout=8000);assert page.get_by_text('今日は短い一言から。',exact=True).count()==0;assert textarea.input_value()=='まだ送っていない文章';assert page.get_by_role('button',name='投稿する',exact=True).is_disabled()
+  own=ctx.new_page();own.goto('http://127.0.0.1:4176/circle-fixture#own-error');own.get_by_role('button',name='自分の投稿・コメント',exact=True).click();own.get_by_role('alert').wait_for();assert own.get_by_role('heading',name='自分の投稿・コメント',exact=True).count()==1;assert own.locator('.circle-card').count()==0;assert own.get_by_text('残っている文章はありません。',exact=True).count()==0
+  own.get_by_role('button',name='もう一度読み込む',exact=True).click();own.get_by_text('自分の投稿です。',exact=True).wait_for();own.get_by_role('button',name='コメント',exact=True).click();own.get_by_text('自分のコメントです。',exact=True).wait_for();assert own.get_by_text('自分の投稿です。',exact=True).count()==0;own.screenshot(path=str(out/f'{width}-own-comments.png'),full_page=True)
+  own.on('dialog',lambda d:d.accept());own.get_by_role('button',name='削除する',exact=True).click();own.get_by_text('残っている文章はありません。',exact=True).wait_for();own.get_by_role('button',name='← Circle一覧へ',exact=True).click();own.locator('.circle-card').first.wait_for();assert not errors,errors;assert own.evaluate('document.documentElement.scrollWidth<=innerWidth')
+  results.append({'width':width,'incoming_comment_without_reload':'PASS','draft_and_focus_preserved':'PASS','unchanged_revision_skips_feed':'PASS','hidden_pause_resume':'PASS','removed_content_hidden_draft_retained':'PASS','own_error_retry_kind_delete':'PASS','scope':'explicit local fixture, live two-account acceptance still required','errors':errors});ctx.close()
+ b.close()
+(out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));print(json.dumps(results,ensure_ascii=False,indent=2))
