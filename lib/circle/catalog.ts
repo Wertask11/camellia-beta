@@ -31,6 +31,7 @@ export const CIRCLES = [
   },
 ] as const;
 export const REACTIONS = ['わかる', 'そっと応援', '参考になった'] as const;
+export type CircleReactionCounts = Record<(typeof REACTIONS)[number], number>;
 export const REPORT_REASONS = [
   '嫌がらせ',
   '個人情報',
@@ -50,6 +51,7 @@ export type CirclePost = {
   updatedAt: string;
   mine: boolean;
   myReaction?: string | null;
+  receivedReactions?: CircleReactionCounts;
 };
 
 export type CircleSummary = {

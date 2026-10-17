@@ -81,5 +81,50 @@ try{
   for(let i=1;i<10;i++)await service.report(alice,'post',`page-${i.toString().padStart(2,'0')}`,'その他');
   await assert.rejects(service.report(alice,'post','page-10','その他'),{code:'SLOW_DOWN'});
  });
+ const receiver={uid:'u-recipient',moderator:false}, giver={uid:'u-giver',moderator:false}, secondGiver={uid:'u-second-giver',moderator:false};
+ for(const who of [receiver,giver,secondGiver]) await service.join(who,'rest',{displayName:'木の葉',guidelinesVersion:GUIDELINES_VERSION});
+ const zero={'わかる':0,'そっと応援':0,'参考になった':0};
+ const receivedPost=await service.write(receiver,'rest',{text:'短い一言。',receivedReactionCounts:{'わかる':999},reactionCountsVersion:1});
+ const readReceived=async()=> (await service.feed(receiver,'rest',receivedPost.id)).posts[0].receivedReactions;
+ await check('received reactions start empty, ignore client counts, and are private to the author',async()=>{
+  assert.deepEqual(await readReceived(),zero);
+  const other=(await service.feed(giver,'rest',receivedPost.id)).posts[0];assert.equal(other.receivedReactions,undefined);
+  await assert.rejects(service.react(outsider,'post',receivedPost.id,'わかる'),{code:'MEMBERSHIP_REQUIRED'});
+ });
+ await check('different actors accumulate independently and own reactions are excluded',async()=>{
+  await service.react(giver,'post',receivedPost.id,'わかる');await service.react(secondGiver,'post',receivedPost.id,'そっと応援');await service.react(receiver,'post',receivedPost.id,'参考になった');
+  assert.deepEqual(await readReceived(),{'わかる':1,'そっと応援':1,'参考になった':0});
+  assert.deepEqual((await service.ownPage(receiver,'post')).own[0].receivedReactions,await readReceived());
+  assert.deepEqual(Object.keys(await readReceived()),Object.keys(zero));
+ });
+ await check('switching moves a reaction and cancellation removes it without negative counts',async()=>{
+  await service.react(giver,'post',receivedPost.id,'参考になった');assert.deepEqual(await readReceived(),{'わかる':0,'そっと応援':1,'参考になった':1});
+  await service.react(giver,'post',receivedPost.id,'参考になった');assert.deepEqual(await readReceived(),{'わかる':0,'そっと応援':1,'参考になった':0});
+ });
+ const receivedComment=await service.write(giver,'rest',{postId:receivedPost.id,text:'読んでいます。'});
+ await check('comments receive separate counts, including in the author history',async()=>{
+  await service.react(receiver,'comment',receivedComment.id,'わかる');await service.react(secondGiver,'comment',receivedComment.id,'そっと応援');await service.react(giver,'comment',receivedComment.id,'参考になった');
+  const fromAuthor=(await service.feed(giver,'rest',receivedPost.id)).comments.find(c=>c.id===receivedComment.id);
+  assert.deepEqual(fromAuthor.receivedReactions,{'わかる':1,'そっと応援':1,'参考になった':0});
+  assert.equal((await service.feed(receiver,'rest',receivedPost.id)).comments[0].receivedReactions,undefined);
+  assert.deepEqual((await service.ownPage(giver,'comment')).own[0].receivedReactions,fromAuthor.receivedReactions);
+ });
+ const legacy={uid:receiver.uid,authorId:service.author(receiver.uid),circleId:'rest',displayName:'木の葉',text:'以前の投稿。',status:'active',createdAt:'2026-10-16T00:00:00.000Z',updatedAt:'2026-10-16T00:00:00.000Z'};
+ await check('existing posts reconstruct counts once; comment IDs, prefix collisions and own reactions stay separate',async()=>{
+  const batch=db.batch();batch.set(db.doc(`${base}/circle_posts/legacy-reactions`),legacy);
+  for(const {kind,id,who,reaction} of [{kind:'post',id:'legacy-reactions',who:giver,reaction:'わかる'},{kind:'post',id:'legacy-reactions',who:secondGiver,reaction:'そっと応援'},{kind:'post',id:'legacy-reactions',who:receiver,reaction:'参考になった'},{kind:'comment',id:'legacy-reactions',who:giver,reaction:'参考になった'},{kind:'post',id:'legacy-reactions_more',who:giver,reaction:'参考になった'}])batch.set(db.doc(`${base}/circle_reactions/${kind}_${id}_${service.author(who.uid)}`),{actorId:service.author(who.uid),targetId:id,reaction});
+  await batch.commit();const result=(await service.feed(receiver,'rest','legacy-reactions')).posts[0];assert.deepEqual(result.receivedReactions,{'わかる':1,'そっと応援':1,'参考になった':0});
+  const saved=(await db.doc(`${base}/circle_posts/legacy-reactions`).get()).data();assert.equal(saved.reactionCountsVersion,1);assert.equal(saved.updatedAt,legacy.updatedAt);
+  await service.react(giver,'post','legacy-reactions','参考になった');assert.deepEqual((await service.feed(receiver,'rest','legacy-reactions')).posts[0].receivedReactions,{'わかる':0,'そっと応援':1,'参考になった':1});
+ });
+ await check('first reaction on a legacy post seeds existing data before applying the change',async()=>{
+  await db.doc(`${base}/circle_posts/legacy-write`).set(legacy);await db.doc(`${base}/circle_reactions/post_legacy-write_${service.author(giver.uid)}`).set({actorId:service.author(giver.uid),targetId:'legacy-write',reaction:'わかる'});
+  await service.react(secondGiver,'post','legacy-write','そっと応援');assert.deepEqual((await service.feed(receiver,'rest','legacy-write')).posts[0].receivedReactions,{'わかる':1,'そっと応援':1,'参考になった':0});
+ });
+ await check('independent server clients update counts atomically under concurrent reactions',async()=>{
+  const other=new CircleService(db2,secret);await Promise.all([service.react(giver,'post',receivedPost.id,'わかる'),other.react(secondGiver,'post',receivedPost.id,'参考になった')]);
+  assert.deepEqual(await readReceived(),{'わかる':1,'そっと応援':0,'参考になった':1});
+  await Promise.all([service.react(giver,'post',receivedPost.id,'わかる'),other.react(secondGiver,'post',receivedPost.id,'参考になった')]);assert.deepEqual(await readReceived(),zero);
+ });
  console.log(`Phase 1 Firestore checks: ${count} passed (real local emulator, no production auth/data)`);
 }finally{await env.cleanup();await server.close();await Promise.all([deleteApp(app),deleteApp(app2)]);}
