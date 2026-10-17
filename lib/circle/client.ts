@@ -34,6 +34,7 @@ export async function circleRequest(
     );
   })) as {
     error?: string;
+    version?: number;
     circles: CircleSummary[];
     nextCursor?: string;
     nextOwnCursor?: string;
@@ -66,10 +67,10 @@ export async function circleRequest(
       NOT_OWNER: 'この操作はできません。',
       MODERATOR_REQUIRED: '運営担当者のみ利用できます。',
     };
-    throw new Error(
+    throw Object.assign(new Error(
       errors[data.error ?? ''] ??
         '今はつながりにくいようです。少し時間をおいて試してください。',
-    );
+    ), { code: data.error });
   }
   return data;
 }

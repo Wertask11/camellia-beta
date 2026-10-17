@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import {
   FieldPath,
+  FieldValue,
   type Firestore,
   type Transaction,
 } from 'firebase-admin/firestore';
@@ -84,6 +85,17 @@ export class CircleService {
   }
   private col(name: string) {
     return this.db.collection(`${SERVER_ROOT}/${name}`);
+  }
+  private changed(tx: Transaction, circle: string) {
+    tx.set(this.col('circle_activity').doc(circle), { version: FieldValue.increment(1) }, { merge: true });
+  }
+  /** A member-only change counter; no content or identity is returned. */
+  async version(identity: CircleIdentity, circle: string) {
+    return this.db.runTransaction(async (tx) => {
+      await this.requireMember(tx, identity, circle);
+      const activity = await tx.get(this.col('circle_activity').doc(circle));
+      return { version: Number(activity.data()?.version ?? 0) };
+    });
   }
   author(uid: string) {
     return createHmac('sha256', this.secret)
@@ -267,9 +279,8 @@ export class CircleService {
     postId?: string,
     cursor?: string,
   ) {
-    await this.db.runTransaction((tx) =>
-      this.requireMember(tx, identity, circle),
-    );
+    // Read before the feed so concurrent writes are not marked as already seen.
+    const { version } = await this.version(identity, circle);
     const blocks = await this.col('circle_blocks')
       .where('ownerId', '==', this.author(identity.uid))
       .get();
@@ -293,6 +304,7 @@ export class CircleService {
       if (after) query = query.startAfter(after.at, after.id);
       const result = await query.get();
       return {
+        version,
         posts: await this.withReactions(
           [this.publicPost(parent.id, parent.data()!, identity)],
           identity,
@@ -319,6 +331,7 @@ export class CircleService {
     if (after) query = query.startAfter(after.at, after.id);
     const result = await query.get();
     return {
+      version,
       posts: await this.withReactions(
         result.docs
           .slice(0, PAGE_SIZE)
@@ -383,6 +396,7 @@ export class CircleService {
       tx.set(this.col('circle_write_limits').doc(this.author(identity.uid)), {
         at: Date.now(),
       });
+      this.changed(tx, circle);
     });
     return { id: ref.id };
   }
@@ -417,6 +431,7 @@ export class CircleService {
           status: 'deleted',
           updatedAt: new Date().toISOString(),
         });
+      this.changed(tx, data.circleId);
     });
     return { ok: true };
   }
@@ -506,6 +521,7 @@ export class CircleService {
       );
       await this.requireMember(tx, identity, item.data()!.circleId);
       const current = await tx.get(ref);
+      this.changed(tx, item.data()!.circleId);
       if (current.data()?.reaction === reaction) {
         tx.delete(ref);
         return null;
@@ -579,6 +595,7 @@ export class CircleService {
       const now = new Date().toISOString();
       if (action === 'remove')
         tx.update(target, { text: '', status: 'removed', updatedAt: now });
+      if (action === 'remove') this.changed(tx, original.data()!.circleId);
       tx.update(report, {
         status: action === 'dismiss' ? 'dismissed' : 'resolved',
         resolvedAt: now,

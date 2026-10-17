@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { circleRequest } from '@/lib/circle/client';
+import { watchCircleUpdates } from '@/lib/circle/updates';
 import {
   GUIDELINES_VERSION,
   REACTIONS,
@@ -62,6 +63,17 @@ export function CircleScreen({
   const [joinedOnly, setJoinedOnly] = useState(initialJoinedOnly);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [share, setShare] = useState('');
+  const [ownLoaded, setOwnLoaded] = useState(false);
+  const [liveError, setLiveError] = useState('');
+  const [feedMissing, setFeedMissing] = useState(false);
+  const ownHeading = useRef<HTMLHeadingElement>(null);
+  const showingOwn = own !== undefined;
+  useEffect(() => {
+    if (showingOwn) ownHeading.current?.focus();
+  }, [showingOwn]);
+  const feedVersion = useRef<number | undefined>(undefined);
+  const loadedPages = useRef(1);
+  const requestEpoch = useRef(0);
   const initialOpened = useRef(false);
   const reportPanel = useRef<HTMLFieldSetElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -91,6 +103,10 @@ export function CircleScreen({
     setPosts(data.posts);
     setComments(data.comments);
     setNext(data.nextCursor);
+    feedVersion.current = data.version;
+    loadedPages.current = 1;
+    setFeedMissing(false);
+    setLiveError('');
     if (focus) setPost(data.posts[0]);
   };
   useEffect(() => {
@@ -116,6 +132,7 @@ export function CircleScreen({
                   setPosts(result.posts);
                   setComments(result.comments);
                   setNext(result.nextCursor);
+                  feedVersion.current = result.version;
                 })
                 .catch((e) => setError(e.message));
           }
@@ -123,21 +140,24 @@ export function CircleScreen({
       })
       .catch((e) => setError(e.message));
   }, [onTrack, initialCircleId]);
-  const run = async (fn: () => Promise<void>) => {
+  const run = useCallback(async (fn: () => Promise<void>) => {
     if (pending.current) return;
     pending.current = true;
+    const epoch = ++requestEpoch.current;
     setBusy(true);
     setError('');
     setNotice('');
+    setLiveError('');
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '今は利用できません。');
+      if (epoch === requestEpoch.current)
+        setError(e instanceof Error ? e.message : '今は利用できません。');
     } finally {
       pending.current = false;
       setBusy(false);
     }
-  };
+  }, []);
   const mutate = async (
     operation: string,
     extra: Record<string, unknown> = {},
@@ -168,6 +188,9 @@ export function CircleScreen({
     setPost(undefined);
     setComments([]);
     setPosts([]);
+    setFeedMissing(false);
+    feedVersion.current = undefined;
+    loadedPages.current = 1;
     setInput('');
     setNotice('');
     if (circle.joined) void run(() => load(circle, null));
@@ -193,13 +216,23 @@ export function CircleScreen({
           ),
         ]);
       setNext(data.nextCursor);
+      loadedPages.current++;
     });
   const loadOwn = async (kind: 'post' | 'comment', cursor?: string) => {
+    const epoch = requestEpoch.current;
+    setOwnKind(kind);
+    if (!cursor) {
+      setOwn([]);
+      setOwnLoaded(false);
+      setNextOwn(undefined);
+    }
     const data = await circleRequest(
       `?own=1&kind=${kind}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
     );
+    if (epoch !== requestEpoch.current) return;
     setOwn((items) => (cursor ? [...(items ?? []), ...data.own] : data.own));
     setOwnKind(kind);
+    setOwnLoaded(true);
     setNextOwn(data.nextOwnCursor);
   };
   const loadReports = async (cursor?: string) => {
@@ -222,6 +255,79 @@ export function CircleScreen({
     setNextAudit(data.nextAuditCursor);
     setReports(undefined);
   };
+  const reload = () => run(async () => {
+    if (own !== undefined) return loadOwn(ownKind);
+    if (blocks !== undefined) {
+      setBlocks((await circleRequest('?blocks=1')).blocks);
+      return;
+    }
+    if (reports !== undefined) return loadReports();
+    if (audits !== undefined) return loadAudit();
+    await load();
+  });
+  const liveState = useRef({ selected, post, next, paused: false });
+  useLayoutEffect(() => {
+    liveState.current = { selected, post, next, paused: Boolean(edit || report || feedMissing) };
+  }, [selected, post, next, edit, report, feedMissing]);
+  useEffect(() => {
+    if (!selected?.joined) return;
+    let cancelled = false;
+    const active = () => !cancelled && document.visibilityState === 'visible' && !pending.current && !liveState.current.paused
+      && liveState.current.selected?.id === selected.id && liveState.current.post?.id === post?.id;
+    const watcher = watchCircleUpdates({
+      active,
+      currentVersion: () => feedVersion.current,
+      readVersion: async () => (await circleRequest(`?circle=${selected.id}&version=1`)).version,
+      refresh: async () => {
+        const epoch = requestEpoch.current;
+        const current = liveState.current;
+        const query = `?circle=${selected.id}${current.post ? `&post=${current.post.id}` : ''}`;
+        const pages = loadedPages.current + (current.next ? 0 : 1);
+        let cursor: string | undefined;
+        let result;
+        let version: number | undefined;
+        let pageCount = 0;
+        const refreshedPosts: CirclePost[] = [];
+        const refreshedComments: CirclePost[] = [];
+        do {
+          result = await circleRequest(`${query}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+          if (!active() || epoch !== requestEpoch.current) return;
+          version ??= result.version;
+          if (!current.post || !pageCount) refreshedPosts.push(...result.posts);
+          refreshedComments.push(...result.comments);
+          cursor = result.nextCursor;
+          pageCount++;
+        } while (cursor && pageCount < pages);
+        if (!active() || epoch !== requestEpoch.current) return;
+        setPosts(refreshedPosts);
+        setComments(refreshedComments);
+        setNext(cursor);
+        if (current.post) setPost(refreshedPosts[0]);
+        loadedPages.current = pageCount;
+        feedVersion.current = version;
+        setLiveError('');
+      },
+      onError: (failure) => {
+        if (failure && typeof failure === 'object' && 'code' in failure && failure.code === 'NOT_FOUND') {
+          setFeedMissing(true);
+          setPosts([]);
+          setComments([]);
+          setLiveError('この文章は削除されたか、今は表示できません。投稿一覧へ戻って確認してください。');
+        } else setLiveError('新しい投稿やコメントを確認できませんでした。');
+      },
+    });
+    const resume = () => { if (document.visibilityState === 'visible') watcher.refresh(); };
+    window.addEventListener('focus', resume);
+    window.addEventListener('online', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      cancelled = true;
+      watcher.stop();
+      window.removeEventListener('focus', resume);
+      window.removeEventListener('online', resume);
+      document.removeEventListener('visibilitychange', resume);
+    };
+  }, [selected?.id, selected?.joined, post?.id]);
   const publish = () =>
     run(async () => {
       if (!selected || !input.trim()) return;
@@ -257,6 +363,7 @@ export function CircleScreen({
             aria-pressed={item.myReaction === reaction}
             disabled={busy}
             onClick={() =>
+              // oxlint-disable-next-line react-compiler -- run reads request guards only when this click handler executes; itemView itself does not invoke it during render.
               void run(async () => {
                 const result = await circleRequest('', {
                   operation: 'react',
@@ -297,6 +404,7 @@ export function CircleScreen({
               setPost(item);
               setEdit(undefined);
               setInput('');
+              // oxlint-disable-next-line react-compiler -- this guarded feed request executes on a click, outside itemView's render.
               void run(() => load(selected, item));
             }}
           >
@@ -367,6 +475,13 @@ export function CircleScreen({
       <button
         className="back"
         onClick={() => {
+          if (own !== undefined || blocks !== undefined) {
+            requestEpoch.current++;
+            setOwn(undefined);
+            setBlocks(undefined);
+            setError('');
+            return;
+          }
           if (selected) {
             setSelected(undefined);
             onCircleChange?.();
@@ -381,12 +496,12 @@ export function CircleScreen({
           } else onBack();
         }}
       >
-        ← {selected ? 'Circle一覧へ' : 'Discoverへ戻る'}
+        ← {selected || own !== undefined || blocks !== undefined ? 'Circle一覧へ' : 'Discoverへ戻る'}
       </button>
       <header>
         <div>
           <p className="eyebrow">安心して、少しつながる</p>
-          <h1>{selected?.name ?? 'Circle'}</h1>
+          <h1>{own !== undefined ? '自分の投稿・コメント' : selected?.name ?? 'Circle'}</h1>
         </div>
       </header>
       {selected && (
@@ -435,14 +550,15 @@ export function CircleScreen({
       {error && (
         <p role="alert" className="circle-error">
           {error}
-          <button disabled={busy} onClick={() => void run(() => load())}>
+          <button disabled={busy} onClick={() => void reload()}>
             もう一度読み込む
           </button>
         </p>
       )}
+      {liveError && <output className="circle-error">{liveError}<button disabled={busy} onClick={() => void reload()}>もう一度読み込む</button></output>}
       {notice && <output>{notice}</output>}
       {busy && <output aria-label="読み込み中">…</output>}
-      {!selected && !reports && !audits && (
+      {!selected && !reports && !audits && own === undefined && blocks === undefined && (
         <>
           <p className="meta">
             小さな一言から。参加時にCircleだけの表示名を決めます。
@@ -482,10 +598,11 @@ export function CircleScreen({
             ))}
           <button
             className="text-button"
+            disabled={busy}
             onClick={() =>
               void run(async () => {
-                await loadOwn(ownKind);
                 setBlocks(undefined);
+                await loadOwn(ownKind);
               })
             }
           >
@@ -514,7 +631,7 @@ export function CircleScreen({
       )}
       {own && (
         <section>
-          <h2>自分の文章</h2>
+          <h2 ref={ownHeading} tabIndex={-1}>自分の文章</h2>
           <div className="circle-filters">
             <button
               disabled={busy}
@@ -556,8 +673,8 @@ export function CircleScreen({
               さらに読み込む
             </button>
           )}
-          {!own.length && <p>残っている文章はありません。</p>}
-          <button onClick={() => setOwn(undefined)}>閉じる</button>
+          {!own.length && ownLoaded && !busy && !error && <p>残っている文章はありません。</p>}
+          <button onClick={() => { requestEpoch.current++; setOwn(undefined); setError(''); }}>閉じる</button>
         </section>
       )}
       {blocks && (
@@ -758,9 +875,9 @@ export function CircleScreen({
               >
                 ← 投稿一覧へ
               </button>
-              {itemView(post, 'post')}
+              {!feedMissing && itemView(post, 'post')}
               {comments.map((item) => itemView(item, 'comment'))}
-              {!comments.length && !error && !busy && (
+              {!comments.length && !error && !busy && !feedMissing && (
                 <p className="meta">まだコメントはありません。</p>
               )}
             </>
@@ -800,7 +917,7 @@ export function CircleScreen({
             </p>
             <button
               className="primary"
-              disabled={busy || !input.trim() || Array.from(input).length > 500}
+              disabled={busy || feedMissing || !input.trim() || Array.from(input).length > 500}
               onClick={() =>
                 edit
                   ? void run(async () => {
