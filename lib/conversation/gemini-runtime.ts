@@ -8,9 +8,10 @@ import {
   createGeminiChatHandler,
   getTodayJstDate,
   normalizeMoodForPrompt,
+  chatServerStatus,
 } from './gemini-server.js';
 
-import { requireEligibleUser } from '../server/eligibility.js';
+import { EligibilityServiceError, requireEligibleUser } from '../server/eligibility.js';
 import { CONVERSATION_RESPONSE_SCHEMA } from './action-bridge.js';
 import { adminConfigured, serverAdmin } from '../server/admin.js';
 import { createSharedRateLimiter } from '../server/shared-limit.js';
@@ -44,8 +45,12 @@ async function getTodayMood(uid: string, token: string) {
 
 const handler = createGeminiChatHandler({
   env: process.env,
-  rateLimitMode:adminConfigured()?'firestore':(process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED==='true')?'unavailable':'instance',
-  verifyToken: async (token) => { const decoded=await requireEligibleUser(token,serverAdmin());return {uid:decoded.uid}; },
+  rateLimitMode:chatServerStatus(process.env).rateLimitMode,
+  verifyToken: async (token) => {
+    let admin;
+    try{admin=serverAdmin();}catch{throw new EligibilityServiceError('configuration');}
+    const decoded=await requireEligibleUser(token,admin);return {uid:decoded.uid};
+  },
   getTodayMood,
   getTodayContext: getSafeTodayContext,
   ...(adminConfigured() ? {limiter:{take:(uid:string)=>createSharedRateLimiter(serverAdmin().db).take(uid)}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),

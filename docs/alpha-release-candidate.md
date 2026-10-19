@@ -22,6 +22,8 @@ Circle and conversation share Admin SDK `verifyIdToken(token, true)` plus anonym
 
 Conversation requires the existing server-only Firebase Admin setup in Preview as well as Production. No credentials belong in `VITE_` variables, source, reports or chat. Production shared limiting now fails closed without Admin configuration even if the optional required flag is absent.
 
+Expired/revoked/invalid tokens remain 401; anonymous or incomplete profiles are 403. Missing Admin configuration and authentication/profile backend failures are 503 and never reach generation. The diagnostic log records only a fixed stage label, without SDK error text or credentials. The public status labels configuration **presence**, not validity or successful backend access.
+
 `camellia_provider_text_received` logs only model, primary/fallback route and elapsed milliseconds. It does not log prompts, replies, tokens or identities. Provider text arrival is **not** a quality or Safety PASS. Existing urgent local Safety responses remain `provider=fallback` and must not be counted as real Gemini successes.
 
 ## Local verification
@@ -52,7 +54,9 @@ Use only demo Firestore emulator projects and the test Rules snapshot for automa
 | P1-09 | Owner stated no permission-cleared venue yet. Keep live Place OFF and the demo clearly labeled. Obtain venue/publication/photo permission, official details and usable links; then operator draft→review→published and actual save/external flow. No fictional published data. |
 | P1-10 | Real LINE/Google/Passport new/existing/cancel/link/conflict; same-account two-device personal sync; backup/remote-newer/conflict; test-only Delete→logout/login→no resurrection; authenticated full flow and all five widths. Never delete ordinary users' records for testing. |
 
-The existing public `/api/camellia/chat` reports `dataPolicy` and `rateLimitMode`; these are not credentials and do not establish successful generation or actual rate-limit reservations. Obtain actual limit values from authorized Vercel settings; never infer them from defaults.
+The existing public `/api/camellia/chat` reports `dataPolicy`, `rateLimitMode` and `serverAuthConfiguration`; these are not credentials and do not establish successful generation or actual rate-limit reservations. Obtain actual limit values from authorized Vercel settings; never infer them from defaults.
+
+On 2026-10-19 the owner confirmed LINE login on the stable Preview, then supplied a chat POST 401 and public status `dataPolicy=unknown`, `rateLimitMode=instance`. For that deployed revision, instance mode means the Preview has no server Admin configuration. This is a failed conversation acceptance check, not a Gemini success. The owner is checking the existing server credential's Preview environment scope; Production remains unchanged. After saving Preview settings, create a fresh Preview deployment and repeat authenticated acceptance.
 
 ## Changes requiring owner authorization
 

@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const saved={...process.env};
 let server;
-const invoke=async(handler,method)=>{let status,body;await handler({method,headers:{},body:{message:'unit bootstrap'}},{setHeader(){},status(code){status=code;return{json(value){body=value;}}}});return{status,body};};
+const invoke=async(handler,method,headers={})=>{let status,body;await handler({method,headers,body:{message:'unit bootstrap'}},{setHeader(){},status(code){status=code;return{json(value){body=value;}}}});return{status,body};};
 try{
  delete process.env.GEMINI_API_KEY;process.env.CAMELLIA_GEMINI_CHAT_ENABLED='false';delete process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
  server=await createServer({configFile:false,root,resolve:{alias:{'@':root}},server:{middlewareMode:true},appType:'custom'});
@@ -15,6 +15,8 @@ try{
  process.env.GEMINI_API_KEY='unit-only-not-real';process.env.CAMELLIA_GEMINI_CHAT_ENABLED='true';process.env.VERCEL_ENV='preview';
  assert.equal((await invoke(handler,'GET')).body.enabled,true);console.log('PASS enabled status');
  assert.equal((await invoke(handler,'POST')).status,401);console.log('PASS real runtime loads; anonymous request rejected');
+ assert.equal((await invoke(handler,'GET')).body.serverAuthConfiguration,'missing');
+ assert.equal((await invoke(handler,'POST',{authorization:'Bearer local-only'})).status,503);console.log('PASS missing Admin configuration is 503, not a false user 401; no generation');
  await server.close();
  server=await createServer({configFile:false,root,resolve:{alias:{'@':root}},server:{middlewareMode:true},appType:'custom',plugins:[{name:'unit-broken-runtime',enforce:'pre',resolveId(id){if(id.includes('gemini-runtime'))return '\0broken-runtime';},load(id){if(id==='\0broken-runtime')return 'throw Object.assign(new Error("unit only"),{code:"ERR_MODULE_NOT_FOUND"});';}}]});
  const {default:broken}=await server.ssrLoadModule('/api/camellia/chat.ts');
