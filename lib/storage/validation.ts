@@ -30,7 +30,9 @@ const checks: Record<string, (v: unknown) => boolean> = {
 export function validateStoredState(raw: unknown, base: CamelliaState, legacy = false) {
   if (!object(raw)) throw new Error('LOCAL_DATA_UNREADABLE');
   const issues: string[] = [];
-  const state = { ...base };
+  // Preserve unrecognized root fields from older/newer clients without rendering or syncing them.
+  // Known fields are initialized safely, then validated below.
+  const state = { ...raw, ...base };
   if (!legacy && raw.version !== 3) issues.push('version');
   const p = raw.profile;
   if (object(p) && text(p.id) && text(p.name) && strings(p.interests)

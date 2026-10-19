@@ -10,6 +10,7 @@ try{
  const {emptyState,load,STORAGE_KEY,useCamelliaStore}=await server.ssrLoadModule('/hooks/useCamelliaStore.ts');
  const {validateStoredState}=await server.ssrLoadModule('/lib/storage/validation.ts');
  const at='2026-10-19T00:00:00Z';const state=emptyState();state.profile.name='synthetic';state.checkins=[{id:'check',mood:3,createdAt:at,updatedAt:at}];
+ const future=validateStoredState({...state,preservedExtension:{note:'synthetic extension'}},emptyState());assert.deepEqual(future.state.preservedExtension,{note:'synthetic extension'});assert.equal(future.issues.length,0);
  for(const field of ['treeLeaves','checkins','aiConversations','actions']){
   const broken={...state,[field]:{broken:true}};const raw=JSON.stringify(broken);localStorage.setItem(STORAGE_KEY,raw);
   let caught;try{load();}catch(e){caught=e;}assert.equal(caught.message,'LOCAL_DATA_UNREADABLE');assert.ok(caught.recovered);assert.equal(localStorage.getItem(STORAGE_KEY),raw);
