@@ -15,4 +15,4 @@ Regression tests cover direct/wrapped transport failure, malformed and empty out
 
 ## Circle report verification
 
-The owner also reported a “公開準備中” Circle entry. A subsequent fetch of the actual Production page bundle confirmed `VITE_CIRCLE_ENABLED=true` and a compiled Circle destination set. The separate server API remains enabled with a ready feed query. Earlier inference that Production UI was OFF was withdrawn; the viewed hostname/stale-tab state still needs owner confirmation. The proposed publication-switch unification was removed before merge. This change preserves both existing Circle controls and all Place behavior.
+The owner confirmed that “公開準備中” was shown on Preview, not Production. The actual Production bundle has `VITE_CIRCLE_ENABLED=true` and a compiled Circle destination set; its API is enabled with a ready feed query. Preview and Production publication settings are separate. Both existing Circle controls and all Place behavior remain unchanged.
