@@ -16,12 +16,12 @@
 |---|---|
 |CAMELLIA_CIRCLE_SIGNING_SECRET|32文字以上の、専用のランダム文字列|
 |CAMELLIA_CIRCLE_ENABLED|true|
-|VITE_CIRCLE_ENABLED|true|
+|VITE_CIRCLE_ENABLED|任意。serverの公開設定が未指定のローカル環境向け互換用|
 |CAMELLIA_SHARED_RATE_LIMIT_REQUIRED|true|
 
 専用のランダム文字列は本人のパソコンのターミナルで `openssl rand -hex 32` を実行すると生成できる。結果はVercelのValueへ直接コピーし、チャットへ送らない。設定後は同じ値を保持する。後から変更すると投稿者の公開IDに影響する。
 
-すべて保存したら、mainの最新Production deploymentをRedeployする。Previewや古いbranchのデプロイを選ばない。
+画面もCAMELLIA_CIRCLE_ENABLEDの公開設定に揃えてbuildするため、VITE_CIRCLE_ENABLEDとの食い違いで公開済みCircleが準備中になることはない。公開可否のboolean以外のserver設定はブラウザへ含めない。すべて保存したら、mainの最新Production deploymentをRedeployする。Previewや古いbranchのデプロイを選ばない。
 
 ## 3. Firestoreの確認
 

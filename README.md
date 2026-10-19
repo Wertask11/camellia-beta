@@ -38,7 +38,7 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 
 全データは既存保護領域`camellia_admin/release_phase1`配下。テーマはコード内catalog、他は`circle_memberships/posts/comments/reactions/reports/blocks/moderation_audit`。client直接アクセスは拒否し、verified Firebase ID tokenとserver APIで権限を判定します。匿名認証を拒否、プロフィール同意が必要。投稿には本人が入力した文章のみ、公開IDはHMACでUIDと分離。通報/ブロックは相手へ通知しません。参加者でなければfeed/投稿/コメント不可、他人の編集/削除不可。運営削除はtrusted `camelliaModerator: true` custom claimのみ。本文のmoderator属性や表示名では権限は変わりません。
 
-`VITE_CIRCLE_ENABLED=true`（build）と`CAMELLIA_CIRCLE_ENABLED=true`（server）を、実認証・複数ユーザー・deployed Rules・index・moderation・Privacy・5サイズのgate通過後に設定。初期OFFのままではDiscoverのCircleはComing Soonです。Placeはflagに含めません。
+`CAMELLIA_CIRCLE_ENABLED=true`を、実認証・複数ユーザー・deployed Rules・index・moderation・Privacy・5サイズのgate通過後に設定して再buildします。APIと画面はこの公開設定に揃い、初期OFFではDiscoverのCircleはComing Soonです。server switch未指定のローカル環境では従来の`VITE_CIRCLE_ENABLED`へfallbackします。ブラウザへ出るのは公開可否のbooleanのみで、秘密設定値は含めません。Placeは変更しません。
 
 ## Server環境変数とリリース手順
 

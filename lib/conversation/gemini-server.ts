@@ -2,6 +2,7 @@ import { createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto
 import { parseConversationReply, ACTION_BRIDGE_INSTRUCTION } from './action-bridge.js';
 import { immediateSafetyReply } from './safety.js';
 import { EligibilityError, EligibilityServiceError } from '../server/eligibility.js';
+import { isTransientNetworkError } from './provider-recovery.js';
 
 export { immediateSafetyReply } from './safety.js';
 
@@ -124,7 +125,7 @@ export function classifyChatError(error: unknown): ChatErrorCategory {
     if(value.code==='INVALID_RESPONSE')return 'invalid_response';
     if (value.status === 429 || value.code === 429 || value.code === 'RESOURCE_EXHAUSTED') return 'rate_limited';
     if (value.name === 'AbortError' || value.name === 'TimeoutError' || value.code === 'ETIMEDOUT') return 'timeout';
-    if (value.name === 'TypeError' || value.code === 'ECONNRESET' || value.code === 'ENOTFOUND') return 'network';
+    if (value.name === 'TypeError' || value.code === 'ENOTFOUND' || isTransientNetworkError(error)) return 'network';
   }
   return 'provider_error';
 }

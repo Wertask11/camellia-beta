@@ -1,7 +1,8 @@
 import { sites } from '@openai/sites-vite-plugin';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { circleBuildEnabled } from './lib/build/features';
 import hostingConfig from './.openai/hosting.json';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
@@ -34,7 +35,7 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ mode }) => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= 'false';
@@ -43,8 +44,15 @@ export default defineConfig(async () => {
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import('@cloudflare/vite-plugin');
+  const publicSwitches = loadEnv(mode, process.cwd(), ['CAMELLIA_CIRCLE_ENABLED', 'VITE_CIRCLE_ENABLED']);
 
   return {
+    define: {
+      __CAMELLIA_CIRCLE_ENABLED__: JSON.stringify(circleBuildEnabled({
+        CAMELLIA_CIRCLE_ENABLED: process.env.CAMELLIA_CIRCLE_ENABLED ?? publicSwitches.CAMELLIA_CIRCLE_ENABLED,
+        VITE_CIRCLE_ENABLED: process.env.VITE_CIRCLE_ENABLED ?? publicSwitches.VITE_CIRCLE_ENABLED,
+      })),
+    },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       host: '0.0.0.0',
