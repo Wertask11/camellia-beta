@@ -1,6 +1,7 @@
 import { createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto';
 import { parseConversationReply, ACTION_BRIDGE_INSTRUCTION } from './action-bridge.js';
 import { immediateSafetyReply } from './safety.js';
+import { EligibilityError, EligibilityServiceError } from '../server/eligibility.js';
 
 export { immediateSafetyReply } from './safety.js';
 
@@ -134,6 +135,14 @@ export function isGeminiEnabled(env: Record<string, string | undefined>) {
   return true;
 }
 
+/** Presence labels only; does not initialize SDKs, expose values, or certify live access. */
+export function chatServerStatus(env:Record<string,string|undefined>){
+  return {
+    serverAuthConfiguration:env.FIREBASE_SERVICE_ACCOUNT_JSON?'present':'missing',
+    rateLimitMode:env.FIREBASE_SERVICE_ACCOUNT_JSON?'firestore':(env.VERCEL_ENV==='production'||env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED==='true')?'unavailable':'instance',
+  };
+}
+
 export function createInMemoryRateLimiter(options: { limit?: number; windowMs?: number; now?: () => number } = {}) {
   const entries = new Map<string, { start: number; count: number }>();
   const limit = options.limit ?? 10;
@@ -186,7 +195,14 @@ export function createGeminiChatHandler(deps: {
     if (!token) return res.status(401).json({ error: 'authentication_required' });
     let identity: { uid: string };
     try { identity = await deps.verifyToken(token); }
-    catch { return res.status(401).json({ error: 'authentication_required' }); }
+    catch(error) {
+      if(error instanceof EligibilityServiceError){
+        console.error('camellia_eligibility_unavailable',{stage:error.stage});
+        return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});
+      }
+      if(error instanceof EligibilityError&&error.status===403)return res.status(403).json({error:error.code==='PROFILE_REQUIRED'?'profile_required':'authentication_required'});
+      return res.status(401).json({ error: 'authentication_required' });
+    }
     const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : {};
     if (Buffer.byteLength(JSON.stringify(body)) > 20_000) return res.status(413).json({ error: 'invalid_request' });
     if (typeof body.message !== 'string' || !body.message.trim() || Array.from(body.message).length > 1000) return res.status(400).json({ error: 'invalid_request' });

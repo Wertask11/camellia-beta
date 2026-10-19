@@ -344,7 +344,7 @@ export function PlaceScreen({
                     void run(async () => {
                       if (
                         !window.confirm(
-                          '実在・公式情報・写真の権利・提携表記を確認済みですか？確認した内容を公開します。',
+                          '実在・掲載許可・公式情報・写真の利用許可・提携表記を確認済みですか？確認した内容を公開します。',
                         )
                       )
                         return;

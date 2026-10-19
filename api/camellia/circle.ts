@@ -3,6 +3,7 @@ import {
   adminInitializationStatus,
   serverAdmin,
 } from '../../lib/server/admin.js';
+import { EligibilityError, requireEligibleUser } from '../../lib/server/eligibility.js';
 import { CircleError, CircleService } from '../../lib/circle/service.js';
 import { credentialInputFormat } from '../../lib/server/credential-json.js';
 import { createFeedQueryProbe } from '../../lib/circle/readiness.js';
@@ -59,15 +60,11 @@ export default async function circle(req: Request, res: Response) {
     const { auth, db } = serverAdmin();
     let decoded;
     try {
-      decoded = await auth.verifyIdToken(token, true);
-    } catch {
-      return res.status(401).json({ error: 'LOGIN_REQUIRED' });
+      decoded = await requireEligibleUser(token,{auth,db});
+    } catch (error) {
+      if(error instanceof EligibilityError)return res.status(error.status).json({error:error.code});
+      throw error;
     }
-    if (decoded.firebase?.sign_in_provider === 'anonymous')
-      return res.status(403).json({ error: 'LOGIN_REQUIRED' });
-    const profile = await db.doc(`camellia_users/${decoded.uid}`).get();
-    if (!profile.exists || !profile.data()?.agreedAt)
-      return res.status(403).json({ error: 'PROFILE_REQUIRED' });
     const identity = {
       uid: decoded.uid,
       moderator:

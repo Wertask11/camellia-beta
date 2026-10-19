@@ -1,6 +1,7 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { StorageRecovery } from '@/components/StorageRecovery';
 import { ActionSheet } from '@/components/ActionSheet';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
 import { ACTIONS } from '@/data/actions';
@@ -133,7 +134,7 @@ export default function Page() {
     applyUser.current=apply;
     const unsubscribe=onAuthStateChanged(schoolParkAuth,apply);
     return ()=>{generation++;unsubscribe();applyUser.current=()=>{};};
-  },[store.ready,store.prepareAccount]);
+  },[store.ready,store.prepareAccount,store.storageError]);
   useEffect(() => {
     if(!store.ready||!accountReady||callbackHandled.current)return;
     callbackHandled.current=true;
@@ -154,7 +155,7 @@ export default function Page() {
     });
   },[store.ready,accountReady,store.state.profile.id,store.state.profile,store.state.onboardingComplete]);
   if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
-  if(store.storageError)return <main className="screen"><h1>端末の記録を読み込めませんでした</h1><p>保存データを上書きせず、そのまま残しています。別の端末やアカウントへ切り替える前に、運営へお問い合わせください。</p></main>;
+  if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage}/>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accountError&&accountUser){
     const resolve=(choice:'remote'|'adopt'|'fresh')=>{setAccountReady(false);void store.prepareAccount(accountUser.uid,choice).then(()=>{setAccountError('');setAccountReady(true);}).catch(error=>{setAccountError(error instanceof Error?error.message:'RESTORE_FAILED');setAccountReady(true);});};

@@ -1,4 +1,4 @@
-import { isGeminiEnabled } from '../../lib/conversation/gemini-server.js';
+import { chatServerStatus, isGeminiEnabled } from '../../lib/conversation/gemini-server.js';
 type Request = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -21,11 +21,7 @@ export default async function chat(request: Request, response: Response) {
       )
         ? process.env.GEMINI_DATA_POLICY
         : 'unknown',
-      rateLimitMode: process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-        ? 'firestore'
-        : process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true'
-          ? 'unavailable'
-          : 'instance',
+      ...chatServerStatus(process.env),
     });
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'GET, POST');

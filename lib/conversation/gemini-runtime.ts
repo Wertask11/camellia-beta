@@ -8,9 +8,10 @@ import {
   createGeminiChatHandler,
   getTodayJstDate,
   normalizeMoodForPrompt,
-  verifyFirebaseIdToken,
+  chatServerStatus,
 } from './gemini-server.js';
 
+import { EligibilityServiceError, requireEligibleUser } from '../server/eligibility.js';
 import { CONVERSATION_RESPONSE_SCHEMA } from './action-bridge.js';
 import { adminConfigured, serverAdmin } from '../server/admin.js';
 import { createSharedRateLimiter } from '../server/shared-limit.js';
@@ -44,19 +45,27 @@ async function getTodayMood(uid: string, token: string) {
 
 const handler = createGeminiChatHandler({
   env: process.env,
-  rateLimitMode:adminConfigured()?'firestore':process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED==='true'?'unavailable':'instance',
-  verifyToken: (token) => verifyFirebaseIdToken(token, { projectId: PROJECT_ID }),
+  rateLimitMode:chatServerStatus(process.env).rateLimitMode,
+  verifyToken: async (token) => {
+    let admin;
+    try{admin=serverAdmin();}catch{throw new EligibilityServiceError('configuration');}
+    const decoded=await requireEligibleUser(token,admin);return {uid:decoded.uid};
+  },
   getTodayMood,
   getTodayContext: getSafeTodayContext,
-  ...(adminConfigured() ? {limiter:{take:(uid:string)=>createSharedRateLimiter(serverAdmin().db).take(uid)}} : process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true' ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
+  ...(adminConfigured() ? {limiter:{take:(uid:string)=>createSharedRateLimiter(serverAdmin().db).take(uid)}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
   generate: async (contents, systemInstruction) => {
+    const startedAt=Date.now();
+    const primaryModel=process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const fallbackModel=process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite';
+    let receivedModel='';
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY_NOT_CONFIGURED');
     const ai = new GoogleGenAI({ apiKey, httpOptions: { retryOptions: { attempts: 1 } } });
     let response;
     try {
       response = await generateWithModelRecovery({
-      ...modelCooldown.select(process.env.GEMINI_MODEL || 'gemini-3.8-flash', process.env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.1-flash-lite'),
+      ...modelCooldown.select(primaryModel,fallbackModel),
       signal: AbortSignal.timeout(28_000),
       onFailure: (metadata) => { modelCooldown.failed(metadata); console.warn('camellia_provider_attempt_failed', metadata); },
       request: async (model, signal) => {
@@ -82,6 +91,7 @@ const handler = createGeminiChatHandler({
       },
     });
       modelCooldown.succeeded(model);
+      receivedModel=model;
       return result;
     },
     });
@@ -96,6 +106,9 @@ const handler = createGeminiChatHandler({
       console.error('camellia_generation_failed', { stage: 'empty_output', finishReason: response.candidates?.[0]?.finishReason, blockReason: response.promptFeedback?.blockReason });
     }
     if(!text)throw Object.assign(new Error('GENERATION_EMPTY'),{code:response.promptFeedback?.blockReason || response.candidates?.[0]?.finishReason==='SAFETY' ? 'SAFETY_BLOCK':'INVALID_RESPONSE'});
+    // Operational metadata only. This records provider text, not a quality/Safety PASS.
+    // No prompt, reply, token, account ID or request body is logged.
+    console.info('camellia_provider_text_received',{route:receivedModel===primaryModel?'primary':'fallback',model:receivedModel,elapsedMs:Date.now()-startedAt});
     return text;
   },
 });
