@@ -13,8 +13,6 @@ Failure logs add only a fixed reason label. Prompts, replies, tokens, SDK except
 
 Regression tests cover direct/wrapped transport failure, malformed and empty output, partial Safety output, non-retryable failures, total deadlines, two-call bounds and one reservation/one Gemini reply at the API boundary. All use synthetic dependencies; real provider reliability still requires authenticated Production verification.
 
-## Already-published Circle appeared closed
+## Circle report verification
 
-The owner then reported that Circle had returned to “公開準備中”. Production API status remains enabled/configured/initialized with a ready feed query. The UI instead uses a separately compiled `VITE_CIRCLE_ENABLED` flag, so the two publication decisions can disagree.
-
-Vite now compiles a single public boolean from the existing `CAMELLIA_CIRCLE_ENABLED` server switch, including explicit OFF. Legacy `VITE_CIRCLE_ENABLED` is used only when the server switch is absent. Discover, route selection, My and recommendations all consume the same destination set. No credential or signing value is exposed. Place remains unchanged. This restores the owner's already-authorized Circle publication; it does not enable a disabled backend or change access-control Rules.
+The owner also reported a “公開準備中” Circle entry. A subsequent fetch of the actual Production page bundle confirmed `VITE_CIRCLE_ENABLED=true` and a compiled Circle destination set. The separate server API remains enabled with a ready feed query. Earlier inference that Production UI was OFF was withdrawn; the viewed hostname/stale-tab state still needs owner confirmation. The proposed publication-switch unification was removed before merge. This change preserves both existing Circle controls and all Place behavior.

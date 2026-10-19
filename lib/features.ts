@@ -1,11 +1,7 @@
-/** Public destination switches. Publication still requires owner-approved acceptance. */
-declare const __CAMELLIA_CIRCLE_ENABLED__: boolean;
-// Vite emits the same Circle publication decision as the server switch. Legacy
-// VITE_ fallback supports isolated fixtures/local tooling without this build config.
-const circleEnabled = typeof __CAMELLIA_CIRCLE_ENABLED__ === 'boolean'
-  ? __CAMELLIA_CIRCLE_ENABLED__
-  : import.meta.env?.VITE_CIRCLE_ENABLED === 'true';
-export const LIVE_DESTINATIONS: ReadonlySet<'circle' | 'place'> = new Set([...(circleEnabled ? ['circle' as const] : []),...(import.meta.env?.VITE_PLACE_ENABLED === 'true' ? ['place' as const] : [])]);
+/** Places in Camellia that are live in this release. In β2, Circle and Place are coming soon: their own
+ * screens say so, and actions never send someone there until the place is live. */
+// Enable only after authenticated multi-user / rules / moderation acceptance. Place stays off.
+export const LIVE_DESTINATIONS: ReadonlySet<'circle' | 'place'> = new Set([...(import.meta.env?.VITE_CIRCLE_ENABLED === 'true' ? ['circle' as const] : []),...(import.meta.env?.VITE_PLACE_ENABLED === 'true' ? ['place' as const] : [])]);
 
 /* UI switches for the Today one-flow release (Camellia β2 UI/UX audit, 2026-10-09).
    Both are on by default. Setting VITE_TODAY_ONE_FLOW=off (or VITE_ADAPTIVE_STAGE_UI=off) at build time
