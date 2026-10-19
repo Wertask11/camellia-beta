@@ -1,4 +1,5 @@
 import type { CamelliaState } from '@/types';
+import { validConversationEntry } from '@/lib/conversation/entries';
 
 type Row = Record<string, unknown>;
 const object = (v: unknown): v is Row => Boolean(v && typeof v === 'object' && !Array.isArray(v));
@@ -9,14 +10,14 @@ const oneOf = (v: unknown, values: readonly unknown[]) => values.includes(v);
 const optional = (r: Row, key: string, check: (v: unknown) => boolean) => r[key] === undefined || check(r[key]);
 const category = (v: unknown) => oneOf(v, ['REST','BODY','BEAUTY','PLAY','LEARN','CONNECT']);
 const record = (v: unknown): v is Row => object(v) && text(v.id) && date(v.createdAt) && optional(v,'updatedAt',date);
-const message = (v: unknown) => record(v) && text(v.text) && oneOf(v.role,['user','assistant']) && optional(v,'topics',strings);
+const message = (v: unknown) => validConversationEntry(v) && object(v) && optional(v,'topics',strings);
 const reflection = (v: unknown) => record(v) && text(v.text);
 const checks: Record<string, (v: unknown) => boolean> = {
   checkins: v => record(v) && oneOf(v.mood,[1,2,3,4,5]) && optional(v,'sleep',x=>typeof x==='number'&&Number.isFinite(x)) && optional(v,'body',x=>oneOf(x,['良い','普通','疲れ気味','悪い'])) && optional(v,'stress',x=>oneOf(x,['低い','普通','やや高い','高い'])),
   actions: v => record(v) && text(v.actionId) && text(v.title) && category(v.category) && oneOf(v.status,['started','completed','skipped']),
   actionFeedback: v => record(v) && text(v.actionRecordId) && text(v.actionId) && oneOf(v.rating,['great','okay','same','bad']),
   savedActions: v => record(v) && text(v.actionId) && oneOf(v.timing,['later_today','holiday','when_free','save_only']),
-  aiConversations: v => record(v) && Array.isArray(v.messages) && v.messages.every(message),
+  aiConversations: v => record(v) && optional(v,'activeModel',text) && Array.isArray(v.messages) && v.messages.every(message),
   contextualMemory: v => record(v) && text(v.actionId) && oneOf(v.event,['proposed','saved','dismissed','started','completed','feedback']) && object(v.context) && text(v.context.timeBand) && typeof v.context.weekday==='number' && text(v.context.lifestyle),
   personalMemories: v => record(v) && text(v.text) && v.source==='explicit_conversation',
   insights: v => record(v) && text(v.key) && text(v.text) && typeof v.confidence==='number' && typeof v.sampleSize==='number',
@@ -37,7 +38,7 @@ export function validateStoredState(raw: unknown, base: CamelliaState, legacy = 
   const p = raw.profile;
   if (object(p) && text(p.id) && text(p.name) && strings(p.interests)
     && ['age','birthDate','lifestyle','priority','region','livingSituation','concerns','agreedAt','agreedVersion','createdAt','updatedAt'].every(k=>optional(p,k,text))
-    && optional(p,'purposes',strings) && optional(p,'periodEnabled',x=>typeof x==='boolean')) {
+    && optional(p,'purposes',strings) && optional(p,'lastConversationModel',text) && optional(p,'periodEnabled',x=>typeof x==='boolean')) {
     state.profile = { ...base.profile, ...p } as CamelliaState['profile'];
   } else issues.push('profile');
   for (const [field, check] of Object.entries(checks)) {

@@ -50,6 +50,6 @@ export function buildCamelliaContext(
       interests: (state.profile.interests || []).slice(0, 5),
       availableMinutes: state.profile.availableMinutes,
     },
-    conversationHistory: history.slice(-4).map(({ id, role, text, topics, createdAt }) => ({ id, role, text: Array.from(new Intl.Segmenter('ja',{granularity:'grapheme'}).segment(text),item=>item.segment).slice(0,280).join(''), topics, createdAt })),
+    conversationHistory: history.filter(message=>message.role!=='system').slice(-4).map(({ id, role, text, topics, createdAt }) => ({ id, role, text: Array.from(new Intl.Segmenter('ja',{granularity:'grapheme'}).segment(text),item=>item.segment).slice(0,280).join(''), topics, createdAt })),
   };
 }

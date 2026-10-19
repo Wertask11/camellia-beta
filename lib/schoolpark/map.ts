@@ -67,6 +67,7 @@ function mapActivity(state: CamelliaState) {
 function mapChat(state: CamelliaState) {
   const messages = state.aiConversations
     .flatMap((conversation) => conversation.messages)
+    .filter(message => message.role !== 'system')
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .slice(-200)
     .map((message) => ({

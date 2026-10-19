@@ -6,6 +6,7 @@ export function redactKnownNames(value: string, knownNames: string[]) {
 }
 
 /** Never re-export local replies: they may have quoted private records. */
-export function geminiHistory(messages: Array<{ role: 'user' | 'assistant'; text: string; provider?: string }>) {
-  return messages.flatMap((message, index) => message.role === 'assistant' && message.provider === 'gemini' && messages[index - 1]?.role === 'user' ? [messages[index - 1], message] : []).slice(-8).map(({ role, text }) => ({ role, text }));
+export function geminiHistory(messages: Array<{ role: 'user' | 'assistant' | 'system'; text: string; provider?: string }>) {
+  const chat = messages.filter(message=>message.role!=='system');
+  return chat.flatMap((message, index) => message.role === 'assistant' && message.provider === 'gemini' && chat[index - 1]?.role === 'user' ? [chat[index - 1], message] : []).slice(-8).map(({ role, text }) => ({ role: role==='assistant'?'assistant' as const:'user' as const, text }));
 }

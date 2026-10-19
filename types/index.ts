@@ -7,6 +7,7 @@ export type Category =
   | 'CONNECT';
 export type TimeBand = '朝' | '昼' | '夕方' | '夜';
 export type Mood = 1 | 2 | 3 | 4 | 5;
+export type ConversationModelId = 'yura' | 'lactone';
 export type ActionStatus = 'started' | 'completed' | 'skipped';
 export type FeedbackRating = 'great' | 'okay' | 'same' | 'bad';
 export type ConversationIntent =
@@ -44,6 +45,7 @@ export type DismissReason =
   | 'other';
 export type SaveTiming = 'later_today' | 'holiday' | 'when_free' | 'save_only';
 export interface Profile {
+  lastConversationModel?: ConversationModelId;
   id: string;
   name: string;
   age: string;
@@ -103,7 +105,11 @@ export interface SavedAction {
 }
 export interface AIMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
+  type?: 'system_model_switch';
+  from?: ConversationModelId;
+  to?: ConversationModelId;
+  assistantModel?: ConversationModelId | null;
   text: string;
   provider?: 'gemini' | 'fallback';
   intent?: ConversationIntent;
@@ -111,6 +117,7 @@ export interface AIMessage {
   createdAt: string;
 }
 export interface AIConversation {
+  activeModel?: ConversationModelId;
   id: string;
   messages: AIMessage[];
   createdAt: string;
@@ -225,6 +232,8 @@ export type AnalyticsEventName =
   | 'conversation_starter_selected'
   | 'circle_view' | 'circle_join' | 'circle_leave' | 'circle_post_create' | 'circle_comment_create' | 'circle_reaction' | 'circle_report' | 'circle_block'
   | 'conversation_open'
+  | 'conversation_model_selected'
+  | 'conversation_model_switched'
   | 'conversation_message_sent'
   | 'conversation_response_received'
   | 'conversation_error'

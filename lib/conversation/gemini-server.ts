@@ -3,6 +3,8 @@ import { parseConversationReply, ACTION_BRIDGE_INSTRUCTION } from './action-brid
 import { immediateSafetyReply } from './safety.js';
 import { EligibilityError, EligibilityServiceError } from '../server/eligibility.js';
 import { isTransientNetworkError } from './provider-recovery.js';
+import { defaultConversationModel, isConversationModel } from './models.js';
+import { CONVERSATION_MODEL_PROMPTS, modelAllowsAction } from './model-server.js';
 
 export { immediateSafetyReply } from './safety.js';
 
@@ -207,22 +209,25 @@ export function createGeminiChatHandler(deps: {
     const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : {};
     if (Buffer.byteLength(JSON.stringify(body)) > 20_000) return res.status(413).json({ error: 'invalid_request' });
     if (typeof body.message !== 'string' || !body.message.trim() || Array.from(body.message).length > 1000) return res.status(400).json({ error: 'invalid_request' });
+    if (body.modelId !== undefined && !isConversationModel(body.modelId)) return res.status(400).json({ error: 'invalid_request', category: 'invalid_request' });
+    const modelId = defaultConversationModel(body.modelId);
     const message = redactContactDetails(body.message).trim();
     const history = sanitizeHistory(body.history);
     const urgent = immediateSafetyReply(message);
-    if (urgent) return res.status(200).json({ reply: urgent, provider: 'fallback', safety: true });
+    if (urgent) return res.status(200).json({ reply: urgent, provider: 'fallback', safety: true, modelId });
     try { if (!await limiter.take(identity.uid)) return res.status(429).json({ error: 'temporarily_unavailable', category: 'rate_limited' }); }
     catch { return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'}); }
     const [mood,extraContext] = await Promise.all([deps.getTodayMood(identity.uid, token).catch(() => undefined),deps.getTodayContext?.(identity.uid, token).catch(()=> '') ?? Promise.resolve('')]);
     const contextText = mood ? `\n\n今日のCheck（気分のみ・参考情報）: ${mood}\n必要な場合に限り自然に参考にし、ユーザーの状態を断定しないこと。` : '';
     try {
       const started = deps.now?.() ?? Date.now();
-      const generated = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${contextText}${extraContext}${ACTION_BRIDGE_INSTRUCTION}`)).trim();
-      const parsed = generated ? parseConversationReply(generated,message) : {reply:''};
+      const generated = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${CONVERSATION_MODEL_PROMPTS[modelId]}${contextText}${extraContext}${ACTION_BRIDGE_INSTRUCTION}`)).trim();
+      const candidate = generated ? parseConversationReply(generated,message) : {reply:''};
+      const parsed = candidate.actionId && !modelAllowsAction(modelId,message) ? {reply:candidate.reply} : candidate;
       const reply=parsed.reply;
       const responseTimeMs = Math.max(0, (deps.now?.() ?? Date.now()) - started);
       if (!reply) return res.status(502).json({ error: 'temporarily_unavailable', category: 'invalid_response' });
-      return res.status(200).json({ ...parsed, provider: 'gemini', responseTimeMs });
+      return res.status(200).json({ ...parsed, provider: 'gemini', modelId, responseTimeMs });
     } catch (error) {
       const category = classifyChatError(error);
       const status = category === 'rate_limited' ? 429 : category === 'timeout' ? 504 : category === 'invalid_request' ? 400 : 502;
