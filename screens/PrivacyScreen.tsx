@@ -11,6 +11,9 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
         </div>
       </header>
       <section className="panel">
+        <h2>今日の一枚への回答</h2><p>「重なる」「少し」「今日は違う」は、この端末のプロフィールと日本時間の日付ごとに保存します。アカウントの記録には同期せず、個人記録の削除時に端末から消去します。以前の持ち主を確認できない回答は別のプロフィールに引き継ぎません。</p>
+      </section>
+      <section className="panel">
         <h2>Memoryについて</h2><p>会話で「覚えておいて」と伝えた内容は候補として表示し、あなたが保存を選んだ一言だけをMemoryとして参照します。MyからMemoryを外せます。会話履歴そのものは別の記録として保存・同期されます。</p>
       </section>
       <section className="panel">
@@ -23,7 +26,7 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
           同期対象には、プロフィール、Check（気分・任意の睡眠/体調/ストレス/生理関連入力）、Action、Reflection、Fortune、My Tree、Insight、Camelliaとの会話が含まれます。同期データはSchoolParkの運営管理機能から確認できる場合があります。
         </p>
         <p>
-          外部AIを使う環境では、返答を作るために会話本文とGeminiで返答した直近最大8件の文脈、今日の気分、Todayの進行段階と選択した過ごし方をGoogleのGemini APIへ送信します。保存されたMemory・My Tree・生理情報は参照しません。本文に入力した個人情報は送信される場合があり、無料枠を利用する場合は送信先のサービス改善に利用される場合があります。
+          現在はGemini APIの無料枠を使い、送信内容がGoogleのサービス改善に利用される場合があります。返答を作るために会話本文とGeminiで返答した直近最大8件の文脈、今日の気分、Todayの進行段階と選択した過ごし方をGoogleのGemini APIへ送信します。保存されたMemory・My Tree・生理情報は参照しません。本文に入力した個人情報は送信される場合があり、無料枠を利用する場合は送信先のサービス改善に利用される場合があります。
           サービス改善のための操作イベントはPostHogへ送信されます。許可した計測項目と、ランダムなプロフィールIDを加工した分析用IDを使います。このIDは別端末への記録復元時に引き継がれる場合があり、利用継続の分析にも使います。会話本文、返答本文、Memory本文、Checkの自由入力本文は含めません。ブラウザ内保存に加えてFirestore同期を行うため、ログインしたアカウントでは別端末から記録を引き継げる場合があります。
         </p>
       </section>

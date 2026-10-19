@@ -1,3 +1,4 @@
+import { PersonalDeleteDialog } from '@/components/PersonalDeleteDialog';
 import { useState,useSyncExternalStore } from 'react';
 import {getSyncStatus,subscribeSyncStatus,flushSchoolParkSync} from '@/lib/schoolpark/sync';
 import {buildDailyReflection,currentWeekChecks,dailyCheckins} from '@/lib/reflection/engine';
@@ -49,6 +50,6 @@ export function MyScreen({onCircles,onPlaces,state,devNight,onEditProfile,onForg
     <section className="panel display-settings"><h2>表示</h2><label className="switch-row"><input type="checkbox" checked={lessExplain} onChange={e=>toggleExplain(e.target.checked)}/> 説明を少なめにする</label><p className="meta">画面の補足の文章を減らします。あなたが選ぶ設定で、年齢などから自動では変えません。この端末だけに保存します。</p></section>
     <details><summary>その他</summary><p className="meta">この端末の個人記録を書き出せます。会話・My Tree等を含むため、ファイルの共有に気をつけてください。Circle本文・Placeのサーバー保存記録は含みません。</p><button className="settings-link" onClick={exportPersonal}>個人記録をファイルに保存する</button><button className="settings-link" onClick={onPrivacy}>プライバシーと保存データ</button>{import.meta.env.DEV&&<label className="dev-toggle"><input type="checkbox" checked={devNight} onChange={e=>onDevNight(e.target.checked)}/> 開発用：夜の振り返りを表示</label>}<button className="danger-link" onClick={()=>setConfirmDelete(true)}>保存データを削除する</button></details>
     {deleteResult&&<output className="empty">{deleteResult}</output>}
-    {confirmDelete&&<div className="modal-backdrop"><section className="sheet compact"><h2>保存データを削除しますか？</h2><p>端末内のプロフィール、記録、会話、保存したPlaceを削除します。ログイン中のCamelliaアカウントに同期済みの記録がある場合は、その記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。Circleの投稿・コメント・通報・運営監査、Placeの公開情報・掲載監査、運営用の管理記録・返信とPostHogへ送信済みの操作イベントは削除されません。Circleの自分の文章はCircleから削除できます。この操作は元に戻せません。</p>{deleteError&&<p className="auth-error" role="alert">{deleteError}</p>}<div className="sheet-actions"><button disabled={deleting} onClick={()=>setConfirmDelete(false)}>キャンセル</button><button className="danger-button" disabled={deleting} onClick={()=>void deleteData()}>{deleting?'削除しています…':'削除する'}</button></div></section></div>}
+    {confirmDelete&&<PersonalDeleteDialog busy={deleting} onCancel={()=>setConfirmDelete(false)} onConfirm={()=>void deleteData()}><p>端末内のプロフィール、記録、会話、保存したPlace、今日の一枚への回答を削除します。ログイン中のCamelliaアカウントに同期済みの記録がある場合は、その記録も削除します。未ログインで過去の同期履歴が確認された場合は削除を止め、同期したアカウントへのログインを案内します。Circleの投稿・コメント・通報・運営監査、Placeの公開情報・掲載監査、運営用の管理記録・返信とPostHogへ送信済みの操作イベントは削除されません。Circleの自分の文章はCircleから削除できます。この操作は元に戻せません。</p>{deleteError&&<p className="auth-error" role="alert">{deleteError}</p>}</PersonalDeleteDialog>}
   </main>
 }

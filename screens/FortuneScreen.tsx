@@ -1,16 +1,13 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { drawFortune, fortuneMessage, jstDate } from '@/lib/fortune/engine';
 import { recommend } from '@/lib/recommendation';
+import { quarantineLegacyFortuneReflections, readFortuneReflection, saveFortuneReflection, type FortuneReflection } from '@/lib/fortune/reflection';
 import type { TarotCard } from '@/data/tarot';
 import type { CamelliaState, DailyFortune, Recommendation } from '@/types';
 
-type Reflect = 'yes' | 'some' | 'no';
+type Reflect = FortuneReflection;
 const REFLECT_CHOICES: [Reflect, string][] = [['yes', '重なる'], ['some', '少し'], ['no', '今日は違う']];
-const reflectKey = (date: string) => `camellia-fortune-reflect:${date}`;
-const readReflect = (date: string): Reflect | undefined => {
-  try { const v = localStorage.getItem(reflectKey(date)); return v === 'yes' || v === 'some' || v === 'no' ? v : undefined; } catch { return undefined; }
-};
 
 /* 「変化」を、小さく試すなら: the existing recommendations, only reordered so that those matching the card's
    themes come first. No new judgement; 何もしない stays in Today's 今日どうする？. */
@@ -46,6 +43,7 @@ export function FortuneScreen({
   onDecide?: () => void;
 }) {
   const date = jstDate();
+  useEffect(()=>{quarantineLegacyFortuneReflections();},[]);
   const saved = state.fortunes.find((f) => f.date === date);
   /* 今日の一枚は、Checkした今日の自分を別の角度から見るためのもの。
      Checkの前には引けない（Todayからの入口もCheck後にしか出していない）。 */
@@ -56,11 +54,13 @@ export function FortuneScreen({
     [state.profile.id, date],
   );
   /* The answer stays on this device (not Firestore, not a reading's hit rate). Only yes/some/no is counted. */
-  const [reflect, setReflect] = useState<Reflect | undefined>(() => readReflect(date));
+  const scope = `${state.profile.id}:${date}`;
+  const [answerState,setAnswerState]=useState(()=>({scope,value:readFortuneReflection(state.profile.id,date)}));
+  const reflect=answerState.scope===scope?answerState.value:readFortuneReflection(state.profile.id,date);
   const answer = (value: Reflect) => {
     if (value === reflect) return;
-    setReflect(value);
-    try { localStorage.setItem(reflectKey(date), value); } catch { /* the answer is optional */ }
+    setAnswerState({scope,value});
+    saveFortuneReflection(state.profile.id,date,value);
     onTrack('fortune_reflect', { value });
   };
   const actions = useMemo(
