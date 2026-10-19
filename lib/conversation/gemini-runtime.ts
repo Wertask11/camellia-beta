@@ -17,6 +17,7 @@ import { adminConfigured, serverAdmin } from '../server/admin.js';
 import { createSharedRateLimiter } from '../server/shared-limit.js';
 import { getSafeTodayContext } from './today-server.js';
 import { createModelCooldown, generateWithModelRecovery } from './provider-recovery.js';
+import { readProviderReply } from './provider-output.js';
 
 type ApiRequest = {
   method?: string;
@@ -62,9 +63,9 @@ const handler = createGeminiChatHandler({
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY_NOT_CONFIGURED');
     const ai = new GoogleGenAI({ apiKey, httpOptions: { retryOptions: { attempts: 1 } } });
-    let response;
+    let text;
     try {
-      response = await generateWithModelRecovery({
+      text = await generateWithModelRecovery({
       ...modelCooldown.select(primaryModel,fallbackModel),
       signal: AbortSignal.timeout(28_000),
       onFailure: (metadata) => { modelCooldown.failed(metadata); console.warn('camellia_provider_attempt_failed', metadata); },
@@ -90,9 +91,10 @@ const handler = createGeminiChatHandler({
         ],
       },
     });
+      const reply = readProviderReply(result);
       modelCooldown.succeeded(model);
       receivedModel=model;
-      return result;
+      return reply;
     },
     });
     } catch (error) {
@@ -101,11 +103,6 @@ const handler = createGeminiChatHandler({
       console.error('camellia_generation_failed', { stage: 'provider_request', status });
       throw error;
     }
-    const text = response.text?.trim() || '';
-    if (!text) {
-      console.error('camellia_generation_failed', { stage: 'empty_output', finishReason: response.candidates?.[0]?.finishReason, blockReason: response.promptFeedback?.blockReason });
-    }
-    if(!text)throw Object.assign(new Error('GENERATION_EMPTY'),{code:response.promptFeedback?.blockReason || response.candidates?.[0]?.finishReason==='SAFETY' ? 'SAFETY_BLOCK':'INVALID_RESPONSE'});
     // Operational metadata only. This records provider text, not a quality/Safety PASS.
     // No prompt, reply, token, account ID or request body is logged.
     console.info('camellia_provider_text_received',{route:receivedModel===primaryModel?'primary':'fallback',model:receivedModel,elapsedMs:Date.now()-startedAt});

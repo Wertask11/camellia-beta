@@ -7,10 +7,44 @@ const server = await createServer({ configFile: false, root, resolve: { alias: {
 const chat = await server.ssrLoadModule('/lib/conversation/gemini-server.ts');
 const privacy = await server.ssrLoadModule('/lib/conversation/privacy.ts');
 const { createModelCooldown, generateWithModelRecovery } = await server.ssrLoadModule('/lib/conversation/provider-recovery.ts');
+const { readProviderReply } = await server.ssrLoadModule('/lib/conversation/provider-output.ts');
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed += 1; console.log(`PASS ${name}`); };
 
 try {
+  for (const failure of [Object.assign(new Error('private SDK text'),{code:'ECONNRESET'}),new TypeError('private SDK text',{cause:{code:'UND_ERR_SOCKET'}})]) {
+    await check('transient direct or wrapped transport error recovers within the same request',async()=>{
+      const calls=[],failures=[];
+      const reply=await generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,onFailure:m=>failures.push(m),request:async model=>{calls.push(model);if(model==='primary')throw failure;return '復旧した返答';}});
+      assert.equal(reply,'復旧した返答');assert.deepEqual(calls,['primary','alternate']);assert.equal(failures[0].reason,'network');assert.ok(!JSON.stringify(failures).includes('private SDK text'));
+    });
+  }
+  for(const status of [400,401,403,429])await check(`explicit ${status} is not retried even with a transient network cause`,async()=>{
+    let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{calls++;throw {status,cause:{code:'ECONNRESET'}};}}));assert.equal(calls,1);
+  });
+  for(const code of ['SAFETY_BLOCK','RESOURCE_EXHAUSTED','INVALID_ARGUMENT','UNAUTHENTICATED','PERMISSION_DENIED','API_KEY_INVALID',429])await check(`explicit ${code} code is not retried with a network cause`,async()=>{
+    let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{calls++;throw {code,cause:{code:'ECONNRESET'}};}}));assert.equal(calls,1);
+  });
+  await check('unknown programming error is not retried',async()=>{
+    let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{calls++;throw new TypeError('programming failure');}}));assert.equal(calls,1);
+  });
+  for(const badText of ['', '{"reply":', '{"reply":""}'])await check('empty or malformed provider text switches to alternate before success',async()=>{
+    const calls=[];const healthy=[];
+    const reply=await generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async model=>{calls.push(model);const text=readProviderReply({text:model==='primary'?badText:'{"reply":"今日は少し気になることがあるんだね。","actionId":null}'});healthy.push(model);return text;}});
+    assert.deepEqual(calls,['primary','alternate']);assert.deepEqual(healthy,['alternate']);assert.match(reply,/気になる/);
+  });
+  for(const response of [{promptFeedback:{blockReason:'SAFETY'}},{text:'blocked partial text',candidates:[{finishReason:'SAFETY'}]},{text:'blocked partial text',candidates:[{finishReason:'PROHIBITED_CONTENT'}]}])await check('safety-blocked output never switches provider, including partial text',async()=>{
+    let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{calls++;return readProviderReply(response);}}),e=>e.code==='SAFETY_BLOCK');assert.equal(calls,1);
+  });
+  await check('two malformed responses stop at two provider calls',async()=>{
+    let calls=0;await assert.rejects(generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async()=>{calls++;return readProviderReply({text:'{"reply":'});}}),e=>e.code==='INVALID_RESPONSE');assert.equal(calls,2);
+  });
+  await check('single request reserves one shared limit and returns one Gemini reply after recovery',async()=>{
+    let reservations=0,calls=0,responses=0;
+    const handler=chat.createGeminiChatHandler({env:{CAMELLIA_GEMINI_CHAT_ENABLED:'true',GEMINI_API_KEY:'synthetic'},verifyToken:async()=>({uid:'synthetic'}),getTodayMood:async()=>undefined,limiter:{take:async()=>{reservations++;return true;}},generate:()=>generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async model=>{calls++;if(model==='primary')throw {cause:{code:'ECONNRESET'}};return readProviderReply({text:'{"reply":"どんなことが気になってる？","actionId":null}'});}})});
+    await handler({method:'POST',headers:{authorization:'Bearer synthetic'},body:{message:'仕事の話をしたい'}},{setHeader(){},status(s){assert.equal(s,200);return{json(value){responses++;assert.equal(value.provider,'gemini');assert.equal(value.reply,'どんなことが気になってる？');}}}});
+    assert.equal(reservations,1);assert.equal(calls,2);assert.equal(responses,1);
+  });
   await check('provider 503 switches once to alternate model', async () => {
     const calls=[];
     const result=await generateWithModelRecovery({primary:'primary',fallback:'alternate',signal:new AbortController().signal,request:async model=>{calls.push(model);if(model==='primary')throw {status:503};return 'カレーが食べたいんだね。';}});
