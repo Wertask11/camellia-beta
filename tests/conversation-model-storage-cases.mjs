@@ -9,6 +9,7 @@ try{
  const {validateStoredState}=await server.ssrLoadModule('/lib/storage/validation.ts');
  const {mapCamelliaState}=await server.ssrLoadModule('/lib/schoolpark/map.ts');
  const {restoreArchive}=await server.ssrLoadModule('/lib/schoolpark/restore.ts');
+ const {encodeConversation,decodeConversation,serializeConversationState}=await server.ssrLoadModule('/lib/conversation/persistence.ts');
  const {sanitizeEventProperties}=await server.ssrLoadModule('/lib/analytics/posthog.ts');
  const now='2026-10-19T10:00:00.000Z';
  const legacy={id:'legacy',createdAt:now,updatedAt:now,messages:[{id:'old-u',role:'user',text:'以前の会話',createdAt:now},{id:'old-a',role:'assistant',text:'以前の返答',provider:'gemini',createdAt:now}]};
@@ -25,14 +26,19 @@ try{
  assert.equal(JSON.stringify(conversations.find(c=>c.id==='legacy')),original);
  const switchedLegacy=switchConversationModel([legacy],'legacy','lactone','lactone',now,'old-switch')[0];assert.equal(switchedLegacy.messages[1].assistantModel,undefined);assert.equal(conversationModelSummary(switchedLegacy),'Lactone');
  const state=emptyState();state.profile.lastConversationModel='lactone';state.aiConversations=conversations;
+ const encoded=encodeConversation(thread);assert.ok(encoded.messages.every(m=>['user','assistant'].includes(m.role)));assert.equal(encoded.modelSwitches.length,2);assert.deepEqual(decodeConversation(encoded),thread);assert.equal(JSON.stringify(encodeConversation(legacy)),original);
+ const diskState=serializeConversationState(state);assert.ok(diskState.aiConversations.every(c=>c.messages.every(m=>m.role!=='system')));assert.deepEqual(validateStoredState(diskState,emptyState()).state.aiConversations,conversations);
+ for(const offset of [-1,1000,1.5]){const invalid=structuredClone(diskState);invalid.aiConversations[0].modelSwitches[0].afterMessageCount=offset;assert.ok(validateStoredState(invalid,emptyState()).issues.includes('aiConversations'));}
  const before=JSON.stringify(state);assert.deepEqual(validateStoredState(state,emptyState()).issues,[]);
  const documents=mapCamelliaState(state);const restored=restoreArchive(documents.filter(d=>d.path.startsWith('imports/')).map(d=>d.data),emptyState());
  assert.deepEqual(restored.aiConversations,conversations);assert.equal(restored.profile.lastConversationModel,'lactone');assert.deepEqual(validateStoredState(restored,emptyState()).issues,[]);assert.equal(JSON.stringify(state),before);
+ assert.ok(documents.filter(d=>d.data.kind==='conversation').every(d=>JSON.parse(d.data.content).messages.every(m=>['user','assistant'].includes(m.role))),'full archive messages readable by previous release');
  assert.ok(documents.find(d=>d.path==='profile/chat').data.messages.every(m=>m.role!=='system'),'SchoolPark compatibility summary excludes markers');
  const history=geminiHistory(thread.messages);assert.ok(history.length<=8);assert.ok(history.every(m=>m.role!=='system'));assert.ok(!JSON.stringify(history).includes('system_model_switch'));assert.ok(!JSON.stringify(history).includes('切り替え'));
  const invalid=structuredClone(state);invalid.aiConversations[0].messages.push({id:'bad',role:'assistant',type:'system_model_switch',text:'',from:'yura',to:'lactone',createdAt:now});assert.ok(validateStoredState(invalid,emptyState()).issues.includes('aiConversations'));
  assert.equal(defaultConversationModel('unknown'),'yura');assert.equal(defaultConversationModel(undefined),'yura');assert.equal(conversationModelName(undefined),'Camellia');
  console.log('PASS legacy preservation, YURA 3 turns → Lactone 3 turns → YURA, markers and retry attribution');
+ console.log('PASS additive persisted switch metadata, legacy-readable messages and exact positioned restoration');
  console.log('PASS local validation + archive/restore round-trip + preferred model (synthetic, not real login/Firestore acceptance)');
  for(const name of ['conversation_model_selected','conversation_model_switched']){
   const safe=sanitizeEventProperties({id:'event',name,createdAt:now,properties:{model_id:'yura',from_model:'yura',to_model:'lactone',text:'PRIVATE_BODY',title:'PRIVATE_TITLE',memory:'PRIVATE_MEMORY',uid:'PRIVATE_ID'}},state);assert.ok(!JSON.stringify(safe).includes('PRIVATE_'));

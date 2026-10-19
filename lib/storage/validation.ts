@@ -1,4 +1,5 @@
-import type { CamelliaState } from '@/types';
+import type { AIConversation, CamelliaState } from '@/types';
+import {decodeConversation,validStoredSwitches} from '@/lib/conversation/persistence';
 import { validConversationEntry } from '@/lib/conversation/entries';
 
 type Row = Record<string, unknown>;
@@ -17,7 +18,7 @@ const checks: Record<string, (v: unknown) => boolean> = {
   actions: v => record(v) && text(v.actionId) && text(v.title) && category(v.category) && oneOf(v.status,['started','completed','skipped']),
   actionFeedback: v => record(v) && text(v.actionRecordId) && text(v.actionId) && oneOf(v.rating,['great','okay','same','bad']),
   savedActions: v => record(v) && text(v.actionId) && oneOf(v.timing,['later_today','holiday','when_free','save_only']),
-  aiConversations: v => record(v) && optional(v,'activeModel',text) && Array.isArray(v.messages) && v.messages.every(message),
+  aiConversations: v => record(v) && optional(v,'activeModel',text) && Array.isArray(v.messages) && v.messages.every(message) && validStoredSwitches(v),
   contextualMemory: v => record(v) && text(v.actionId) && oneOf(v.event,['proposed','saved','dismissed','started','completed','feedback']) && object(v.context) && text(v.context.timeBand) && typeof v.context.weekday==='number' && text(v.context.lifestyle),
   personalMemories: v => record(v) && text(v.text) && v.source==='explicit_conversation',
   insights: v => record(v) && text(v.key) && text(v.text) && typeof v.confidence==='number' && typeof v.sampleSize==='number',
@@ -49,7 +50,7 @@ export function validateStoredState(raw: unknown, base: CamelliaState, legacy = 
     const safe = (values as unknown[]).filter(check);
     if (safe.length !== (values as unknown[]).length) issues.push(field);
     // Only this validated in-memory projection omits invalid records; originals remain exportable.
-    (state as unknown as Row)[field] = safe;
+    (state as unknown as Row)[field] = field==='aiConversations'?safe.map(value=>decodeConversation(value as AIConversation)):safe;
   }
   state.onboardingComplete = raw.onboardingComplete === true;
   if(raw.onboardingComplete!==undefined&&typeof raw.onboardingComplete!=='boolean')issues.push('onboardingComplete');

@@ -5,6 +5,7 @@ import { validateStoredState, LocalDataRecoveryError } from '@/lib/storage/valid
 import { clearFortuneReflections } from '@/lib/fortune/reflection';
 import {appendConversationPair,replaceThreadReply,switchConversationModel} from '@/lib/conversation/threads';
 import { defaultConversationModel,isConversationModel } from '@/lib/conversation/models';
+import { serializeConversationState } from '@/lib/conversation/persistence';
 import { captureContext } from '@/lib/memory/engine';
 import { sessionAttribution } from '@/lib/analytics/attribution';
 import { forwardEvent } from '@/lib/analytics/posthog';
@@ -33,8 +34,8 @@ export function useCamelliaStore(){
  const[state,setState]=useState<CamelliaState>(()=>emptyState());const[ready,setReady]=useState(false);const[storageError,setStorageError]=useState('');const skipNextSync=useRef(false);const hydrated=useRef(false);
  const readProtected=useCallback(()=>{try{setState(load());setStorageError('');}catch(error){if(error instanceof LocalDataRecoveryError)setState(error.recovered);setStorageError('LOCAL_DATA_UNREADABLE');}},[]);
  useEffect(()=>{if(hydrated.current)return;hydrated.current=true;readProtected();setReady(true);},[readProtected]);
- useEffect(()=>{if(!ready||storageError)return;try{localStorage.setItem(STORAGE_KEY,JSON.stringify({...state,updatedAt:stamp()}));}catch{setStorageError('LOCAL_SAVE_FAILED');return;}if(skipNextSync.current){skipNextSync.current=false;return;}syncToSchoolPark(state);},[state,ready,storageError]);
- const retryStorage=useCallback(()=>{if(storageError!=='LOCAL_SAVE_FAILED'){readProtected();return;}try{localStorage.setItem(STORAGE_KEY,JSON.stringify({...state,updatedAt:stamp()}));setStorageError('');}catch{setStorageError('LOCAL_SAVE_FAILED');}},[storageError,state,readProtected]);
+ useEffect(()=>{if(!ready||storageError)return;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(serializeConversationState({...state,updatedAt:stamp()})));}catch{setStorageError('LOCAL_SAVE_FAILED');return;}if(skipNextSync.current){skipNextSync.current=false;return;}syncToSchoolPark(state);},[state,ready,storageError]);
+ const retryStorage=useCallback(()=>{if(storageError!=='LOCAL_SAVE_FAILED'){readProtected();return;}try{localStorage.setItem(STORAGE_KEY,JSON.stringify(serializeConversationState({...state,updatedAt:stamp()})));setStorageError('');}catch{setStorageError('LOCAL_SAVE_FAILED');}},[storageError,state,readProtected]);
  const forwarded = useRef(new Set<string>());
  useEffect(()=>{if(!ready||storageError)return;const pending=state.analyticsEvents.filter(e=>!e.forwardedAt&&!forwarded.current.has(e.id));if(!pending.length)return;const sent=pending.filter(e=>{if(!forwardEvent(e,state))return false;forwarded.current.add(e.id);return true}).map(e=>e.id);if(sent.length)setState(s=>({...s,analyticsEvents:s.analyticsEvents.map(e=>sent.includes(e.id)?{...e,forwardedAt:stamp()}:e)}))},[ready,state,storageError]);
  const track=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>setState(s=>({...s,analyticsEvents:[...s.analyticsEvents,{id:uid(),name,properties:{...properties,...sessionAttribution()},createdAt:stamp()}]})),[]);

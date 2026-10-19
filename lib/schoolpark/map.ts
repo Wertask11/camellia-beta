@@ -1,3 +1,4 @@
+import {encodeConversation} from '@/lib/conversation/persistence';
 import { jstParts } from '@/lib/memory/engine';
 import type { AnalyticsEvent, CamelliaState, Checkin } from '@/types';
 
@@ -117,7 +118,7 @@ function mapLocalStorageArchive(state: CamelliaState): SchoolParkDocument[] {
     ['action', state.actions],
     ['action-feedback', state.actionFeedback],
     ['saved-action', state.savedActions],
-    ['conversation', state.aiConversations],
+    ['conversation', state.aiConversations.map(encodeConversation)],
     ['context-memory', state.contextualMemory],
     ['personal-memory', state.personalMemories || []],
     ['insight', state.insights],
