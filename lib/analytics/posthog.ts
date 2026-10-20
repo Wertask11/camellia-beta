@@ -1,5 +1,6 @@
 import posthog from 'posthog-js';
 import { sanitizeAttribution } from './attribution';
+import { isConversationModel } from '@/lib/conversation/models';
 import type {
   AnalyticsEvent,
   AnalyticsEventName,
@@ -25,6 +26,8 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   conversation_message_sent: ['provider'],
   conversation_response_received: ['provider', 'response_time_ms'],
   conversation_error: ['provider', 'error_category'],
+  conversation_model_selected: ['model_id'],
+  conversation_model_switched: ['model_id','from_model','to_model'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
   check_view: [],
@@ -94,6 +97,7 @@ export function sanitizeEventProperties(
   const safe: Record<string, string | number | boolean> = {};
   for (const key of allowed) {
     const value = source[key];
+    if (['model_id','from_model','to_model'].includes(key) && !isConversationModel(value)) continue;
     if (key === 'days_since_join' && (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 36500)) continue;
     if (key === 'place_id' && (typeof value !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(value))) continue;
     if (key === 'circle_id' && !['tired','alone-time','working','self','rest','interests'].includes(String(value))) continue;

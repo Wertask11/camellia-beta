@@ -1,3 +1,4 @@
+import {encodeConversation} from '@/lib/conversation/persistence';
 import { jstParts } from '@/lib/memory/engine';
 import type { AnalyticsEvent, CamelliaState, Checkin } from '@/types';
 
@@ -67,6 +68,7 @@ function mapActivity(state: CamelliaState) {
 function mapChat(state: CamelliaState) {
   const messages = state.aiConversations
     .flatMap((conversation) => conversation.messages)
+    .filter(message => message.role !== 'system')
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .slice(-200)
     .map((message) => ({
@@ -116,7 +118,7 @@ function mapLocalStorageArchive(state: CamelliaState): SchoolParkDocument[] {
     ['action', state.actions],
     ['action-feedback', state.actionFeedback],
     ['saved-action', state.savedActions],
-    ['conversation', state.aiConversations],
+    ['conversation', state.aiConversations.map(encodeConversation)],
     ['context-memory', state.contextualMemory],
     ['personal-memory', state.personalMemories || []],
     ['insight', state.insights],

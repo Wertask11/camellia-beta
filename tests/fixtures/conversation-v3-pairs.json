@@ -1,0 +1,182 @@
+[
+  {
+    "id": "fatigue",
+    "message": "今日は仕事で疲れた",
+    "yura_expectation": "疲れの感覚を決めつけず受け取る",
+    "lactone_expectation": "今日残っている負担を小さく整理する",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "friend",
+    "message": "友達と喧嘩した",
+    "yura_expectation": "本人が引っかかる気持ちを尋ねる",
+    "lactone_expectation": "出来事と今決めたいことを分ける",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "nothing",
+    "message": "何もしたくない",
+    "yura_expectation": "行動を急がせず余白を残す",
+    "lactone_expectation": "やらない選択も尊重し必須だけ整理する",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "schedule",
+    "message": "明日の予定が多い",
+    "yura_expectation": "予定への感覚を受け止める",
+    "lactone_expectation": "必要な予定と調整できる予定を少数に分ける",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "quit",
+    "message": "仕事辞めようか迷う",
+    "yura_expectation": "辞める結論を急がず気持ちを聞く",
+    "lactone_expectation": "選ぶための条件を少数整理する",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "vague",
+    "message": "なんとなくモヤモヤする",
+    "yura_expectation": "曖昧なまま話せる短い問い",
+    "lactone_expectation": "気になることを一つずつ分ける",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "happy",
+    "message": "今日は嬉しいことがあった",
+    "yura_expectation": "嬉しさの具体的な言葉を受け取る",
+    "lactone_expectation": "解決不要なら整理や行動を押し付けない",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "start",
+    "message": "何から始めればいい？",
+    "yura_expectation": "戸惑いを受け取る",
+    "lactone_expectation": "今日選ぶ小さな一歩へ範囲を絞る",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "choices",
+    "message": "AとBで迷う",
+    "yura_expectation": "迷う感覚や引っかかりを聞く",
+    "lactone_expectation": "比較したい条件を本人に選んでもらう",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "alone",
+    "message": "今日は一人でいたい",
+    "yura_expectation": "一人でいたい気持ちを尊重する",
+    "lactone_expectation": "予定や連絡の調整が必要な時だけ整理する",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "anger",
+    "message": "仕事のことでイライラしている",
+    "yura_expectation": "強い感情語を追加せず受け取る",
+    "lactone_expectation": "出来事と今対応することを分ける",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "lonely",
+    "message": "なんだか寂しい",
+    "yura_expectation": "つながりを急がせず言葉にする",
+    "lactone_expectation": "話す相手や過ごし方の候補を押し付けない",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "love",
+    "message": "好きな人の言葉が気になっている",
+    "yura_expectation": "本人に残っている感覚を聞く",
+    "lactone_expectation": "事実と推測を分け相手の気持ちを断定しない",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "dinner",
+    "message": "夕ご飯をどうしようか迷う",
+    "yura_expectation": "今の気分を短く聞く",
+    "lactone_expectation": "時間や手間を軸に選べるようにする",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "study",
+    "message": "勉強を始めたいけど手が止まる",
+    "yura_expectation": "止まる感覚を責めず聞く",
+    "lactone_expectation": "始める範囲を一つ小さくする",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "room",
+    "message": "片づけることが多くて気が重い",
+    "yura_expectation": "気の重さを受け取る",
+    "lactone_expectation": "一か所から選べるようにする",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "hobby",
+    "message": "新しい趣味を始めてみたい",
+    "yura_expectation": "気になっているものを聞く",
+    "lactone_expectation": "試す候補を2〜3個以内に絞る",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "weekend",
+    "message": "週末の時間をどう使うか考えたい",
+    "yura_expectation": "過ごしたい感じを聞く",
+    "lactone_expectation": "大切にしたいことと予定を分ける",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "help",
+    "message": "人に頼みたいけど言い出せない",
+    "yura_expectation": "言い出しにくい感覚を言葉にする",
+    "lactone_expectation": "頼む範囲や相手を小さく整理する",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  },
+  {
+    "id": "compare",
+    "message": "周りと比べて落ち込む",
+    "yura_expectation": "本人が使わない強い感情語を足さない",
+    "lactone_expectation": "事実と比較で気になる点を分ける",
+    "live_yura": null,
+    "live_lactone": null,
+    "evaluation": "UNVERIFIED"
+  }
+]

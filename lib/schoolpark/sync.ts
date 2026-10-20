@@ -1,3 +1,4 @@
+import {serializeConversationState} from '@/lib/conversation/persistence';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
   collection,
@@ -64,7 +65,7 @@ export async function prepareSchoolParkAccount(state: CamelliaState, uid: string
   // while this device's own write was in flight, the write landed and only its confirmation was lost.
   const unconfirmed=!useRemote&&owner===uid&&root.exists()&&known!==version;
   let result = choice==='fresh'&&fresh ? fresh : state;
-  if((useRemote||choice==='fresh')&&hasPersonalData(state))localStorage.setItem(`camellia-local-backup:${state.profile.id}:${Date.now()}`,JSON.stringify(state));
+  if((useRemote||choice==='fresh')&&hasPersonalData(state))localStorage.setItem(`camellia-local-backup:${state.profile.id}:${Date.now()}`,JSON.stringify(serializeConversationState(state)));
   if (root.exists() && (!owner || useRemote || unconfirmed)) {
     const records = await getDocs(collection(schoolParkDb, 'camellia_users', uid, 'imports'));
     const afterRead=await getDoc(reference(uid,''));

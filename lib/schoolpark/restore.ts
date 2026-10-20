@@ -1,4 +1,7 @@
+import {decodeConversation,validStoredSwitches} from '@/lib/conversation/persistence';
+import type {AIConversation} from '@/types';
 import type { CamelliaState } from '@/types';
+import { validConversationEntry } from '@/lib/conversation/entries';
 const groups = {checkin:'checkins',action:'actions','action-feedback':'actionFeedback','saved-action':'savedActions',conversation:'aiConversations','context-memory':'contextualMemory','personal-memory':'personalMemories',insight:'insights','insight-feedback':'insightFeedback',fortune:'fortunes','tree-leaf':'treeLeaves',analytics:'analyticsEvents'} as const;
 export function hasPersonalData(state: CamelliaState) {
   return Boolean(state.profile.name || state.profile.birthDate || state.profile.age || state.profile.lifestyle || state.profile.priority || state.profile.interests.length || state.profile.periodEnabled || state.profile.region || state.profile.livingSituation || state.profile.concerns || state.profile.purposes?.length || state.profile.usualSleep!==undefined || state.checkins.length || state.actions.length || state.savedActions.length || state.actionFeedback.length || state.aiConversations.length || state.contextualMemory.length || state.treeLeaves.length || state.fortunes.length || state.insights.length || state.insightFeedback.length || state.personalMemories?.length);
@@ -46,14 +49,14 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
       if(field==='treeLeaves'&&(!Array.isArray(value.meaningTags)||!Array.isArray(value.reflections))) throw new Error('REMOTE_TREE_INVALID');
       if(!Number.isFinite(Date.parse(value.createdAt as string)))throw new Error('REMOTE_RECORD_INVALID');
       if(field==='actions'&&(typeof value.actionId!=='string'||typeof value.title!=='string'||!['REST','BODY','BEAUTY','PLAY','LEARN','CONNECT'].includes(value.category as string)||!['started','completed','skipped'].includes(value.status as string)))throw new Error('REMOTE_ACTION_INVALID');
-      if(field==='aiConversations'&&(value.messages as Record<string,unknown>[]).some(item=>!item||typeof item.id!=='string'||typeof item.text!=='string'||!['user','assistant'].includes(item.role as string)||typeof item.createdAt!=='string'))throw new Error('REMOTE_CONVERSATION_INVALID');
+      if(field==='aiConversations'&&((value.messages as unknown[]).some(item=>!validConversationEntry(item))||!validStoredSwitches(value)))throw new Error('REMOTE_CONVERSATION_INVALID');
       if(field==='contextualMemory'&&(!value.context||typeof value.actionId!=='string'||typeof value.event!=='string'))throw new Error('REMOTE_MEMORY_INVALID');
       if(field==='treeLeaves'&&(typeof value.name!=='string'||typeof value.note!=='string'||!['active','memory','removed'].includes(value.status as string)||(value.reflections as Record<string,unknown>[]).some(item=>!item||typeof item.text!=='string'||typeof item.createdAt!=='string')))throw new Error('REMOTE_TREE_INVALID');
       if(field==='fortunes'&&(!['drawn','skipped'].includes(value.status as string)||typeof value.cardId!=='string'))throw new Error('REMOTE_FORTUNE_INVALID');
       if(field==='personalMemories'&&(typeof value.text!=='string'||value.source!=='explicit_conversation'))throw new Error('REMOTE_MEMORY_INVALID');
       if(field==='analyticsEvents'&&typeof value.name!=='string')throw new Error('REMOTE_ANALYTICS_INVALID');
       if(field==='analyticsEvents'&&!value.forwardedAt)value.forwardedAt=value.createdAt;
-      (state[field] as unknown as Record<string,unknown>[]).push(value);
+      (state[field] as unknown as Record<string,unknown>[]).push(field==='aiConversations'?decodeConversation(value as unknown as AIConversation) as unknown as Record<string,unknown>:value);
     }
   }
   if((foundProfile&&!foundMeta)||(expected&&seen.size!==expected.size))throw new Error('REMOTE_ARCHIVE_INCOMPLETE');

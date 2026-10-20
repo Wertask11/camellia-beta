@@ -16,6 +16,8 @@
 
 ## 開発・検証
 
+ログインを伴う確認は、[固定Preview](https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/)へ集約します。機能branchやdeployごとのURLを本人確認用に案内したり、LINE callbackへ都度追加しません。更新方法は[固定Previewの運用](docs/preview-workflow.md)を参照してください。
+
 Node.js 22.13以降。`npm ci`、`npm run dev`。`npm run lint` / `npm run typecheck` / `npm test` / `npm run test:gemini` / `npm run test:phase1` / `npm run test:firestore` / `npm run build`。
 
 Vite devはVercel `api/` Functionsを実行しません。実認証/Functionsの確認にはVercel Previewが必要です。テスト用エミュレータはdemo projectのみを使用し、本番認証を偽装しません。既存のsynthetic-auth UX harnessを実認証のRelease Gate証拠には使いません。

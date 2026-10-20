@@ -1,3 +1,4 @@
+import {serializeConversationState} from '@/lib/conversation/persistence';
 import { PersonalDeleteDialog } from '@/components/PersonalDeleteDialog';
 import { useState,useSyncExternalStore } from 'react';
 import {getSyncStatus,subscribeSyncStatus,flushSchoolParkSync} from '@/lib/schoolpark/sync';
@@ -15,7 +16,7 @@ export function MyScreen({onCircles,onPlaces,state,devNight,onEditProfile,onForg
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
   const completed=state.actions.filter(action=>action.status==='completed').slice(-5).reverse();
-  const exportPersonal=()=>{const {analyticsEvents: _events,...personal}=state;const url=URL.createObjectURL(new Blob([JSON.stringify({scope:'この端末のCamellia個人記録。Circle本文とPlaceのサーバー保存記録は含みません。',...personal},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-personal-records.json';link.click();URL.revokeObjectURL(url);};
+  const exportPersonal=()=>{const {analyticsEvents: _events,...personal}=state;const url=URL.createObjectURL(new Blob([JSON.stringify({scope:'この端末のCamellia個人記録。Circle本文とPlaceのサーバー保存記録は含みません。',...serializeConversationState(personal)},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-personal-records.json';link.click();URL.revokeObjectURL(url);};
   const sync=useSyncExternalStore(subscribeSyncStatus,getSyncStatus,getSyncStatus);
   const backups=typeof window==='undefined'?[]:Object.keys(localStorage).filter(key=>key.startsWith('camellia-local-backup:'));
   const exportBackups=()=>{const data=backups.map(key=>({key,data:JSON.parse(localStorage.getItem(key)||'null')}));const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-preserved-records.json';link.click();URL.revokeObjectURL(url);};
