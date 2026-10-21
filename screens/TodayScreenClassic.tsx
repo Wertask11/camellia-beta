@@ -1,3 +1,4 @@
+import { useCheckView } from '@/hooks/useCheckView';
 /* Today before the one-flow redesign (Camellia β2 UI/UX audit, 2026-10-09). Shown only when the
    TODAY_ONE_FLOW flag is off, so the previous screen can come back without a code change. */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -73,17 +74,8 @@ export function TodayScreenClassic({
   focusIntent?: boolean;
   onIntentFocused?: () => void;
 }) {
-  const checkViewSent = useRef(false);
   const currentTime=useCurrentTime(state.checkins);
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (!checkViewSent.current) {
-        checkViewSent.current = true;
-        onCheckView();
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [onCheckView]);
+  useCheckView(onCheckView);
   const [mood, setMood] = useState<Mood | undefined>();
   const [more, setMore] = useState(false);
   const [sleep, setSleep] = useState('');

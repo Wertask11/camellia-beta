@@ -59,6 +59,9 @@ export default function Page() {
   const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app'>('welcome');
   const [accountUser,setAccountUser]=useState<User|null>(null);
   const [accountReady,setAccountReady]=useState(false);
+  const popupAuthReturned=useRef<'line'|'google'|'schoolpark'|undefined>(undefined);
+  const sentAuthAnalytics=useRef<object|undefined>(undefined);
+  const [pendingAuthAnalytics,setPendingAuthAnalytics]=useState<{method:'line'|'google'|'schoolpark';flow:'redirect'|'popup';linked?:boolean}>();
   const [accountError,setAccountError]=useState('');
   const [authNotice,setAuthNotice]=useState('');
   const [editingProfile,setEditingProfile]=useState(false);
@@ -140,9 +143,7 @@ export default function Page() {
     callbackHandled.current=true;
     void finishAuthCallback().then(result=>{
       if(!result)return;
-      captureAuthEvent('auth_returned',{method:result.method,auth_flow:'redirect'},store.state.profile.id);
-      if(result.linked)captureAuthEvent('account_link_success',{auth_method:result.method},store.state.profile.id);
-      else captureAuthEvent('login_success',{method:result.method,needs_profile:!profileComplete(store.state.profile)},store.state.profile.id);
+      setPendingAuthAnalytics({method:result.method,flow:'redirect',linked:result.linked});
       setEntry('app');
       const user=schoolParkAuth.currentUser;
       if(user&&appliedUser.current!==null&&appliedUser.current!==`${user.uid}:${user.isAnonymous}`)applyUser.current(user);
@@ -154,6 +155,15 @@ export default function Page() {
       const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry('account');
     });
   },[store.ready,accountReady,store.state.profile.id,store.state.profile,store.state.onboardingComplete]);
+  // Successful auth belongs to the restored profile, not the callback effect's stale pre-login closure.
+  useEffect(()=>{
+    if(!pendingAuthAnalytics||sentAuthAnalytics.current===pendingAuthAnalytics||!accountReady||accountError||!accountUser||store.storageError)return;
+    sentAuthAnalytics.current=pendingAuthAnalytics;
+    const {method,flow,linked}=pendingAuthAnalytics;
+    captureAuthEvent('auth_returned',{method,auth_flow:flow},store.state.profile.id);
+    if(linked)captureAuthEvent('account_link_success',{auth_method:method},store.state.profile.id);
+    else captureAuthEvent('login_success',{method,needs_profile:!profileComplete(store.state.profile)},store.state.profile.id);
+  },[pendingAuthAnalytics,accountReady,accountError,accountUser,store.storageError,store.state.profile]);
   if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
   if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage}/>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
@@ -178,7 +188,7 @@ export default function Page() {
     </main>;
   }
   if(showWelcome)return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
-  if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');captureAuthEvent('auth_method_selected',{method,auth_method:method},store.state.profile.id);}} onAuthReturned={method=>captureAuthEvent('auth_returned',{method,auth_flow:'popup'},store.state.profile.id)} onLoginSuccess={method=>captureAuthEvent('login_success',{method,needs_profile:!profileComplete(store.state.profile)},store.state.profile.id)} onLoginFailure={(method,reason,stage)=>captureAuthEvent('login_failure',{method,reason,stage},store.state.profile.id)} onContinue={()=>setEntry('app')}/>;
+  if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');captureAuthEvent('auth_method_selected',{method,auth_method:method},store.state.profile.id);}} onAuthReturned={method=>{popupAuthReturned.current=method;}} onLoginSuccess={method=>{popupAuthReturned.current=undefined;setPendingAuthAnalytics({method,flow:'popup'});}} onLoginFailure={(method,reason,stage)=>{if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup'},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage},store.state.profile.id);}} onContinue={()=>setEntry('app')}/>;
   if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!profileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.opens === 'camellia') {
@@ -338,6 +348,7 @@ export default function Page() {
       )}
       {tab === 'discover' && (
         <DiscoverScreen
+          onTrack={store.track}
           state={store.state}
           category={category}
           onCategory={setCategory}

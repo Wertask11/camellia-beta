@@ -29,7 +29,8 @@ try{
  const archive=mapCamelliaState(state).filter(x=>x.path.startsWith('imports/')).map(x=>x.data);
  const restored=restoreArchive(archive,emptyState());
  for(const key of ['profile','checkins','actions','actionFeedback','savedActions','aiConversations','contextualMemory','personalMemories','insights','insightFeedback','fortunes','treeLeaves'])assert.deepEqual(restored[key],state[key],key);
- assert.equal(restored.analyticsEvents[0].forwardedAt,at,'restored historic analytics not re-sent');
+ assert.equal(restored.analyticsEvents[0].forwardedAt,undefined,'restore must not invent delivery evidence');
+ assert.equal(restored.analyticsEvents[0].deliverySuppressed,'restored','restored historic analytics not re-sent');
  // A β device's own archive: continuing with the device's records is lossless only if the account holds nothing more.
  const later='2026-10-02T00:00:00Z';
  assert.equal(remoteContainedInLocal(restored,state),true,'account archive equal to device records');

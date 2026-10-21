@@ -25,7 +25,7 @@ const checks: Record<string, (v: unknown) => boolean> = {
   insightFeedback: v => record(v) && text(v.insightKey) && oneOf(v.verdict,['correct','incorrect']),
   fortunes: v => object(v) && date(v.date) && date(v.createdAt) && text(v.cardId) && oneOf(v.orientation,['upright','reversed']) && oneOf(v.status,['drawn','skipped']),
   treeLeaves: v => record(v) && text(v.name) && text(v.note) && oneOf(v.category,['family','friend','love','work','learning','other']) && strings(v.meaningTags) && oneOf(v.status,['active','memory','removed']) && Array.isArray(v.reflections) && v.reflections.every(reflection),
-  analyticsEvents: v => record(v) && text(v.name) && optional(v,'properties',x=>object(x)&&Object.values(x).every(y=>text(y)||typeof y==='boolean'||typeof y==='number')),
+  analyticsEvents: v => record(v) && text(v.name) && optional(v,'forwardedAt',date) && optional(v,'sessionId',text) && optional(v,'deliverySuppressed',x=>oneOf(x,['dnt','opt_out','expired','invalid_event','restored'])) && optional(v,'properties',x=>object(x)&&Object.values(x).every(y=>text(y)||typeof y==='boolean'||typeof y==='number')),
 };
 
 /** Keep the source blob untouched. A recovered projection must never overwrite or sync the source. */

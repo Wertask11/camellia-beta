@@ -1,3 +1,4 @@
+import { useCheckView } from '@/hooks/useCheckView';
 /* oxlint-disable next/no-img-element -- external editorial images are intentionally unoptimized in this prototype */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
@@ -92,17 +93,8 @@ function TodayOneFlow({
   onIntent, onTalk, onFortune, onTree, onMy, onComplete, onFeedback, onProposals, onTrack,
   focusIntent = false, onIntentFocused,
 }: TodayProps) {
-  const checkViewSent = useRef(false);
   const currentTime = useCurrentTime(state.checkins);
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (!checkViewSent.current) {
-        checkViewSent.current = true;
-        onCheckView();
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [onCheckView]);
+  useCheckView(onCheckView);
   const [mood, setMood] = useState<Mood | undefined>();
   const [sleep, setSleep] = useState<number | undefined>();
   const [body, setBody] = useState<Checkin['body']>();

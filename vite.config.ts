@@ -45,6 +45,7 @@ export default defineConfig(async () => {
   const { cloudflare } = await import('@cloudflare/vite-plugin');
 
   return {
+    define: { __CAMELLIA_ANALYTICS_DIAGNOSTICS__: JSON.stringify(process.env.VERCEL_ENV === 'preview' || process.env.NODE_ENV === 'development') },
     css: { postcss: { plugins: [tailwindcss()] } },
     server: {
       host: '0.0.0.0',

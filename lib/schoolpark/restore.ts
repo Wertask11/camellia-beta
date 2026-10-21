@@ -55,7 +55,8 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
       if(field==='fortunes'&&(!['drawn','skipped'].includes(value.status as string)||typeof value.cardId!=='string'))throw new Error('REMOTE_FORTUNE_INVALID');
       if(field==='personalMemories'&&(typeof value.text!=='string'||value.source!=='explicit_conversation'))throw new Error('REMOTE_MEMORY_INVALID');
       if(field==='analyticsEvents'&&typeof value.name!=='string')throw new Error('REMOTE_ANALYTICS_INVALID');
-      if(field==='analyticsEvents'&&!value.forwardedAt)value.forwardedAt=value.createdAt;
+      // Restoring another device's history must not replay it or invent an HTTP delivery receipt.
+      if(field==='analyticsEvents'&&!value.forwardedAt&&!value.deliverySuppressed)value.deliverySuppressed='restored';
       (state[field] as unknown as Record<string,unknown>[]).push(field==='aiConversations'?decodeConversation(value as unknown as AIConversation) as unknown as Record<string,unknown>:value);
     }
   }

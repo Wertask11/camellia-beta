@@ -239,6 +239,7 @@ export type AnalyticsEventName =
   | 'conversation_error'
   | 'account_link_started'
   | 'account_link_success'
+  | 'discover_view'
   | 'check_view'
   | 'check_start'
   | 'check_complete'
@@ -262,7 +263,10 @@ export interface AnalyticsEvent {
   name: AnalyticsEventName;
   properties?: Record<string, string | number | boolean>;
   createdAt: string;
+  /** Set only after HTTP acceptance. Restored legacy records use the existing no-replay convention. */
   forwardedAt?: string;
+  sessionId?: string;
+  deliverySuppressed?: 'dnt' | 'opt_out' | 'expired' | 'invalid_event' | 'restored';
 }
 export interface CamelliaState {
   version: 3;

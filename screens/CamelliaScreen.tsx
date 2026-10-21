@@ -119,8 +119,8 @@ export function CamelliaScreen({
 
   useEffect(() => {
     if (availability === 'checking' || !firstInSession('camellia-conversation-open')) return;
-    onTrack('conversation_open', { provider: availability !== 'disabled' ? 'gemini' : 'fallback' });
-  }, [availability, onTrack]);
+    onTrack('conversation_open', { provider: availability !== 'disabled' ? 'gemini' : 'fallback', model_id: activeModel });
+  }, [availability, onTrack, activeModel]);
 
   const chooseModel=(next:ConversationModelId)=>{
     if(requestInFlight.current||!isConversationModel(next))return;
@@ -160,7 +160,7 @@ export function CamelliaScreen({
     setInput('');
     setChatError(null);
     setRetryState(null);
-    onTrack('conversation_message_sent', { provider: useGemini && !urgentReply ? 'gemini' : 'fallback' });
+    onTrack('conversation_message_sent', { provider: useGemini && !urgentReply ? 'gemini' : 'fallback', model_id: requestModel });
     const started = wallClockNow();
     let reply = urgentReply ?? local.text;
     let provider: Provider = 'fallback';
@@ -183,7 +183,7 @@ export function CamelliaScreen({
         reply = '今はうまく返せなかったみたい。少し時間をおいて、もう一度試してみてください。';
         setChatError(failedCategory);
         if (failedCategory !== 'disabled') setRetryState({ originalMessage: clean, userId, message: geminiMessage, history: previousHistory,modelId:requestModel });
-        onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory });
+        onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory, model_id: requestModel });
       }
     }
 
@@ -196,7 +196,7 @@ export function CamelliaScreen({
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
     if (provider === 'gemini' || safety) {
-      onTrack('conversation_response_received', { provider, ...(responseTimeMs !== undefined ? { response_time_ms: responseTimeMs } : {}) });
+      onTrack('conversation_response_received', { provider, model_id: requestModel, ...(responseTimeMs !== undefined ? { response_time_ms: responseTimeMs } : {}) });
     }
     requestInFlight.current = false;
     setSending(false);
@@ -218,11 +218,11 @@ export function CamelliaScreen({
       setLastSafety(result.safety === true);
       setRetryState(null);
       setChatError(null);
-      onTrack('conversation_response_received', { provider: result.provider, ...(result.responseTimeMs !== undefined ? { response_time_ms: result.responseTimeMs } : {}) });
+      onTrack('conversation_response_received', { provider: result.provider, model_id: retryState.modelId, ...(result.responseTimeMs !== undefined ? { response_time_ms: result.responseTimeMs } : {}) });
     } catch (error) {
       const category = (error && typeof error === 'object' && 'category' in error ? (error as { category?: ChatError }).category : undefined) || 'provider_error';
       setChatError(category);
-      onTrack('conversation_error', { provider: 'gemini', error_category: category });
+      onTrack('conversation_error', { provider: 'gemini', error_category: category, model_id: retryState.modelId });
     } finally {
       requestInFlight.current = false;
       setRetrying(false);
