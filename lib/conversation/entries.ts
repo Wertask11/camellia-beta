@@ -11,6 +11,8 @@ export function validConversationEntry(value: unknown): boolean {
   const row = value as Record<string, unknown>;
   if (typeof row.id !== 'string' || typeof row.text !== 'string' || typeof row.createdAt !== 'string' || !Number.isFinite(Date.parse(row.createdAt))) return false;
   if (row.role === 'system') return row.type === 'system_model_switch' && row.text === '' && isConversationModel(row.from) && isConversationModel(row.to) && row.from !== row.to;
+  if(row.pending!==undefined&&(typeof row.pending!=='boolean'||row.role!=='user'))return false;
+  if(row.requestModel!==undefined&&!isConversationModel(row.requestModel))return false;
   return (row.role === 'user' || row.role === 'assistant') && row.type !== 'system_model_switch'
     && (row.assistantModel === undefined || row.assistantModel === null || typeof row.assistantModel === 'string');
 }

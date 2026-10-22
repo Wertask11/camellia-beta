@@ -1,0 +1,13 @@
+{
+  "label": "Local CPU microbenchmark, synthetic 10,000-message history; not live Gemini",
+  "before": {
+    "medianMs": 1.1725400000000263,
+    "p90Ms": 2.3487920000002305,
+    "n": 200
+  },
+  "after": {
+    "medianMs": 0.0017299999999522697,
+    "p90Ms": 0.0030700000002070738,
+    "n": 200
+  }
+}

@@ -7,8 +7,9 @@ import {defaultConversationModel,conversationModelName} from '@/lib/conversation
 import type {useCamelliaStore} from '@/hooks/useCamelliaStore';
 type Base=ComponentProps<typeof CamelliaScreen>;
 type Store=ReturnType<typeof useCamelliaStore>;
-type Props=Omit<Base,'conversationId'|'onSaveConversation'|'onReplaceConversationAssistant'|'initialModel'|'onSelectModel'>&{
+type Props=Omit<Base,'conversationId'|'onSaveConversation'|'onReplaceConversationAssistant'|'initialModel'|'onSelectModel'|'onPendingConversation'>&{
  onSaveConversation:Store['addConversation'];
+ onPendingConversation?:Store['pendingConversation'];
  onReplaceConversationAssistant:Store['replaceConversationAssistant'];
  onSelectConversationModel?:Store['selectConversationModel'];
 };
@@ -21,10 +22,11 @@ export function ConversationWorkspace(props:Props){
  const newChat=()=>{props.onClearTreeContext();setSelectedId(crypto.randomUUID());};
  if(selectedId)return <section className="conversation-workspace conversation-workspace--open" aria-label="Camelliaとの会話">
   <div className="conversation-toolbar"><button onClick={()=>{setSelectedId(null);props.onClearTreeContext();}} aria-label="会話一覧へ戻る"><ArrowLeft size={18}/>会話一覧</button><span>{conversationTitle(selected)}</span><button onClick={newChat} aria-label="新しい会話を始める"><Plus size={18}/></button></div>
-  <CamelliaScreen {...props} key={`${selectedId}:${props.treeContext?.id??''}`} conversationId={selectedId}
+  <CamelliaScreen {...props} key={`${props.state.profile.id}:${selectedId}:${props.treeContext?.id??''}`} conversationId={selectedId}
    initialModel={selected?defaultConversationModel(selected.activeModel):defaultConversationModel(props.state.profile.lastConversationModel)}
    onSelectModel={(modelId,markerId)=>props.onSelectConversationModel?.(selectedId,modelId,markerId)}
-   onSaveConversation={(u,a,intent,topics,provider,assistantModel,requestModel)=>props.onSaveConversation(u,a,intent,topics,provider,selectedId,assistantModel,requestModel)}
+   onPendingConversation={(message,model)=>props.onPendingConversation?.(message,selectedId,model)}
+   onSaveConversation={(u,a,intent,topics,provider,assistantModel,requestModel,userId,pending)=>props.onSaveConversation(u,a,intent,topics,provider,selectedId,assistantModel,requestModel,userId,pending)}
    onReplaceConversationAssistant={(u,a,provider,assistantModel)=>props.onReplaceConversationAssistant(u,a,provider,selectedId,assistantModel)}/>
  </section>;
  const filtered=conversations.filter(item=>conversationTitle(item).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));

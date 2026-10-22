@@ -104,6 +104,9 @@ export interface SavedAction {
   updatedAt: string;
 }
 export interface AIMessage {
+  /** Only the user message can be pending; partial assistant output is never persisted. */
+  pending?: boolean;
+  requestModel?: ConversationModelId;
   id: string;
   role: 'user' | 'assistant' | 'system';
   type?: 'system_model_switch';

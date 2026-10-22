@@ -337,6 +337,7 @@ export default function Page() {
           state={store.state}
           recommendations={recs}
           onSaveConversation={store.addConversation}
+          onPendingConversation={store.pendingConversation}
           onReplaceConversationAssistant={store.replaceConversationAssistant}
           onSelectConversationModel={store.selectConversationModel}
           onOpenAction={openAction}

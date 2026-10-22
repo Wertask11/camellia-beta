@@ -7,7 +7,10 @@ export function conversationTitle(conversation?: AIConversation){
 }
 export function appendConversationPair(conversations:AIConversation[],conversationId:string,messages:AIMessage[],now:string,modelId?:ConversationModelId){
  const current=conversations.find(item=>item.id===conversationId)??{id:conversationId,messages:[],createdAt:now,updatedAt:now};
- return [{...current,...(modelId&&!current.activeModel?{activeModel:modelId}:{}),messages:[...current.messages,...messages],updatedAt:now},...conversations.filter(item=>item.id!==conversationId)];
+ return [{...current,...(modelId&&!current.activeModel?{activeModel:modelId}:{}),messages:[...current.messages.filter(old=>!messages.some(message=>message.id===old.id)),...messages],updatedAt:now},...conversations.filter(item=>item.id!==conversationId)];
+}
+export function appendPendingConversationMessage(conversations:AIConversation[],id:string,message:AIMessage,model:ConversationModelId,now:string){
+ return appendConversationPair(conversations,id,[{...message,pending:true,requestModel:model}],now,model);
 }
 export function replaceThreadReply(conversations:AIConversation[],conversationId:string,userText:string,text:string,provider:'gemini'|'fallback',now:string,assistantModel?:ConversationModelId|null){
  return conversations.map(conversation=>{
@@ -15,7 +18,8 @@ export function replaceThreadReply(conversations:AIConversation[],conversationId
   const messages=[...conversation.messages];let index=-1;
   for(let i=messages.length-1;i>=0;i--)if(messages[i].role==='user'&&messages[i].text===userText){index=i;break;}
   const reply=index<0?-1:messages.findIndex((message,i)=>i>index&&message.role==='assistant');
-  if(reply<0)return conversation;
+  if(reply<0){if(index<0||!messages[index].pending)return conversation;messages[index]={...messages[index],pending:false};messages.push({id:`${messages[index].id}-a`,role:'assistant',text,provider,createdAt:now,...(assistantModel!==undefined?{assistantModel}:{})});return {...conversation,messages,updatedAt:now};}
+  if(index>=0&&messages[index].pending)messages[index]={...messages[index],pending:false};
   messages[reply]={...messages[reply],text,provider,createdAt:now,...(assistantModel!==undefined?{assistantModel}:{})};return {...conversation,messages,updatedAt:now};
  });
 }

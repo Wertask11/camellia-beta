@@ -6,7 +6,8 @@ import { firstInSession } from '@/lib/analytics/once';
 import { ConversationModelSelector } from '@/components/ConversationModelSelector';
 import { conversationModelName, defaultConversationModel, isConversationModel } from '@/lib/conversation/models';
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
-import { schoolParkAuth } from '@/lib/schoolpark/firebase';
+import {requestGemini,type ChatError} from '@/lib/conversation/client';
+import {conversationPerformance,previewBatchTransport,afterConversationPaint,safeConversationTiming,type ConversationTiming} from '@/lib/conversation/performance';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
 import { immediateSafetyReply } from '@/lib/conversation/safety';
 import { CONVERSATION_ACTIONS } from '@/lib/conversation/action-catalog';
@@ -17,32 +18,10 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import type { AIMessage, AnalyticsEventName, CamelliaState, ConversationIntent, ConversationTopic, ConversationModelId, Recommendation, TreeLeaf } from '@/types';
 
 type Provider = 'gemini' | 'fallback';
-type ChatError = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
-type ChatResponse = { reply: string; provider: Provider; responseTimeMs?: number; safety?: boolean; actionId?: string; modelId?: ConversationModelId };
 type RetryState = { originalMessage: string; userId: string; message: string; history: Array<{ role: 'user' | 'assistant'; text: string }>; modelId:ConversationModelId };
 const wallClockNow = () => Date.now();
+const monotonicNow = () => performance.now();
 const createMessageId = () => globalThis.crypto.randomUUID();
-
-async function requestGemini(message: string, history: RetryState['history'], modelId:ConversationModelId): Promise<ChatResponse> {
-  const user = schoolParkAuth.currentUser;
-  if (!user) throw Object.assign(new Error('authentication_required'), { category: 'provider_error' as ChatError });
-  const token = await user.getIdToken();
-  const response = await fetch('/api/camellia/chat', {
-    method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ message, history, modelId }),
-    signal: AbortSignal.timeout(40_000),
-  });
-  const result = await response.json().catch(() => ({})) as Partial<ChatResponse> & { category?: ChatError };
-  if (!response.ok || typeof result.reply !== 'string' || (result.provider !== 'gemini' && result.provider !== 'fallback')) {
-    const category = result.category || (response.status === 429 ? 'rate_limited' : response.status === 504 ? 'timeout' : response.status === 503 ? 'disabled' : 'provider_error');
-    throw Object.assign(new Error('temporarily_unavailable'), { category });
-  }
-  if(result.modelId!==undefined&&result.modelId!==modelId)throw Object.assign(new Error('invalid_model_response'),{category:'invalid_response' as ChatError});
-  return result as ChatResponse;
-}
 
 function redactKnownNamesForState(value: string, state: CamelliaState) {
   const names = [state.profile.name, ...state.treeLeaves.map((leaf) => leaf.name)]
@@ -55,6 +34,7 @@ export function CamelliaScreen({
   state,
   recommendations,
   onSaveConversation,
+  onPendingConversation,
   onReplaceConversationAssistant,
   onOpenAction,
   onNavigate,
@@ -69,7 +49,8 @@ export function CamelliaScreen({
   conversationId?: string;
   state: CamelliaState;
   recommendations: Recommendation[];
-  onSaveConversation: (user: string, assistant: string, intent: ConversationIntent, topics: ConversationTopic[], provider?: Provider, assistantModel?:ConversationModelId|null, requestModel?:ConversationModelId) => void;
+  onSaveConversation: (user: string, assistant: string, intent: ConversationIntent, topics: ConversationTopic[], provider?: Provider, assistantModel?:ConversationModelId|null, requestModel?:ConversationModelId,userId?:string,pending?:boolean) => void;
+  onPendingConversation?:(message:AIMessage,model:ConversationModelId)=>void;
   onReplaceConversationAssistant: (user: string, assistant: string, provider: Provider, assistantModel?:ConversationModelId|null) => void;
   initialModel?:ConversationModelId;
   onSelectModel?:(modelId:ConversationModelId,markerId:string)=>void;
@@ -88,19 +69,28 @@ export function CamelliaScreen({
   const [messages, setMessages] = useState<AIMessage[]>((conversationId ? state.aiConversations.find(item=>item.id===conversationId) : state.aiConversations[0])?.messages ?? []);
   const [activeModel,setActiveModel]=useState<ConversationModelId>(()=>defaultConversationModel(initialModel??(conversationId?state.aiConversations.find(item=>item.id===conversationId)?.activeModel:state.aiConversations[0]?.activeModel)));
   const [visibleCount,setVisibleCount]=useState(40);
-  const chatViewport=useRef<HTMLDivElement>(null);
+  const chatViewport=useRef<HTMLDivElement>(null),stickToEnd=useRef(true);
+  const recovered=messages.findLast(message=>message.role==='user'&&message.pending);
+  const [draftReply,setDraftReply]=useState('');
+  const abortRequest=useRef<AbortController|undefined>(undefined),mounted=useRef(true);
+  const measurement=useRef<{start:number;request?:number;firstVisible?:number;model:ConversationModelId;timing?:ConversationTiming;transport?:string;done?:boolean;end?:number;paintScheduled?:boolean;epoch?:number;timeline?:Record<string,number>}|undefined>(undefined);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;abortRequest.current?.abort();};},[state.profile.id,conversationId]);
+  useEffect(()=>{
+   const sample=measurement.current;if(!sample||sample.paintScheduled||sample.firstVisible!==undefined||!draftReply)return;
+   sample.paintScheduled=true;afterConversationPaint(()=>{if(mounted.current&&measurement.current===sample&&sample.firstVisible===undefined&&chatViewport.current?.querySelector('.stream-draft')?.textContent)sample.firstVisible=monotonicNow()-sample.start;});
+  },[draftReply]);
   const [suggestedAction,setSuggestedAction]=useState<string>();
   const [memoryCandidate, setMemoryCandidate] = useState('');
   const [last, setLast] = useState<ReturnType<typeof respond>>();
   const [lastSafety, setLastSafety] = useState(false);
   const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled' | 'unavailable'>('checking');
   const messageEnd = useRef<HTMLDivElement>(null);
-  useEffect(()=>{messageEnd.current?.scrollIntoView?.({block:'end',behavior:'smooth'});},[messages]);
+  useEffect(()=>{if(stickToEnd.current)messageEnd.current?.scrollIntoView?.({block:'end',behavior:'auto'});},[messages,draftReply]);
   const requestInFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  const [retryState, setRetryState] = useState<RetryState | null>(null);
-  const [chatError, setChatError] = useState<ChatError | null>(null);
+  const [retryState, setRetryState] = useState<RetryState | null>(()=>recovered?{originalMessage:recovered.text,userId:recovered.id,message:redactKnownNamesForState(recovered.text,state),history:geminiHistory(messages.slice(0,messages.indexOf(recovered))).map(({role,text})=>({role,text:redactKnownNamesForState(text,state)})),modelId:defaultConversationModel(recovered.requestModel??activeModel)}:null);
+  const [chatError, setChatError] = useState<ChatError | null>(recovered?'provider_error':null);
   useEffect(() => {
     void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
       .then(async (response): Promise<{ enabled?: boolean; dataPolicy?: string }> => {
@@ -135,14 +125,26 @@ export function CamelliaScreen({
     if(from!==next&&hasConversation)onTrack('conversation_model_switched',{from_model:from,to_model:next});
   };
 
-  const savePair = (userText: string, assistantText: string, provider: Provider, assistantModel:ConversationModelId|null, requestModel:ConversationModelId) => {
+  const savePair = (userText: string, assistantText: string, provider: Provider, assistantModel:ConversationModelId|null, requestModel:ConversationModelId,userId:string,pending=false) => {
     const intent = classifyIntent(userText);
     const topics = classifyTopics(userText);
-    onSaveConversation(userText, assistantText, intent, topics, provider,assistantModel,requestModel);
+    onSaveConversation(userText, assistantText, intent, topics, provider,assistantModel,requestModel,userId,pending);
     return { intent, topics };
   };
 
+  const reportPerformance=(extra:Record<string,string|number|boolean>,sample:NonNullable<typeof measurement.current>)=>{
+    sample.done=true;
+    afterConversationPaint(()=>{
+      if(!mounted.current)return;
+      const timing=safeConversationTiming({...sample.timing,client_send_to_request_ms:sample.request,client_first_visible_ms:sample.firstVisible??monotonicNow()-sample.start,client_response_complete_ms:sample.end,client_full_response_ms:monotonicNow()-sample.start});
+      const timeline={...sample.timeline,T0:sample.epoch??0,T1:(sample.epoch??0)+(sample.request??0),T8:(sample.epoch??0)+(timing.client_first_visible_ms??0),T9:wallClockNow()};
+      conversationPerformance(sample.model,sample.transport??'json',timing,timeline);
+      onTrack('conversation_response_received',{...extra,...timing,transport:sample.transport??'json'});
+    });
+  };
+  const streamOptions=(controller:AbortController)=>({signal:controller.signal,onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)setDraftReply(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
   const send = async (value = input) => {
+    const pressedAt=monotonicNow();
     const clean = value.trim();
     if (!clean || requestInFlight.current || availability === 'checking') return;
     // Only exchanges generated in this Gemini session can leave the device.
@@ -150,12 +152,17 @@ export function CamelliaScreen({
     const previousHistory = geminiHistory(messages).map(({ role, text }) => ({ role, text: redactKnownNamesForState(text, state) }));
     const geminiMessage = redactKnownNamesForState(clean, state);
     const userId = createMessageId();
+    const controller=new AbortController();abortRequest.current=controller;
+    const sample={start:pressedAt,model:activeModel} as NonNullable<typeof measurement.current>;sample.epoch=wallClockNow()-(monotonicNow()-sample.start);measurement.current=sample;
     const requestModel=activeModel;
-    const local = respond(state, recommendations, clean, messages, treeContext);
     const urgentReply = immediateSafetyReply(clean);
     const useGemini = availability !== 'disabled' && !treeContext;
+    // Gemini never uses the private local Memory/Tree processor; avoid building its full context.
+    const local:ReturnType<typeof respond> = useGemini ? {text:'',intent:classifyIntent(clean),topics:classifyTopics(clean),showAction:false,action:undefined,choices:[],showCircle:false} : respond(state,recommendations,clean,messages,treeContext);
     requestInFlight.current = true;
-    setSending(true);
+    stickToEnd.current=true;setSending(true);
+    const pending:AIMessage={id:userId,role:'user',text:clean,createdAt:new Date().toISOString(),pending:true,requestModel};
+    setMessages(current=>[...current,pending]);onPendingConversation?.(pending,requestModel);setDraftReply('');
     setSuggestedAction(undefined);
     setInput('');
     setChatError(null);
@@ -171,7 +178,9 @@ export function CamelliaScreen({
 
     if (useGemini && !urgentReply) {
       try {
-        const result = await requestGemini(geminiMessage, previousHistory,requestModel);
+        const result = await requestGemini(geminiMessage, previousHistory,requestModel,streamOptions(controller));
+        if(!mounted.current||controller.signal.aborted)return;
+        sample.timing=result.timing;sample.timeline=result.timeline;sample.transport=result.transport;sample.end=monotonicNow()-sample.start;
         reply = result.reply;
         setSuggestedAction(result.actionId);
         provider = result.provider;
@@ -179,24 +188,28 @@ export function CamelliaScreen({
         assistantModel=result.provider==='gemini'&&!safety&&isConversationModel(result.modelId)?result.modelId:null;
         responseTimeMs = result.responseTimeMs ?? wallClockNow() - started;
       } catch (error) {
+        if(!mounted.current||controller.signal.aborted)return;
+        setDraftReply('');
         failedCategory = (error && typeof error === 'object' && 'category' in error ? (error as { category?: ChatError }).category : undefined) || 'provider_error';
         reply = '今はうまく返せなかったみたい。少し時間をおいて、もう一度試してみてください。';
         setChatError(failedCategory);
         if (failedCategory !== 'disabled') setRetryState({ originalMessage: clean, userId, message: geminiMessage, history: previousHistory,modelId:requestModel });
-        onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory, model_id: requestModel });
+        onTrack('conversation_error', { provider: 'gemini', error_category: failedCategory, model_id: requestModel, ...safeConversationTiming(error&&typeof error==='object'&&'timing'in error?error.timing:{}),client_full_response_ms:Math.min(120000,monotonicNow()-sample.start) });
       }
     }
 
     const now = new Date().toISOString();
-    const userMessage: AIMessage = { id: userId, role: 'user', text: clean, intent: local.intent, topics: local.topics, createdAt: now };
+    const userMessage: AIMessage = { id: userId, role: 'user', text: clean, intent: local.intent, topics: local.topics, createdAt: now,...(failedCategory?{pending:true,requestModel}:{}) };
     const assistantMessage: AIMessage = { id: `${userId}-a`, role: 'assistant', text: reply, provider, assistantModel, intent: local.intent, topics: local.topics, createdAt: now };
-    setMessages((current) => [...current, userMessage, assistantMessage]);
-    const { intent, topics } = savePair(clean, reply, provider,assistantModel,requestModel);
+    if(!mounted.current||controller.signal.aborted)return;
+    setDraftReply('');
+    setMessages((current) => [...current.filter(message=>message.id!==userId), userMessage, assistantMessage]);
+    const { intent, topics } = savePair(clean, reply, provider,assistantModel,requestModel,userId,Boolean(failedCategory));
     setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety || failedCategory ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
     if (provider === 'gemini' || safety) {
-      onTrack('conversation_response_received', { provider, model_id: requestModel, ...(responseTimeMs !== undefined ? { response_time_ms: responseTimeMs } : {}) });
+      sample.end??=monotonicNow()-sample.start;reportPerformance({provider,model_id:requestModel,...(responseTimeMs!==undefined?{response_time_ms:responseTimeMs}:{})},sample);
     }
     requestInFlight.current = false;
     setSending(false);
@@ -205,24 +218,30 @@ export function CamelliaScreen({
   const retryLast = async () => {
     if (!retryState || requestInFlight.current || treeContext || (availability === 'disabled' || availability === 'checking')) return;
     requestInFlight.current = true;
-    setRetrying(true);
+    const controller=new AbortController();abortRequest.current=controller;
+    const sample={start:monotonicNow(),model:retryState.modelId} as NonNullable<typeof measurement.current>;sample.epoch=wallClockNow()-(monotonicNow()-sample.start);measurement.current=sample;
+    stickToEnd.current=true;setRetrying(true);setDraftReply('');
     setChatError(null);
     try {
-      const result = await requestGemini(retryState.message, retryState.history,retryState.modelId);
+      const result = await requestGemini(retryState.message, retryState.history,retryState.modelId,streamOptions(controller));
+      if(!mounted.current||controller.signal.aborted)return;
+      sample.timing=result.timing;sample.timeline=result.timeline;sample.transport=result.transport;sample.end=monotonicNow()-sample.start;setDraftReply('');
       setSuggestedAction(result.actionId);
       const now = new Date().toISOString();
       const assistantModel=result.provider==='gemini'&&!result.safety&&isConversationModel(result.modelId)?result.modelId:null;
-      setMessages((current) => current.map((message) => message.id === `${retryState.userId}-a` ? { ...message, text: result.reply, provider: result.provider,assistantModel, createdAt: now } : message));
+      setMessages(current=>{const next=current.map(message=>message.id===retryState.userId?{...message,pending:false}:message.id===`${retryState.userId}-a`?{...message,text:result.reply,provider:result.provider,assistantModel,createdAt:now}:message);return next.some(message=>message.id===`${retryState.userId}-a`)?next:[...next,{id:`${retryState.userId}-a`,role:'assistant',text:result.reply,provider:result.provider,assistantModel,createdAt:now}];});
       onReplaceConversationAssistant(retryState.originalMessage, result.reply, result.provider,assistantModel);
       setLast((current) => current ? { ...current, text: result.reply, choices: [], showAction: false, showCircle: false } : current);
       setLastSafety(result.safety === true);
       setRetryState(null);
       setChatError(null);
-      onTrack('conversation_response_received', { provider: result.provider, model_id: retryState.modelId, ...(result.responseTimeMs !== undefined ? { response_time_ms: result.responseTimeMs } : {}) });
+      reportPerformance({provider:result.provider,model_id:retryState.modelId,...(result.responseTimeMs!==undefined?{response_time_ms:result.responseTimeMs}:{})},sample);
     } catch (error) {
+      if(!mounted.current||controller.signal.aborted)return;
+      setDraftReply('');
       const category = (error && typeof error === 'object' && 'category' in error ? (error as { category?: ChatError }).category : undefined) || 'provider_error';
       setChatError(category);
-      onTrack('conversation_error', { provider: 'gemini', error_category: category, model_id: retryState.modelId });
+      onTrack('conversation_error', { provider: 'gemini', error_category: category, model_id: retryState.modelId,...safeConversationTiming(error&&typeof error==='object'&&'timing'in error?error.timing:{}),client_full_response_ms:Math.min(120000,monotonicNow()-sample.start) });
     } finally {
       requestInFlight.current = false;
       setRetrying(false);
@@ -247,14 +266,14 @@ export function CamelliaScreen({
       {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。記録を参照している間は、共通の話し方でお返しします。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
 
-      <div ref={chatViewport} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
+      <div ref={chatViewport} onScroll={()=>{const v=chatViewport.current;if(v)stickToEnd.current=v.scrollHeight-v.scrollTop-v.clientHeight<80;}} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
-        {messages.slice(-visibleCount).map((message) => isModelSwitchMessage(message)?<div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>:<div className={`bubble ${message.role}`} key={message.id}>{message.role==='assistant'&&<span className="message-model-label">{conversationModelName(message.assistantModel)}</span>}{message.text}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}</div>)}
-        {sending && <div className="bubble assistant chat-loading" aria-label="返答を受信中">…</div>}
+        {messages.slice(-visibleCount).map((message) => isModelSwitchMessage(message)?<div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>:<div className={`bubble ${message.role}`} key={message.id}>{message.role==='assistant'&&<span className="message-model-label">{conversationModelName(message.assistantModel)}</span>}{message.text}{message.pending&&!sending&&!retrying&&<small className="meta">返答はまだ確定していません</small>}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}</div>)}
+        {(sending||retrying)&&<div className="bubble assistant chat-loading" aria-label="返答を受信中" aria-busy="true">{draftReply?<span className="stream-draft" aria-live="off">{draftReply}</span>:<output className="typing-dots"><span className="sr-only">返答を受信中</span><i/><i/><i/></output>}</div>}
         <div ref={messageEnd} aria-hidden="true"/>
       </div>
       <div className="conversation-followups">
-      {chatError && <output className="chat-error" aria-live="polite"><span className="sr-only">{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <><button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>{retryState.modelId!==activeModel&&<span className="meta">この返答は{conversationModelName(retryState.modelId)}で再試行します。</span>}</>}</output>}
+      {chatError && <output className="chat-error" aria-live="polite"><span>{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <><button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>{retryState.modelId!==activeModel&&<span className="meta">この返答は{conversationModelName(retryState.modelId)}で再試行します。</span>}</>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {suggestedAction&&CONVERSATION_ACTIONS.filter(action=>action.id===suggestedAction).map(action=><div className="conversation-action" key={action.id}><p className="eyebrow">よければ、こんな選択も</p><button onClick={()=>onOpenAction({action,score:0,reasons:['会話の続きに、自分で選べる小さな過ごし方']})}>{action.title}<span>内容を見る →</span></button><button className="text-button" onClick={()=>setSuggestedAction(undefined)}>今は話を続ける</button></div>)}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}
