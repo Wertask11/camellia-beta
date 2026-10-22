@@ -1,0 +1,42 @@
+{
+  "scope": "Local real SDK/UI; synthetic cloud/records; all external transport intercepted; NOT live ingestion",
+  "status": {
+    "loaded": true,
+    "optedOut": false,
+    "dnt": null,
+    "ua": "Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/27.0 Chrome/125.0.0.0 Mobile Safari/537.36",
+    "keyPresent": true,
+    "respectDnt": true
+  },
+  "network": [
+    {"event": "session_start", "insert_id": "21ac916d-e67c-41c3-ae27-9603d85232cf", "httpStatus": 503, "scope": "browser interception; NOT a real PostHog response"},
+    {"event": "check_view", "insert_id": "5e039521-780d-4ed1-bef6-08e4fde5ebef", "httpStatus": 503, "scope": "browser interception; NOT a real PostHog response"},
+    {"event": "check_start", "insert_id": "66365165-76f2-4838-9557-8a70d36a3566", "httpStatus": 503, "scope": "browser interception; NOT a real PostHog response"},
+    {"event": "check_complete", "insert_id": "a574fc5c-5b21-4d85-b241-2e45a8475760", "httpStatus": 503, "scope": "browser interception; NOT a real PostHog response"}
+  ],
+  "internalEvents": [
+    {"event": "session_start", "id": "21ac916d-e67c-41c3-ae27-9603d85232cf", "forwardedAt": "2026-10-21T06:03:41.290Z"},
+    {"event": "check_view", "id": "5e039521-780d-4ed1-bef6-08e4fde5ebef", "forwardedAt": "2026-10-21T06:03:41.290Z"},
+    {"event": "check_start", "id": "66365165-76f2-4838-9557-8a70d36a3566", "forwardedAt": "2026-10-21T06:03:41.401Z"},
+    {"event": "check_complete", "id": "a574fc5c-5b21-4d85-b241-2e45a8475760", "forwardedAt": "2026-10-21T06:03:41.513Z"}
+  ],
+  "SDKCaptureResults": [
+    {
+      "name": "session_start",
+      "accepted": true
+    },
+    {
+      "name": "check_view",
+      "accepted": true
+    },
+    {
+      "name": "check_start",
+      "accepted": true
+    },
+    {
+      "name": "check_complete",
+      "accepted": true
+    }
+  ],
+  "bugReproduced": true
+}

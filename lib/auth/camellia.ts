@@ -1,5 +1,6 @@
 'use client';
 import { signInAnonymously, signInWithCustomToken, signOut } from 'firebase/auth';
+import { resetAnalyticsIdentity } from '@/lib/analytics/posthog';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 const API='https://emu-realtime.onrender.com/api/camellia-auth',LINE_STATE='camellia-line-state',LINE_NONCE='camellia-line-nonce',LOGGED_OUT='camellia-session-logged-out',LINE_PENDING='camellia-line-login',LINE_TTL_MS=10*60*1000,AUTH_METHOD='camellia-auth-method';
 let guestSession:Promise<unknown>|null=null;
@@ -40,7 +41,7 @@ async function exchangeAuthCallback():Promise<{method:AuthMethod;linked?:boolean
   ['code','state','camellia_passport_ticket','error','error_description'].forEach(k=>url.searchParams.delete(k));history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
  }
 }
-export async function logoutCamellia(){localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth)}
+export async function logoutCamellia(){localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth);resetAnalyticsIdentity({clearPending:false})}
 
 let callbackPromise: ReturnType<typeof exchangeAuthCallback> | null = null;
 export function finishAuthCallback(){return callbackPromise ??= exchangeAuthCallback();}

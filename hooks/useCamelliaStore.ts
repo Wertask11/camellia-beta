@@ -7,7 +7,9 @@ import {appendConversationPair,replaceThreadReply,switchConversationModel} from 
 import { defaultConversationModel,isConversationModel } from '@/lib/conversation/models';
 import { serializeConversationState } from '@/lib/conversation/persistence';
 import { captureContext } from '@/lib/memory/engine';
+import { analyticsSession, analyticsTimestamp, ANALYTICS_SESSION_CHANGED } from '@/lib/analytics/session';
 import { sessionAttribution } from '@/lib/analytics/attribution';
+import * as analyticsDelivery from '@/lib/analytics/posthog';
 import { forwardEvent } from '@/lib/analytics/posthog';
 import { deleteSyncedCamelliaData, prepareSchoolParkAccount, syncToSchoolPark, type AccountChoice } from '@/lib/schoolpark/sync';
 import { resetAnalyticsIdentity } from '@/lib/analytics/posthog';
@@ -31,20 +33,56 @@ export function load():CamelliaState {
  return emptyState();
 }
 export function useCamelliaStore(){
- const[state,setState]=useState<CamelliaState>(()=>emptyState());const[ready,setReady]=useState(false);const[storageError,setStorageError]=useState('');const skipNextSync=useRef(false);const hydrated=useRef(false);
- const readProtected=useCallback(()=>{try{setState(load());setStorageError('');}catch(error){if(error instanceof LocalDataRecoveryError)setState(error.recovered);setStorageError('LOCAL_DATA_UNREADABLE');}},[]);
+ const[state,setState]=useState<CamelliaState>(()=>emptyState());const[ready,setReady]=useState(false);const[storageError,setStorageError]=useState('');const skipNextSync=useRef(false);const hydrated=useRef(false);const storageHealthy=useRef(false);
+ const readProtected=useCallback(()=>{try{setState(load());setStorageError('');}catch(error){storageHealthy.current=false;analyticsDelivery.setAnalyticsDeliveryAllowed?.(false);if(error instanceof LocalDataRecoveryError)setState(error.recovered);setStorageError('LOCAL_DATA_UNREADABLE');}},[]);
  useEffect(()=>{if(hydrated.current)return;hydrated.current=true;readProtected();setReady(true);},[readProtected]);
- useEffect(()=>{if(!ready||storageError)return;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(serializeConversationState({...state,updatedAt:stamp()})));}catch{setStorageError('LOCAL_SAVE_FAILED');return;}if(skipNextSync.current){skipNextSync.current=false;return;}syncToSchoolPark(state);},[state,ready,storageError]);
+ useEffect(()=>{if(!ready||storageError)return;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(serializeConversationState({...state,updatedAt:stamp()})));}catch{storageHealthy.current=false;analyticsDelivery.setAnalyticsDeliveryAllowed?.(false);setStorageError('LOCAL_SAVE_FAILED');return;}storageHealthy.current=true;if(skipNextSync.current){skipNextSync.current=false;return;}syncToSchoolPark(state);},[state,ready,storageError]);
  const retryStorage=useCallback(()=>{if(storageError!=='LOCAL_SAVE_FAILED'){readProtected();return;}try{localStorage.setItem(STORAGE_KEY,JSON.stringify(serializeConversationState({...state,updatedAt:stamp()})));setStorageError('');}catch{setStorageError('LOCAL_SAVE_FAILED');}},[storageError,state,readProtected]);
  const forwarded = useRef(new Set<string>());
- useEffect(()=>{if(!ready||storageError)return;const pending=state.analyticsEvents.filter(e=>!e.forwardedAt&&!forwarded.current.has(e.id));if(!pending.length)return;const sent=pending.filter(e=>{if(!forwardEvent(e,state))return false;forwarded.current.add(e.id);return true}).map(e=>e.id);if(sent.length)setState(s=>({...s,analyticsEvents:s.analyticsEvents.map(e=>sent.includes(e.id)?{...e,forwardedAt:stamp()}:e)}))},[ready,state,storageError]);
- const track=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>setState(s=>({...s,analyticsEvents:[...s.analyticsEvents,{id:uid(),name,properties:{...properties,...sessionAttribution()},createdAt:stamp()}]})),[]);
- useEffect(()=>{if(ready&&!storageError&&sessionStorage.getItem('camellia-session')!=='1'){sessionStorage.setItem('camellia-session','1');track('session_start')}},[ready,track,storageError]);
+ const deliveryOwner = useRef(state.profile.id); deliveryOwner.current = state.profile.id;
+ useEffect(()=>{analyticsDelivery.setAnalyticsDeliveryAllowed?.(ready&&!storageError&&storageHealthy.current);},[ready,storageError]);
+ useEffect(()=>{
+  if(!ready||storageError||!storageHealthy.current)return;
+  const owner=state.profile.id;
+  analyticsDelivery.initAnalytics?.(owner);
+  for(const event of state.analyticsEvents.filter(e=>!e.forwardedAt&&!e.deliverySuppressed&&!forwarded.current.has(`${owner}:${e.id}`))){
+   const key=`${owner}:${event.id}`;forwarded.current.add(key);
+   const queued=forwardEvent(event,state,result=>{
+    if(deliveryOwner.current!==owner)return;
+    setState(current=>current.profile.id!==owner?current:{...current,analyticsEvents:current.analyticsEvents.map(item=>item.id!==event.id?item:
+     result.status==='accepted'?{...item,forwardedAt:result.at}:{...item,deliverySuppressed:result.reason})});
+   });
+   if(!queued)forwarded.current.delete(key);
+  }
+ },[ready,state,storageError]);
+ const sessionEvents=useCallback(()=>{
+  const session=analyticsSession(deliveryOwner.current);
+  return {session,events:session.fresh?[{id:uid(),name:'session_start' as const,properties:sessionAttribution(),createdAt:analyticsTimestamp(),sessionId:session.id}]:[]};
+ },[]);
+ const track=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>{
+  const {session,events}=sessionEvents();
+  if(name==='session_start'&&!events.length)return;
+  const event={id:uid(),name,properties:{...properties,...sessionAttribution()},createdAt:analyticsTimestamp(),sessionId:session.id};
+  setState(s=>({...s,analyticsEvents:[...s.analyticsEvents,...events,...(name==='session_start'?[]:[event])]}));
+  if(session.fresh)window.dispatchEvent(new Event(ANALYTICS_SESSION_CHANGED));
+ },[sessionEvents]);
+ useEffect(()=>{
+  if(!ready||storageError)return;
+  const resume=()=>{if(document.visibilityState!=='hidden')track('session_start');};resume();
+  window.addEventListener('focus',resume);window.addEventListener('pointerdown',resume);window.addEventListener('keydown',resume);document.addEventListener('visibilitychange',resume);
+  return()=>{window.removeEventListener('focus',resume);window.removeEventListener('pointerdown',resume);window.removeEventListener('keydown',resume);document.removeEventListener('visibilitychange',resume);};
+ },[ready,track,storageError,state.profile.id]);
  const viewCheck=useCallback(()=>track('check_view'),[track]);
- const startCheck=useCallback(()=>setState(s=>{const last=[...s.analyticsEvents].reverse().find(e=>e.name==='check_start'||e.name==='check_complete');if(last?.name==='check_start')return s;return{...s,analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'check_start',properties:sessionAttribution(),createdAt:stamp()}]}}),[]);
+ const startCheck=useCallback(()=>{
+  const {session,events}=sessionEvents();const now=analyticsTimestamp();
+  setState(s=>{const last=[...s.analyticsEvents].reverse().find(e=>e.name==='check_start'||e.name==='check_complete');
+   if(last?.name==='check_start'&&last.sessionId===session.id)return s;
+   return{...s,analyticsEvents:[...s.analyticsEvents,...events,{id:uid(),name:'check_start',properties:sessionAttribution(),createdAt:now,sessionId:session.id}]};});
+  if(session.fresh)window.dispatchEvent(new Event(ANALYTICS_SESSION_CHANGED));
+ },[sessionEvents]);
  const memory=(s:CamelliaState,actionId:string,event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback',extra:Record<string,unknown>={})=>({id:uid(),actionId,event,context:captureContext(s),createdAt:stamp(),...extra});
  const updateProfile=useCallback((p:Partial<Profile>)=>setState(s=>({...s,profile:{...s.profile,...p,updatedAt:stamp()}})),[]);const completeOnboarding=useCallback(()=>setState(s=>({...s,onboardingComplete:true})),[]);
- const addCheckin=useCallback((v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>{const now=stamp();setState(s=>({...s,checkins:[...s.checkins,{id:uid(),...v,createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'check_complete',properties:{...sessionAttribution(),hasDetails:Boolean(v.sleep!==undefined||v.body||v.stress||v.periodDays!==undefined)},createdAt:now}]}))},[]);
+ const addCheckin=useCallback((v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>{const now=stamp();setState(s=>({...s,checkins:[...s.checkins,{id:uid(),...v,createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'check_complete',sessionId:analyticsSession(deliveryOwner.current).id,properties:{...sessionAttribution(),hasDetails:Boolean(v.sleep!==undefined||v.body||v.stress||v.periodDays!==undefined)},createdAt:analyticsTimestamp()}]}))},[]);
  const recordProposals=useCallback((ids:string[])=>setState(s=>{const today=new Date().toDateString();const add=ids.filter(id=>!s.contextualMemory.some(m=>m.actionId===id&&m.event==='proposed'&&new Date(m.createdAt).toDateString()===today)).map(id=>memory(s,id,'proposed'));return add.length?{...s,contextualMemory:[...s.contextualMemory,...add]}:s}),[]);
  const startAction=useCallback((a:ActionDefinition)=>{const now=stamp();setState(s=>({...s,actions:[...s.actions,{id:uid(),actionId:a.id,title:a.title,category:a.category,status:'started',startedAt:now,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,a.id,'started')]}))},[]);
  // Done right here (an in-place action): one record, started and completed together, so feedback can follow.
@@ -58,11 +96,11 @@ export function useCamelliaStore(){
  const selectConversationModel=useCallback((conversationId:string,modelId:ConversationModelId,markerId:string)=>{if(!isConversationModel(modelId))return;const now=stamp();setState(s=>({...s,profile:{...s.profile,lastConversationModel:modelId,updatedAt:now},aiConversations:switchConversationModel(s.aiConversations,conversationId,modelId,defaultConversationModel(s.profile.lastConversationModel),now,markerId)}))},[]);
  const syncInsights=useCallback((items:Insight[])=>setState(s=>({...s,insights:items})),[]);const feedbackInsight=useCallback((key:string,verdict:InsightFeedback['verdict'])=>{const now=stamp();setState(s=>({...s,insightFeedback:[...s.insightFeedback,{id:uid(),insightKey:key,verdict,createdAt:now,updatedAt:now}],insights:s.insights.map(i=>i.key===key?{...i,confidence:verdict==='incorrect'?Math.max(0,i.confidence-.5):Math.min(1,i.confidence+.15),updatedAt:now}:i)}))},[]);
  const setFortune=useCallback((fortune:DailyFortune)=>setState(s=>({...s,fortunes:[...s.fortunes.filter(f=>f.date!==fortune.date),fortune]})),[]);
- const addTreeLeaf=useCallback((leaf:Omit<TreeLeaf,'id'|'createdAt'|'updatedAt'|'reflections'|'status'>)=>{const now=stamp();setState(s=>({...s,treeLeaves:[...s.treeLeaves,{...leaf,id:uid(),status:'active',reflections:[],createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_add_complete',properties:{category:leaf.category,tagCount:leaf.meaningTags.length},createdAt:now}]}))},[]);
+ const addTreeLeaf=useCallback((leaf:Omit<TreeLeaf,'id'|'createdAt'|'updatedAt'|'reflections'|'status'>)=>{const now=stamp();setState(s=>({...s,treeLeaves:[...s.treeLeaves,{...leaf,id:uid(),status:'active',reflections:[],createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_add_complete',properties:{category:leaf.category,tagCount:leaf.meaningTags.length},createdAt:analyticsTimestamp()}]}))},[]);
  const updateTreeLeaf=useCallback((id:string,patch:Partial<TreeLeaf>)=>setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,...patch,updatedAt:stamp()}:l)})),[]);
  // Deleting a person erases what was written about them; the empty record carries the deletion to Firestore (sync only writes).
  const removeTreeLeaf=useCallback((id:string)=>setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,name:'',note:'',meaningTags:[],reflections:[],status:'removed' as const,updatedAt:stamp()}:l)})),[]);
- const addTreeReflection=useCallback((id:string,text:string)=>{const now=stamp();setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,reflections:[...l.reflections,{id:uid(),text,createdAt:now,updatedAt:now}],updatedAt:now}:l),analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_reflection_add',createdAt:now}]}))},[]);
+ const addTreeReflection=useCallback((id:string,text:string)=>{const now=stamp();setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,reflections:[...l.reflections,{id:uid(),text,createdAt:now,updatedAt:now}],updatedAt:now}:l),analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_reflection_add',createdAt:analyticsTimestamp()}]}))},[]);
  const remember=useCallback((text:string)=>setState(s=>{const clean=text.trim().slice(0,500);if(!clean)return s;const now=stamp();return{...s,personalMemories:[...(s.personalMemories??[]),{id:uid(),text:clean,createdAt:now,updatedAt:now,source:'explicit_conversation' as const}]}}),[]);
  const forget=useCallback((id:string)=>setState(s=>({...s,personalMemories:(s.personalMemories??[]).map(item=>item.id===id?{...item,text:'',status:'removed' as const,updatedAt:stamp()}:item)})),[]);
  const prepareAccount=useCallback(async(accountUid:string,choice:AccountChoice|false=false)=>{const restored=await prepareSchoolParkAccount(load(),accountUid,choice,emptyState());const safe=validateStoredState(restored,emptyState());if(safe.issues.length)throw new Error('REMOTE_ARCHIVE_INVALID');setState(safe.state)},[]);

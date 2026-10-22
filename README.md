@@ -66,3 +66,7 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 ### My / Tree / Insight Phase 2D
 
 [振り返りと事実・仮説、書き出し・削除の範囲](docs/reflection-phase2d.md)。人物の評価・順位付け・自動共有は追加しません。
+
+### Analytics監査と確認用Preview
+
+送信/再送・Privacy・全イベント・未完了の実着信Gateは [2026-10-21 Analytics監査](docs/analytics-audit-20261021.md) と [イベント表](docs/analytics-event-inventory-20261021.md) を参照してください。本人のログイン確認は [固定Preview](docs/preview-workflow.md) を使います。HTTP受付、PostHog着信、Dashboard表示は別々に確認します。

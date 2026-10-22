@@ -1,0 +1,169 @@
+{
+  "scope": "LOCAL real React UI/store/PostHog SDK. All external transport intercepted. NO real cloud login or PostHog ingestion/UI.",
+  "cases": [
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 375,
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:30.426Z", "insert_id": "25ab18b6-9665-4e8d-bdea-d8fea3d997d4", "uuid": "25ab18b6-9665-4e8d-bdea-d8fea3d997d4", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:39:30.428Z", "insert_id": "adeecb48-d762-479a-9282-19575832a2c2", "uuid": "adeecb48-d762-479a-9282-19575832a2c2", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_start", "timestamp": "2026-10-21T06:39:30.649Z", "insert_id": "b54620e1-912c-4ecb-aa4a-19af9ed1b5d0", "uuid": "b54620e1-912c-4ecb-aa4a-19af9ed1b5d0", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_complete", "timestamp": "2026-10-21T06:39:30.842Z", "insert_id": "955c745c-e04b-46e4-a8f2-aba8aa3cd47d", "uuid": "955c745c-e04b-46e4-a8f2-aba8aa3cd47d", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:39:30.979Z", "insert_id": "e19396b6-7a5b-48bd-93b2-2b88aad04a56", "uuid": "e19396b6-7a5b-48bd-93b2-2b88aad04a56", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200}
+      ],
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "503→reload→online→200",
+      "width": 390,
+      "beforeRecovery": [
+        {"id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "event": "session_start", "forwardedAt": null},
+        {"id": "82577d0e-92e8-47c7-99d1-3f8f9a30fa52", "event": "check_view", "forwardedAt": null},
+        {"id": "aa72e3ef-2ae7-4961-8e10-0af7059498ed", "event": "check_start", "forwardedAt": null},
+        {"id": "67ec267f-50d9-4c2d-ad10-153cf51d5487", "event": "check_complete", "forwardedAt": null}
+      ],
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:35.800Z", "insert_id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "uuid": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 503},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:35.800Z", "insert_id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "uuid": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 503},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:35.800Z", "insert_id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "uuid": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:39:35.802Z", "insert_id": "82577d0e-92e8-47c7-99d1-3f8f9a30fa52", "uuid": "82577d0e-92e8-47c7-99d1-3f8f9a30fa52", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_start", "timestamp": "2026-10-21T06:39:36.145Z", "insert_id": "aa72e3ef-2ae7-4961-8e10-0af7059498ed", "uuid": "aa72e3ef-2ae7-4961-8e10-0af7059498ed", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_complete", "timestamp": "2026-10-21T06:39:36.315Z", "insert_id": "67ec267f-50d9-4c2d-ad10-153cf51d5487", "uuid": "67ec267f-50d9-4c2d-ad10-153cf51d5487", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:39:38.669Z", "insert_id": "8bbb1165-f9e1-4c70-8ae4-5eec4ed3832e", "uuid": "8bbb1165-f9e1-4c70-8ae4-5eec4ed3832e", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200}
+      ],
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 390,
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:35.800Z", "insert_id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "uuid": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 503},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:35.800Z", "insert_id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "uuid": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 503},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:35.800Z", "insert_id": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "uuid": "fef192bd-8d01-4fef-b2a9-e6941ae49ca5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:39:35.802Z", "insert_id": "82577d0e-92e8-47c7-99d1-3f8f9a30fa52", "uuid": "82577d0e-92e8-47c7-99d1-3f8f9a30fa52", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_start", "timestamp": "2026-10-21T06:39:36.145Z", "insert_id": "aa72e3ef-2ae7-4961-8e10-0af7059498ed", "uuid": "aa72e3ef-2ae7-4961-8e10-0af7059498ed", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_complete", "timestamp": "2026-10-21T06:39:36.315Z", "insert_id": "67ec267f-50d9-4c2d-ad10-153cf51d5487", "uuid": "67ec267f-50d9-4c2d-ad10-153cf51d5487", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:39:38.669Z", "insert_id": "8bbb1165-f9e1-4c70-8ae4-5eec4ed3832e", "uuid": "8bbb1165-f9e1-4c70-8ae4-5eec4ed3832e", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:39:42.339Z", "insert_id": "509e6072-6fec-4314-8b81-92457036b5b4", "uuid": "509e6072-6fec-4314-8b81-92457036b5b4", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:39:42.383Z", "insert_id": "f991eb14-cba1-4819-a66d-82001473f082", "uuid": "f991eb14-cba1-4819-a66d-82001473f082", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_open", "timestamp": "2026-10-21T06:39:45.092Z", "insert_id": "e38e3f35-e377-4695-a7ad-cd4a71231010", "uuid": "e38e3f35-e377-4695-a7ad-cd4a71231010", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_draw", "timestamp": "2026-10-21T06:39:45.204Z", "insert_id": "0bb5a8c3-a36c-460c-9b75-8edbd581d518", "uuid": "0bb5a8c3-a36c-460c-9b75-8edbd581d518", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_complete", "timestamp": "2026-10-21T06:39:45.205Z", "insert_id": "f930da50-b97c-45ea-8b93-681cad82724d", "uuid": "f930da50-b97c-45ea-8b93-681cad82724d", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_action_selected", "timestamp": "2026-10-21T06:39:45.354Z", "insert_id": "52a9054a-b73b-4b20-8286-bb35039e39ed", "uuid": "52a9054a-b73b-4b20-8286-bb35039e39ed", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "discover_view", "timestamp": "2026-10-21T06:39:45.631Z", "insert_id": "e3d031fb-eb0b-445c-a6e1-ba21a944514b", "uuid": "e3d031fb-eb0b-445c-a6e1-ba21a944514b", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "tree_open", "timestamp": "2026-10-21T06:39:46.029Z", "insert_id": "9f172e15-683f-4864-8ec8-fa13a5d9ba64", "uuid": "9f172e15-683f-4864-8ec8-fa13a5d9ba64", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "tree_add_start", "timestamp": "2026-10-21T06:39:46.088Z", "insert_id": "99b50d62-c0a5-42ac-8247-f40d4a0f3b6a", "uuid": "99b50d62-c0a5-42ac-8247-f40d4a0f3b6a", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "tree_add_complete", "timestamp": "2026-10-21T06:39:46.720Z", "insert_id": "7d900469-127b-4ffb-a42f-c90b439867d6", "uuid": "7d900469-127b-4ffb-a42f-c90b439867d6", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "yura", "from_model": null, "to_model": null, "event": "conversation_open", "timestamp": "2026-10-21T06:39:46.883Z", "insert_id": "3786818b-b984-449a-a12c-0eb666be7795", "uuid": "3786818b-b984-449a-a12c-0eb666be7795", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "yura", "from_model": null, "to_model": null, "event": "conversation_message_sent", "timestamp": "2026-10-21T06:39:46.971Z", "insert_id": "193e8e43-698c-407f-bf0b-84655b0e30eb", "uuid": "193e8e43-698c-407f-bf0b-84655b0e30eb", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "yura", "from_model": null, "to_model": null, "event": "conversation_response_received", "timestamp": "2026-10-21T06:39:47.008Z", "insert_id": "6eb23ae6-9dc1-43c0-a74b-c88940cdff35", "uuid": "6eb23ae6-9dc1-43c0-a74b-c88940cdff35", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "lactone", "from_model": null, "to_model": null, "event": "conversation_model_selected", "timestamp": "2026-10-21T06:39:47.169Z", "insert_id": "1e58f016-c1e5-427e-8695-5726adc24ef1", "uuid": "1e58f016-c1e5-427e-8695-5726adc24ef1", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": "yura", "to_model": "lactone", "event": "conversation_model_switched", "timestamp": "2026-10-21T06:39:47.170Z", "insert_id": "68940af9-c5df-4649-a343-435ddbb206fa", "uuid": "68940af9-c5df-4649-a343-435ddbb206fa", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "lactone", "from_model": null, "to_model": null, "event": "conversation_message_sent", "timestamp": "2026-10-21T06:39:47.328Z", "insert_id": "2808df6d-bfbd-47b9-a98e-b9dde8b1a242", "uuid": "2808df6d-bfbd-47b9-a98e-b9dde8b1a242", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "lactone", "from_model": null, "to_model": null, "event": "conversation_response_received", "timestamp": "2026-10-21T06:39:47.370Z", "insert_id": "6dc642da-dbb3-4787-b779-9be1631adad6", "uuid": "6dc642da-dbb3-4787-b779-9be1631adad6", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200}
+      ],
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 412,
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:50.163Z", "insert_id": "a005bb82-e4eb-4a47-8246-94631dd01df5", "uuid": "a005bb82-e4eb-4a47-8246-94631dd01df5", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:39:50.165Z", "insert_id": "ee3cbd55-a3f1-4c24-9056-57015c5ddb48", "uuid": "ee3cbd55-a3f1-4c24-9056-57015c5ddb48", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_start", "timestamp": "2026-10-21T06:39:50.323Z", "insert_id": "8e2d390c-d305-472a-99d0-cdcbc9460e8f", "uuid": "8e2d390c-d305-472a-99d0-cdcbc9460e8f", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_complete", "timestamp": "2026-10-21T06:39:50.476Z", "insert_id": "4ea679b1-24dd-478d-9cfb-db4005ce7aa0", "uuid": "4ea679b1-24dd-478d-9cfb-db4005ce7aa0", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:39:50.602Z", "insert_id": "418ce857-3a84-4388-9df5-8d32464fb8d9", "uuid": "418ce857-3a84-4388-9df5-8d32464fb8d9", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200}
+      ],
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 768,
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:39:59.197Z", "insert_id": "d0afebc4-0649-4c18-81a6-3cc4887c90ca", "uuid": "d0afebc4-0649-4c18-81a6-3cc4887c90ca", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:39:59.199Z", "insert_id": "e835bf1f-6bf4-4554-994d-8be7f35d6fcd", "uuid": "e835bf1f-6bf4-4554-994d-8be7f35d6fcd", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_start", "timestamp": "2026-10-21T06:39:59.530Z", "insert_id": "bab2346e-2132-42c3-bf8b-add355ace602", "uuid": "bab2346e-2132-42c3-bf8b-add355ace602", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_complete", "timestamp": "2026-10-21T06:39:59.760Z", "insert_id": "bff80929-1b70-4651-b79c-728970820624", "uuid": "bff80929-1b70-4651-b79c-728970820624", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:40:00.049Z", "insert_id": "fd72ed22-4121-4239-9729-fcff0e5b3d80", "uuid": "fd72ed22-4121-4239-9729-fcff0e5b3d80", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200}
+      ],
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 1280,
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:40:07.860Z", "insert_id": "a7ff0115-5008-4244-9bc0-708424e3db80", "uuid": "a7ff0115-5008-4244-9bc0-708424e3db80", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_view", "timestamp": "2026-10-21T06:40:07.862Z", "insert_id": "ba78b327-acb6-438a-94ea-455e94d186e1", "uuid": "ba78b327-acb6-438a-94ea-455e94d186e1", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_start", "timestamp": "2026-10-21T06:40:08.243Z", "insert_id": "8ea75c4f-1868-4dce-afeb-fa04714fe99d", "uuid": "8ea75c4f-1868-4dce-afeb-fa04714fe99d", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "check_complete", "timestamp": "2026-10-21T06:40:08.456Z", "insert_id": "6a1b9c8f-954b-4f90-9175-efc5babbc5ba", "uuid": "6a1b9c8f-954b-4f90-9175-efc5babbc5ba", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "daily_reflection_view", "timestamp": "2026-10-21T06:40:08.607Z", "insert_id": "711d9d1e-676d-4e16-9e03-b15861d4402a", "uuid": "711d9d1e-676d-4e16-9e03-b15861d4402a", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_open", "timestamp": "2026-10-21T06:40:09.470Z", "insert_id": "8acdc3ce-36c8-497d-a204-dbed02017dde", "uuid": "8acdc3ce-36c8-497d-a204-dbed02017dde", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_draw", "timestamp": "2026-10-21T06:40:09.604Z", "insert_id": "64e668b9-6d89-4311-a97e-5eefb470188b", "uuid": "64e668b9-6d89-4311-a97e-5eefb470188b", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_complete", "timestamp": "2026-10-21T06:40:09.605Z", "insert_id": "464eb6f5-0bbb-450d-812a-818c149555c0", "uuid": "464eb6f5-0bbb-450d-812a-818c149555c0", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "fortune_action_selected", "timestamp": "2026-10-21T06:40:09.842Z", "insert_id": "b8826bab-7cba-4d81-8534-1d69bc55f6fb", "uuid": "b8826bab-7cba-4d81-8534-1d69bc55f6fb", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "discover_view", "timestamp": "2026-10-21T06:40:10.084Z", "insert_id": "019284be-9659-476f-afa5-4b3b48afd796", "uuid": "019284be-9659-476f-afa5-4b3b48afd796", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "tree_open", "timestamp": "2026-10-21T06:40:10.503Z", "insert_id": "729ecb07-945f-45cc-ae80-b5774e90e115", "uuid": "729ecb07-945f-45cc-ae80-b5774e90e115", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "tree_add_start", "timestamp": "2026-10-21T06:40:10.607Z", "insert_id": "39929a3c-050e-4a09-90de-439d8c9cae23", "uuid": "39929a3c-050e-4a09-90de-439d8c9cae23", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": null, "to_model": null, "event": "tree_add_complete", "timestamp": "2026-10-21T06:40:10.761Z", "insert_id": "587b1897-f453-41dd-9a26-9c643299c4a1", "uuid": "587b1897-f453-41dd-9a26-9c643299c4a1", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "yura", "from_model": null, "to_model": null, "event": "conversation_open", "timestamp": "2026-10-21T06:40:10.937Z", "insert_id": "cb2fda9f-6830-424e-86b6-6a1bd55f4ab1", "uuid": "cb2fda9f-6830-424e-86b6-6a1bd55f4ab1", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "yura", "from_model": null, "to_model": null, "event": "conversation_message_sent", "timestamp": "2026-10-21T06:40:11.033Z", "insert_id": "e8f159ec-755c-4cb8-8dee-f4b4c99e3c00", "uuid": "e8f159ec-755c-4cb8-8dee-f4b4c99e3c00", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "yura", "from_model": null, "to_model": null, "event": "conversation_response_received", "timestamp": "2026-10-21T06:40:11.072Z", "insert_id": "b04f40fb-e09f-4852-8379-ff5b1f0c4a79", "uuid": "b04f40fb-e09f-4852-8379-ff5b1f0c4a79", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "lactone", "from_model": null, "to_model": null, "event": "conversation_model_selected", "timestamp": "2026-10-21T06:40:11.228Z", "insert_id": "6ba46585-582b-4f6b-b3d5-7363bf4e4e51", "uuid": "6ba46585-582b-4f6b-b3d5-7363bf4e4e51", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": null, "from_model": "yura", "to_model": "lactone", "event": "conversation_model_switched", "timestamp": "2026-10-21T06:40:11.229Z", "insert_id": "774b6fbc-be78-418a-a265-4cecf0bbe8c8", "uuid": "774b6fbc-be78-418a-a265-4cecf0bbe8c8", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "lactone", "from_model": null, "to_model": null, "event": "conversation_message_sent", "timestamp": "2026-10-21T06:40:11.381Z", "insert_id": "448ec72e-38e8-4d41-81ba-4b3a01349d64", "uuid": "448ec72e-38e8-4d41-81ba-4b3a01349d64", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200},
+        {"model_id": "lactone", "from_model": null, "to_model": null, "event": "conversation_response_received", "timestamp": "2026-10-21T06:40:11.407Z", "insert_id": "cbe220e3-2a7d-44a6-a088-6ec54fa2529e", "uuid": "cbe220e3-2a7d-44a6-a088-6ec54fa2529e", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 200}
+      ],
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "DNT",
+      "transport": [],
+      "internal": [
+        {"event": "session_start", "forwardedAt": null, "suppressed": "dnt"},
+        {"event": "check_view", "forwardedAt": null, "suppressed": "dnt"},
+        {"event": "check_start", "forwardedAt": null, "suppressed": "dnt"},
+        {"event": "check_complete", "forwardedAt": null, "suppressed": "dnt"},
+        {"event": "daily_reflection_view", "forwardedAt": null, "suppressed": "dnt"}
+      ],
+      "pass": true
+    },
+    {
+      "case": "tracker_block",
+      "transport": [
+        {"model_id": null, "from_model": null, "to_model": null, "event": "session_start", "timestamp": "2026-10-21T06:40:17.697Z", "insert_id": "0e568fd7-c43d-492e-8a00-d4aadd42405b", "uuid": "0e568fd7-c43d-492e-8a00-d4aadd42405b", "distinct_id_present": true, "app_version": "beta-v3", "event_schema": 1, "httpStatus": 0}
+      ],
+      "internal": [
+        {"event": "session_start", "forwardedAt": null, "suppressed": null},
+        {"event": "check_view", "forwardedAt": null, "suppressed": null},
+        {"event": "check_start", "forwardedAt": null, "suppressed": null},
+        {"event": "check_complete", "forwardedAt": null, "suppressed": null},
+        {"event": "daily_reflection_view", "forwardedAt": null, "suppressed": null}
+      ],
+      "pass": true
+    },
+    {
+      "case": "corrupt_storage",
+      "transport": [],
+      "internal": [],
+      "pass": true
+    },
+    {
+      "case": "quota_storage",
+      "transport": [],
+      "internal": [
+        {"event": "session_start", "forwardedAt": null, "suppressed": null},
+        {"event": "check_view", "forwardedAt": null, "suppressed": null},
+        {"event": "check_start", "forwardedAt": null, "suppressed": null},
+        {"event": "check_complete", "forwardedAt": null, "suppressed": null},
+        {"event": "daily_reflection_view", "forwardedAt": null, "suppressed": null}
+      ],
+      "pass": true
+    },
+    {"case": "other engines", "webkitInstalled": false, "firefoxInstalled": false, "realSamsungInternet": "not available; prior baseline used Samsung UA on Chromium only"}
+  ]
+}

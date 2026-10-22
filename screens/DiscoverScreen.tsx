@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ActionCard } from '@/components/ActionCard';
 import { CATEGORY_LABELS } from '@/data/actions';
 import { recommend } from '@/lib/recommendation';
@@ -7,10 +7,12 @@ import { jstDate } from '@/lib/fortune/engine';
 import { LIVE_DESTINATIONS } from '@/lib/features';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { todayPlans } from '@/lib/today/flow';
-import type { CamelliaState, Category, Recommendation } from '@/types';
+import type { AnalyticsEventName, CamelliaState, Category, Recommendation } from '@/types';
 const cats=(Object.keys(CATEGORY_LABELS) as Category[]);
 /* Discover is where Today continues: categories first, and never the same three plans Today already showed. */
-export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSecondary}:{state:CamelliaState;category?:Category;onCategory:(c?:Category)=>void;onOpenAction:(r:Recommendation)=>void;onOpenSecondary:(x:'circle'|'place')=>void}) {
+export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSecondary,onTrack}:{onTrack?:(name:AnalyticsEventName)=>void;state:CamelliaState;category?:Category;onCategory:(c?:Category)=>void;onOpenAction:(r:Recommendation)=>void;onOpenSecondary:(x:'circle'|'place')=>void}) {
+  const viewed=useRef(false);
+  useEffect(()=>{if(!viewed.current&&onTrack){viewed.current=true;onTrack('discover_view');}},[onTrack]);
   const now=useCurrentTime(state.checkins);
   const list=useMemo(()=>recommend(state,now,category,100),[state,category,now]);
   const checked=dailyCheckins(state.checkins,now).some(check=>jstDate(new Date(check.createdAt))===jstDate(now));
