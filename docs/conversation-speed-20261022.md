@@ -2,7 +2,7 @@
 
 ## 1. 結論
 
-実装済み・**実GeminiのBefore/Afterは未完了**。新しいbranchは `perf/camellia-conversation-streaming-20261022`。本番へmerge/deployしません。本人確認は登録済みの固定Previewだけを使います。
+実装済み。本人が固定Previewで、一括モードのYURA、StreamingのYURA・Lactoneすべての返答成功と、両モデルの途中表示を確認しました。**実Geminiの数値Before/Afterは未完了**です。新しいbranchは `perf/camellia-conversation-streaming-20261022`。本番へmerge/deployしません。
 
 https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/
 
@@ -19,6 +19,15 @@ https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.a
 ## 3. 変更ファイルと範囲
 
 会話画面/Workspace、API entry/handler/runtime、Context取得、Stream codec、性能計測、会話thread/storeの未完了管理、Analyticsの数値allowlist、会話専用CSS、関連テストと本文書。Today/Discover/Circle/Place/My/Tree/Fortune/Auth UIの変更はありません。完全な一覧はPR差分にあります。
+
+| 区分 | ファイル |
+|---|---|
+| API | `api/camellia/chat.ts`、`lib/conversation/gemini-server.ts`、`gemini-runtime.ts`、`provider-recovery.ts` |
+| 配信・計測・Context | `lib/conversation/client.ts`、`stream.ts`、`performance.ts`、`context-loader.ts`、`privacy.ts` |
+| 画面・保存 | `screens/CamelliaScreen.tsx`、`ConversationWorkspace.tsx`、`hooks/useCamelliaStore.ts`、`lib/conversation/entries.ts`、`threads.ts`、`types/index.ts`、`app/page.tsx`、`app/globals.css` |
+| Analytics | `lib/analytics/posthog.ts` |
+| テスト | `tests/conversation-stream-cases.mjs`、`conversation-speed-entry.tsx`、`conversation-speed-server.mjs`、`conversation-speed-browser.py`、`run-unit.mjs` |
+| 記録 | 本文書、`docs/evidence/conversation-speed-20261022/{synthetic-ab,history-cpu,prompt-before,live-preview}.json` |
 
 ## 4. 実装した高速化
 
@@ -82,11 +91,11 @@ Previewの `window.__CAMELLIA_CONVERSATION_PERFORMANCE__` は最大20件、固�
 
 ## 6. YURA品質
 
-YURA固有promptとモデル/temperature/thinking設定は変更なし。質問最大1つ、短く急いで結論を出さない方針とAction抑制を維持。既存20ペアのserver routing / Safety回帰とUI切替テストに加えてstream経路を検証。実生成品質は本人のPreview確認が残ります。
+YURA固有promptとモデル/temperature/thinking設定は変更なし。質問最大1つ、短く急いで結論を出さない方針とAction抑制を維持。既存20ペアのserver routing / Safety回帰とUI切替テストに加えてstream経路を検証。本人のPreview操作では一括・Streamingとも返答成功、Streamingで途中表示を確認しました。本文は取得していないため、今回の実返答の柔らかさ・自然さをこちらが採点した結果ではありません。
 
 ## 7. Lactone品質
 
-Lactone固有promptも変更なし。短い整理、本人が選ぶ次の一歩、catalogのAction1件程度という方針を維持。Actionカードは最終JSONをserver allowlist/個別モデルの方針で検証した後だけ表示。途中のactionIdを描画しません。
+Lactone固有promptも変更なし。短い整理、本人が選ぶ次の一歩、catalogのAction1件程度という方針を維持。Actionカードは最終JSONをserver allowlist/個別モデルの方針で検証した後だけ表示。途中のactionIdを描画しません。本人が同じ固定PreviewでYURAから切り替え、返答成功と途中表示を確認しました。実返答の内容比較は未採点です。
 
 ## 8. Streamingと途中失敗
 
@@ -128,12 +137,41 @@ Promptはcommon739文字、YURA420/Lactone380、Action426。履歴を除く合�
 
 ## 11. Preview / 実確認
 
-固定URLは冒頭の1つ。新しいLINE callbackは登録不要。本番への反映は行いません。Previewに公開できた後、本人に通常の方法でログイン/送信を依頼し、新しい数値の実着信を照合します。
+固定URLは冒頭の1つ。新しいLINE callbackは登録不要。本番への反映は行っていません。
+
+- Code commit: `691eb7fddf41587f032b683b6f2d59f975a39608`。
+- 固定Preview branch: `codex/camellia-alpha-release-candidate`。同commitへfast-forward。
+- Vercel Preview: 2026-10-22 08:49:16 UTC（17:49:16 JST）に成功。[Deployment](https://vercel.com/school-park/camellia-beta/7DDBgU2gzLE3YbamchXYwJF8KGFq)。
+- 本人確認: YURA一括モードとYURA Streamingの両方で返答、後者は少しずつ表示。Lactoneへの切替後も少しずつ表示。
+- 計測の限界: 09:00〜09:04 UTCの照合時点では今回操作のPostHogイベントは見つかりませんでした。プロジェクト全体の最終イベントは08:40:04 UTC、最後の会話イベントは07:29:04 UTCで、今回の時刻・モデル・transport・timingを確証できません。着信がない理由を推測でDNTや実装不具合と断定しません。安全なPreview診断の数値を本人へ確認依頼しました。
+- 09:22 UTCまでに、client timestampに依存しない`created_at`の08:49:16〜09:15:00 UTCでも照合しましたが着信なし。端末の時計差だけで取りこぼしたとは確認できません。
+
+本人の機能確認と、取得できた数値証拠を混同しません。新しい実Geminiの時間・provider metadataは未取得です。[確認記録](evidence/conversation-speed-20261022/live-preview.json)。
+
+### A〜Oの確認範囲
+
+| シナリオ | 結果と根拠 |
+|---|---|
+| A YURA新規 | 自動ブラウザ/単体PASS。本人のPreview送信も成功 |
+| B Lactone新規 | 自動ブラウザ/単体PASS。本人は切替後の送信を確認 |
+| C YURA→Lactone | UI/store回帰PASS。本人のPreview切替・途中表示も成功 |
+| D Lactone→YURA | UI/store回帰PASS。本人の今回操作では未確認 |
+| E 短い会話 | 実HTTP/SSEブラウザ比較PASS。本人の3送信も成功 |
+| F 長い会話 | 合成10,000 messagesの旧/新Context等価・上限8件PASS。実Geminiの大量履歴試験ではない |
+| G Todayあり | Context loader/handler単体PASS |
+| H Todayなし | Context loader/handler単体PASS。取得失敗・時間予算も確認 |
+| I ログイン直後 | 認証許可/拒否/同意失敗の単体PASS。新規実アカウントでのcold計測は未取得 |
+| J 継続ログイン | 自動ブラウザは合成認証。本人のログイン済みPreviewでは返答成功 |
+| K Rate limit正常 | 共有quota/handler回帰PASS。不許可時の生成抑止も確認。新しい実quota所要時間は未取得 |
+| L Stream中断 | 通信失敗/途中更新→明示retryで未完了assistant保存なし・user重複なし、ブラウザPASS |
+| M API error | handler/ブラウザPASS。遅延Safety blockも未完了扱い。外部503の解消を示す試験ではない |
+| N スマートフォン | Chromium viewport375/390/412でPASS。今回本人が使った端末の種類は不明、実スマホ固有エンジン/keyboardは未認定 |
+| O PC | Chromium768/1280でPASS。本人による両モードの表示成功も確認 |
 
 ## 12. PR / 検証
 
-PR作成後にURL・code commit・Preview build結果を追記します。lint/typecheck/buildと43 suitesがPASS。最後のCRLF境界修正も専用stream suite・型・lint・buildで再検証。ブラウザの途中失敗/遅延Safety/再読込→再試行もPASS。375/390/412/768/1280のChromium viewportを確認。実スマートフォン固有ブラウザ/キーボードの確認は本人の実確認と分けます。
+[Draft PR #49](https://github.com/Wertask11/camellia-beta/pull/49)。branch `perf/camellia-conversation-streaming-20261022`。lint/typecheck/buildと43 suitesがPASS。最後のCRLF境界修正も専用stream suite・型・lint・buildで再検証。ブラウザの途中失敗/遅延Safety/再読込→再試行もPASS。375/390/412/768/1280のChromium viewportを確認。実スマートフォン固有ブラウザ/キーボードの確認は本人の実確認と分けます。
 
 ## 13. Production反映可否
 
-**まだ不可 / 実Gemini比較・Preview確認待ち。** 新しい依頼の指示どおりbranch→PR→固定Previewまで進めます。以前のPR48への本番承認を、この別変更の承認として再利用しません。
+**まだ不可 / 実Geminiの数値比較・品質採点待ち。** Previewでの途中表示の機能確認は本人により完了しました。数値が未取得のまま速度の完成条件をPASSにしません。新しい依頼の指示どおりbranch→PR→固定Previewまで進め、以前のPR48への本番承認を、この別変更の承認として再利用しません。
