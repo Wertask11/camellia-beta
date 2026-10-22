@@ -200,9 +200,27 @@
   },
   "limitations": [
     "Exact HTTP200 is owner-reported for check_start only.",
-    "Native saved funnel query confirmed; no screenshot or direct PostHog UI visual inspection.",
     "timestamp to created_at is not HTTP latency or UI reflection delay.",
     "Project timezone and existing saved definitions not changed.",
-    "No production merge or deploy."
-  ]
+    "No production merge or deploy.",
+    "Owner confirms Today funnel numbers visually; no screenshot or measured UI delay.",
+    "Conversation QA failed; message/error model attribution works, successful model response attribution is still unverified."
+  ],
+  "posthogUi": {
+    "source": "owner visual confirmation",
+    "reportedOn": "2026-10-22",
+    "insightShortId": "26TwFhaG",
+    "period": "Today",
+    "firstFourStepsShowPeople": true,
+    "screenshotCollected": false,
+    "uiLatencyMeasured": false
+  },
+  "conversationQaFailure": {
+    "windowUtc": {
+      "from": "2026-10-22T06:20:00Z",
+      "toExclusive": "2026-10-22T07:00:00Z"
+    },
+    "result": "event|timestamp|created_at|uuid|model_id|from_model|to_model|provider|error_category|response_time_ms\nconversation_open|2026-10-22T06:42:58.949000Z|2026-10-22T06:42:59.707000Z|e8b4f2b4-ab5a-4c0c-802f-2028e00b835f|lactone|(null)|(null)|gemini|(null)|(null)\nconversation_message_sent|2026-10-22T06:43:01.222000Z|2026-10-22T06:43:01.595000Z|d5567bee-a60c-489d-b7f9-7d1daf701004|lactone|(null)|(null)|gemini|(null)|(null)\nconversation_error|2026-10-22T06:43:05.170000Z|2026-10-22T06:43:06.085000Z|bf813d97-f566-4192-a1c9-5310e26af11d|lactone|(null)|(null)|gemini|provider_error|(null)\nconversation_model_selected|2026-10-22T06:43:09.181000Z|2026-10-22T06:43:09.555000Z|178e159d-c230-4f02-ba7e-7e8af33c5af7|yura|(null)|(null)|(null)|(null)|(null)\nconversation_model_switched|2026-10-22T06:43:09.182000Z|2026-10-22T06:43:09.829000Z|848cc83d-d191-4cce-8b98-4c495f4a792b|(null)|lactone|yura|(null)|(null)|(null)\nconversation_message_sent|2026-10-22T06:43:17.019000Z|2026-10-22T06:43:17.954000Z|2b3f9117-94d7-4970-b1e2-050f8d497119|yura|(null)|(null)|gemini|(null)|(null)\nconversation_error|2026-10-22T06:43:18.196000Z|2026-10-22T06:43:18.604000Z|cfcd3a9a-aa18-4e33-8e3f-fb5bf7057db5|yura|(null)|(null)|gemini|provider_error|(null)\nconversation_message_sent|2026-10-22T06:43:39.526000Z|2026-10-22T06:43:40.130000Z|25302f1c-5213-4da4-bd1b-6de5405568da|yura|(null)|(null)|gemini|(null)|(null)\nconversation_error|2026-10-22T06:43:54.743000Z|2026-10-22T06:43:55.497000Z|a971edbb-8a91-4eca-ac8c-8917e1b5ee22|yura|(null)|(null)|gemini|timeout|(null)",
+    "interpretation": "Post-fix requested model attribution is present for lactone/yura sends and errors. Requests failed with provider_error (both) and timeout (yura). No successful response_received in this QA window. Exact server failure stage / HTTP status unconfirmed; Vercel metadata requested, no speculative fix."
+  }
 }

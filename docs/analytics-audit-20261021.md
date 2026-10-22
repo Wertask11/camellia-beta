@@ -2,7 +2,7 @@
 
 ## 判定と証拠の境界
 
-**全体判定 NOT READY / Checkの実着信 PASS（2026-10-22追記）。** 固定Previewで本人が操作した開始→Check表示→気分選択→保存が、project **594848** に同じpersonの順序で届きました。本人がNetworkで確認したHTTP200の `$insert_id` も、PostHogの `check_start` と完全一致しています。既存ファネルをToday・固定Preview条件で実行し、最初の4段階が各1人・100%と確認しました。残る制約は、PostHog画面そのものの視認と反映時間、実認証でのaccount切替、修正後の全機能の通し計測、日本時間と本番専用の指標設定です。コード修正の本番反映とは分けて扱います。本番へはmerge/deployしていません。
+**全体判定 NOT READY / Checkの実着信・Todayの画面表示 PASS（2026-10-22追記）。** 固定Previewで本人が操作した開始→Check表示→気分選択→保存が、project **594848** に同じpersonの順序で届きました。本人がNetworkで確認したHTTP200の `$insert_id` も、PostHogの `check_start` と完全一致しています。既存ファネルをToday・固定Preview条件で実行し、最初の4段階が各1人・100%と確認し、本人もTodayで人数表示を確認しました。一方、続く会話QAは両モデルで失敗し、エラー記録を実照合しています。残る制約は、会話APIエラーの切り分けと成功応答の計測、実認証でのaccount切替、修正後の全機能の通し計測、日本時間と本番専用の指標設定です。コード修正の本番反映とは分けて扱います。本番へはmerge/deployしていません。
 
 - branch: `fix/camellia-production-analytics-20261021`
 - baseline main / Production source: `094959fe5302cde5af1cc0cdd4dc62854cb41a72`
@@ -27,7 +27,18 @@
 - NetworkのHTTP200・insert IDは上表の`check_start`に一致。全4件のHTTP statusを個別採取したとは言いません。
 - 既存「Camellia 初回体験ファネル」`26TwFhaG`を、Today（project UTC）・固定Preview hostで一時実行。unique personの順序付き集計で最初の4段階が **1→1→1→1**。Fortuneの3段階は0。本人は既に当日のカードを引いており、今回の再編集で引き直しを要求していません。
 - original timestampからcreated_atまで379〜1366ms。ただしbrowser時計との誤差は未測定で、これはHTTP通信時間やPostHog UIの表示遅延ではありません。
-- これは修正後の実着信証拠です。ローカルの模擬200とは明確に分けます。PostHog UIそのもののスクリーンショット確認は未実施です。
+- これは修正後の実着信証拠です。ローカルの模擬200とは明確に分けます。本人からPostHogのTodayで最初の4段階に人数が出たとの確認も受領。スクリーンショット取得と表示までの遅延測定は未実施です。
+
+### 続く会話QA：成功扱いにしない
+
+本人から「途中でエラー」と報告。固定Previewの10月22日15:43 JST付近を照合したところ、次の実記録を確認しました。
+
+- Lactone: message_sent（model_id=lactone）→provider_error。
+- YURA選択・Lactone→YURAの切替: selected/switchedのモデル名が正しく到着。
+- YURA: message_sent（model_id=yura）→provider_error。別の送信はtimeout。
+- このQA期間にresponse_receivedはなし。新しいmessage/errorのモデル帰属は実証できましたが、成功返答の帰属・両モデルの会話成功は未確認です。
+
+clientのprovider_errorには認証やサーバー初期化等の失敗も含まれ得るため、Google側の障害と断定しません。現時点ではHTTP status/サーバーstageは不明。こちらにはVercel runtime logs接続がないので、本人へ15:43 JSTの固定ラベル・stage/status/reason/timedOutだけを依頼しました。本文や認証情報は求めません。エラーの正確な発生場所を確認する前に鍵・モデル・timeout・環境変数を変更しません。
 
 ## 「Todayに出ない」の直接的な確認
 
@@ -98,7 +109,7 @@ wrong project / wrong hostは、project tokenの一致と実着信によって�
 
 10月15〜22日のProduction・固定Previewの実イベント存在も確認しました。Circleの8種、Conversationのopen/sent/response/error/selected/switched、Fortuneのopen/draw/complete/action/reflection、daily reflection、tree_open、Previewのdiscover_viewなどが到着しています。ただし、この集計には修正前の交通も含み、全52イベントの今回の操作→Network→着信を実証したことにはなりません。実在PlaceはOFFで、Place着信がないことを障害扱いしません。
 
-モデル選択はyura/lactone、切替はyura→lactoneの到着を確認。一方、10月20日以降に照会できた送信/返答サンプルのmodel_idはnullでした。今回追加したメッセージ単位のmodel_idはローカルPASSですが、修正後の実メッセージによる検証はまだ必要です。選択回数を実際の会話利用数と置き換えません。
+過去サンプルでは選択のyura/lactone、yura→lactoneの到着を確認しましたが、旧sent/responseのmodel_idはnullでした。続く10月22日15:43の修正後QAで、両モデルのsent/errorにmodel_idが入ることとlactone→yura切替を実証。APIの成功応答はなかったため、新responseの帰属は未検証です。選択回数や送信回数を成功した会話利用数と置き換えません。
 
 本番反映日を新しい観測の起点として記録する必要があります。過去の入口欠落や送信喪失は自動補完できず、30日の数値を連続した完全な記録として扱いません。DNT/ブロッカーによる非計測も含め、Analyticsを全利用者の台帳にしません。
 
@@ -114,7 +125,7 @@ wrong project / wrong hostは、project tokenの一致と実着信によって�
 
 ## 本人の実通し
 
-新しいLINE callback登録は不要です。固定Previewの本人操作で、10月21日・22日の両日ともsession/view/start/completeの着信を確認しました。22日はNetworkの1 IDも一致。既に引いたカードの再drawや、記録削除を求めていません。残る追加検証はモデル別メッセージ帰属、実account切替、PostHog画面の視認などであり、Checkの同じ操作を繰り返す必要はありません。HAR、Authorization、Firebase/LINE token、会話/Check本文は取得・共有しません。
+新しいLINE callback登録は不要です。固定Previewの本人操作で、10月21日・22日の両日ともsession/view/start/completeの着信を確認しました。22日はNetworkの1 IDも一致し、本人がPostHog画面の人数表示も確認。既に引いたカードの再drawや記録削除は求めていません。モデル別sent/errorも着信しましたが、会話APIが失敗したため成功返答の帰属が残っています。Checkの同じ操作を繰り返す必要はありません。HAR、Authorization、Firebase/LINE token、会話/Check本文は取得・共有しません。
 
 ## 最終報告 A–Z（10月22日 実着信照合後）
 
@@ -128,13 +139,13 @@ wrong project / wrong hostは、project tokenの一致と実着信によって�
 | F check_complete | **PASS** 同じpersonで順序どおり到着。今回の保存までfunnel1人 |
 | G session_start | **PASS** 修正後の入口が到着。idle/JST/タブ継続はローカルPASS。長期実観測は別 |
 | H Fortune | ローカルopen/draw/complete/action PASS。既存Production着信あり。修正後Previewのdraw通しは未実施（当日引き直しを求めない） |
-| I Conversation | ローカルopen/sent/response PASS。実projectにも該当event存在。修正後メッセージ単位のmodel帰属は未検証 |
-| J YURA/Lactone | selectの両model、yura→lactone switchの実着信あり。照会した旧sent/responseはmodel_id null、追加した帰属の実通しが残る |
+| I Conversation | sent/errorの修正後model帰属は両モデルで実証。**実会話QA FAIL**（provider_error/timeout）。成功responseの新帰属は未検証 |
+| J YURA/Lactone | 両modelのselectedと両方向switchが実着信。新sent/errorのmodel_idも到着。API失敗のため成功返答はPASSとしない |
 | K Circle | 全発火元とallowlist回帰PASS。Productionの8種すべて着信あり。今回修正後の実2-user Network通しは別途 |
 | L Place | 公開後の計測経路/Privacy PASS、demo除外。実Place OFF、実着信未検証 |
 | M Network | **PASS（1件）** 本人報告のcheck_start HTTP200とinsert IDを実着信へ照合。ローカルでは模擬503/200/遮断も確認 |
 | N ingestion | **PASS（core4件）** project594848・同じperson・順序・host/versionを実照合 |
-| O PostHog UI | **部分PASS** 保存済みUIと同じnative funnel queryのToday結果は1→1→1→1。UIそのものの視認は未実施 |
+| O PostHog UI | **PASS（本人確認）** Todayの最初の4段階に人数表示あり。native queryも1→1→1→1。UIスクリーンショットや表示遅延は未採取 |
 | P 反映時間 | timestamp→created_atは379〜1366ms。HTTP送信時刻/時計差/UI表示時刻は未採取なのでUI遅延は未測定 |
 | Q identity | local reset/logout/別profile保留 PASS。core4件の同一person帰属は実確認。実account切替前後の帰属は未検証 |
 | R DNT | 尊重を維持、Chromium DNT送信0。本人設定は未確認 |
@@ -158,10 +169,10 @@ wrong project / wrong hostは、project tokenの一致と実着信によって�
 | 3 | 保存でcheck_completeが届くか | **YES（同上）** |
 | 4 | ブラウザNetworkで実送信確認できたか | **YES（本人報告1件を同じinsert IDの着信に照合）** |
 | 5 | project着信を確認したか | **YES（594848）** |
-| 6 | Today指定で確認したか | **YES（native funnel、UTCのToday、Preview host。UI視認は別）** |
+| 6 | Today指定で確認したか | **YES（native funnelのUTC Today・Preview hostと、本人による画面の人数表示確認）** |
 | 7 | 既存30日Funnelを信用してよいか | **NO（入口欠落とhost混在があり、過去の欠損を復元できない）** |
 | 8 | D1/D7を信用してよいか | **NO（旧復帰event欠落・UTC境界・host混在を整理し、新しい観測期間が必要）** |
-| 9 | YURA/Lactone利用を測定できるか | **YES（選択/切替の実着信、message帰属の実装とlocal検証。新しい帰属の実着信は残る）** |
+| 9 | YURA/Lactone利用を測定できるか | **YES（選択/切替/sent/errorの実着信とモデル帰属を確認。成功返答の新帰属はAPIエラーで未検証）** |
 | 10 | Circle/Place公開後も測れる設計か | **YES（本番着信検証は別途必要）** |
 
 ## 変更ファイル一覧
