@@ -38,7 +38,17 @@
 - YURA: message_sent（model_id=yura）→provider_error。別の送信はtimeout。
 - このQA期間にresponse_receivedはなし。新しいmessage/errorのモデル帰属は実証できましたが、成功返答の帰属・両モデルの会話成功は未確認です。
 
-clientのprovider_errorには認証やサーバー初期化等の失敗も含まれ得るため、Google側の障害と断定しません。現時点ではHTTP status/サーバーstageは不明。こちらにはVercel runtime logs接続がないので、本人へ15:43 JSTの固定ラベル・stage/status/reason/timedOutだけを依頼しました。本文や認証情報は求めません。エラーの正確な発生場所を確認する前に鍵・モデル・timeout・環境変数を変更しません。
+clientのprovider_errorだけでは認証やサーバー初期化と区別できないため、同時間帯のVercel固定ラベルだけを本人に確認しました。受領したログにより、以下の失敗場所を確認できました（request IDは未受領なので、PostHogの各UUIDとの一対一の紐付けまでは行っていません）。
+
+| 試行 | Provider側の結果 | 最終stage |
+|---|---|---|
+| primary `gemini-3.8-flash` → fallback `gemini-3.1-flash-lite` | 両方503、timedOut=false、reason=server_error | provider_request / status503 |
+| cooldown後のfallback | 503、timedOut=false、reason=server_error | provider_request / status503 |
+| さらにfallbackを利用した試行 | status未取得、timedOut=true、reason=timeout | provider_request / status未取得 |
+
+このログはGemini生成要求の失敗を示し、Analyticsの送信停止やモデルselectorの取り違えではありません。primary→fallbackの既存回復処理は実際に動いていますが、fallbackも利用不能でした。公開GETのenabled/configuredは生成成功の証拠にしません。Google全体の障害や無料枠の制限を確定したものでもありません。最後のtimeoutに架空のHTTP statusを付けません。
+
+会話成功のGateは未完了のままです。既に2回上限/28秒の回復処理が働いた失敗に対し、無制限の自動再送や別providerへの転送は加えません。鍵・モデル設定・timeout・環境変数・課金は変更していません。次の成功検証はproviderが応答する状態で、本人が固定Previewから通常送信を1回行い、geminiのresponse_receivedとmodel_idを照合します。エラー応答や端末内定型応答で成功を代替しません。
 
 ## 「Todayに出ない」の直接的な確認
 
@@ -139,7 +149,7 @@ wrong project / wrong hostは、project tokenの一致と実着信によって�
 | F check_complete | **PASS** 同じpersonで順序どおり到着。今回の保存までfunnel1人 |
 | G session_start | **PASS** 修正後の入口が到着。idle/JST/タブ継続はローカルPASS。長期実観測は別 |
 | H Fortune | ローカルopen/draw/complete/action PASS。既存Production着信あり。修正後Previewのdraw通しは未実施（当日引き直しを求めない） |
-| I Conversation | sent/errorの修正後model帰属は両モデルで実証。**実会話QA FAIL**（provider_error/timeout）。成功responseの新帰属は未検証 |
+| I Conversation | sent/errorの修正後model帰属は両モデルで実証。**実会話QA FAIL**。Vercelログでprimary/fallbackの503とfallback timeoutを確認。成功responseの新帰属は未検証 |
 | J YURA/Lactone | 両modelのselectedと両方向switchが実着信。新sent/errorのmodel_idも到着。API失敗のため成功返答はPASSとしない |
 | K Circle | 全発火元とallowlist回帰PASS。Productionの8種すべて着信あり。今回修正後の実2-user Network通しは別途 |
 | L Place | 公開後の計測経路/Privacy PASS、demo除外。実Place OFF、実着信未検証 |
