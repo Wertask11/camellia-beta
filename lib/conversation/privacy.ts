@@ -7,6 +7,12 @@ export function redactKnownNames(value: string, knownNames: string[]) {
 
 /** Never re-export local replies: they may have quoted private records. */
 export function geminiHistory(messages: Array<{ role: 'user' | 'assistant' | 'system'; text: string; provider?: string }>) {
-  const chat = messages.filter(message=>message.role!=='system');
-  return chat.flatMap((message, index) => message.role === 'assistant' && message.provider === 'gemini' && chat[index - 1]?.role === 'user' ? [chat[index - 1], message] : []).slice(-8).map(({ role, text }) => ({ role: role==='assistant'?'assistant' as const:'user' as const, text }));
+  const pairs:Array<Array<{role:'user'|'assistant';text:string}>>=[];
+  // Read only the recent completed Gemini pairs, never scan/copy the whole Library history.
+  for(let i=messages.length-1;i>=0&&pairs.length<4;i--){
+    const current=messages[i];if(current.role!=='assistant'||current.provider!=='gemini')continue;
+    let before=i-1;while(before>=0&&messages[before].role==='system')before--;
+    if(before>=0&&messages[before].role==='user')pairs.push([{role:'user',text:messages[before].text},{role:'assistant',text:current.text}]);
+  }
+  return pairs.reverse().flat();
 }

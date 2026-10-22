@@ -4,6 +4,7 @@ import { immediateSafetyReply } from './safety.js';
 import { EligibilityError, EligibilityServiceError } from '../server/eligibility.js';
 import { isTransientNetworkError } from './provider-recovery.js';
 import { defaultConversationModel, isConversationModel } from './models.js';
+import {safeConversationTiming,type ConversationTiming} from './performance.js';
 import { CONVERSATION_MODEL_PROMPTS, modelAllowsAction } from './model-server.js';
 
 export { immediateSafetyReply } from './safety.js';
@@ -121,6 +122,7 @@ export function normalizeMoodForPrompt(value: unknown): string | undefined {
 }
 
 export function classifyChatError(error: unknown): ChatErrorCategory {
+  for(let depth=0;depth<3&&error&&typeof error==='object'&&'code'in error&&error.code==='STREAM_INTERRUPTED'&&'cause'in error;depth++)error=error.cause;
   if (error && typeof error === 'object') {
     const value = error as { status?: unknown; code?: unknown; name?: unknown };
     if(value.code==='SAFETY_BLOCK')return 'safety_block';
@@ -172,66 +174,89 @@ export function buildGeminiContents(history: SafeHistoryMessage[], currentMessag
   ];
 }
 
+export type GenerationControls = {signal:AbortSignal;onText:(text:string)=>void;onFirstChunk:()=>void};
+export type ChatApiResponse = {
+  setHeader:(name:string,value:string)=>void;
+  status:(code:number)=>{json:(body:unknown)=>void};
+  write?:(text:string)=>unknown;end?:()=>unknown;flushHeaders?:()=>void;
+  once?:(event:string,callback:()=>void)=>unknown;off?:(event:string,callback:()=>void)=>unknown;
+  destroyed?:boolean;
+};
 export function createGeminiChatHandler(deps: {
-  env: Record<string, string | undefined>;
-  rateLimitMode?: string;
-  verifyToken: (token: string) => Promise<{ uid: string }>;
-  getTodayMood: (uid: string, token: string) => Promise<string | undefined>;
-  getTodayContext?: (uid: string, token: string) => Promise<string>;
-  generate: (contents: ReturnType<typeof buildGeminiContents>, systemInstruction: string) => Promise<string>;
-  limiter?: { take: (uid: string) => boolean | Promise<boolean> };
-  now?: () => number;
+  env:Record<string,string|undefined>;rateLimitMode?:string;
+  verifyToken:(token:string)=>Promise<{uid:string}>;
+  getTodayMood:(uid:string,token:string)=>Promise<string|undefined>;
+  getTodayContext?:(uid:string,token:string)=>Promise<string>;
+  loadContext?:(uid:string)=>Promise<{mood?:string;context:string}>;
+  generate:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls?:GenerationControls)=>Promise<string>;
+  generateStream?:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls:GenerationControls)=>Promise<string>;
+  limiter?:{take:(uid:string)=>boolean|Promise<boolean>};now?:()=>number;
 }) {
-  const limiter = deps.limiter ?? createInMemoryRateLimiter();
-  return async (req: { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown }, res: {
-    setHeader: (name: string, value: string) => void;
-    status: (code: number) => { json: (body: unknown) => void };
-  }) => {
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (req.method === 'GET') return res.status(200).json({ enabled: isGeminiEnabled(deps.env), dataPolicy: ['free','paid'].includes(deps.env.GEMINI_DATA_POLICY??'')?deps.env.GEMINI_DATA_POLICY:'unknown', ...(deps.rateLimitMode?{rateLimitMode:deps.rateLimitMode}:{}) });
-    if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ error: 'method_not_allowed' }); }
-    if (!isGeminiEnabled(deps.env)) return res.status(503).json({ error: 'disabled', category: 'disabled' });
-    const authHeader = req.headers.authorization;
-    const bearer = Array.isArray(authHeader) ? authHeader[0] : authHeader;
-    const token = typeof bearer === 'string' && bearer.startsWith('Bearer ') ? bearer.slice(7) : '';
-    if (!token) return res.status(401).json({ error: 'authentication_required' });
-    let identity: { uid: string };
-    try { identity = await deps.verifyToken(token); }
-    catch(error) {
-      if(error instanceof EligibilityServiceError){
-        console.error('camellia_eligibility_unavailable',{stage:error.stage});
-        return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});
-      }
-      if(error instanceof EligibilityError&&error.status===403)return res.status(403).json({error:error.code==='PROFILE_REQUIRED'?'profile_required':'authentication_required'});
-      return res.status(401).json({ error: 'authentication_required' });
-    }
-    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body as Record<string, unknown> : {};
-    if (Buffer.byteLength(JSON.stringify(body)) > 20_000) return res.status(413).json({ error: 'invalid_request' });
-    if (typeof body.message !== 'string' || !body.message.trim() || Array.from(body.message).length > 1000) return res.status(400).json({ error: 'invalid_request' });
-    if (body.modelId !== undefined && !isConversationModel(body.modelId)) return res.status(400).json({ error: 'invalid_request', category: 'invalid_request' });
-    const modelId = defaultConversationModel(body.modelId);
-    const message = redactContactDetails(body.message).trim();
-    const history = sanitizeHistory(body.history);
-    const urgent = immediateSafetyReply(message);
-    if (urgent) return res.status(200).json({ reply: urgent, provider: 'fallback', safety: true, modelId });
-    try { if (!await limiter.take(identity.uid)) return res.status(429).json({ error: 'temporarily_unavailable', category: 'rate_limited' }); }
-    catch { return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'}); }
-    const [mood,extraContext] = await Promise.all([deps.getTodayMood(identity.uid, token).catch(() => undefined),deps.getTodayContext?.(identity.uid, token).catch(()=> '') ?? Promise.resolve('')]);
-    const contextText = mood ? `\n\n今日のCheck（気分のみ・参考情報）: ${mood}\n必要な場合に限り自然に参考にし、ユーザーの状態を断定しないこと。` : '';
-    try {
-      const started = deps.now?.() ?? Date.now();
-      const generated = (await deps.generate(buildGeminiContents(history, message), `${CAMELLIA_SYSTEM_PROMPT}${CONVERSATION_MODEL_PROMPTS[modelId]}${contextText}${extraContext}${ACTION_BRIDGE_INSTRUCTION}`)).trim();
-      const candidate = generated ? parseConversationReply(generated,message) : {reply:''};
-      const parsed = candidate.actionId && !modelAllowsAction(modelId,message) ? {reply:candidate.reply} : candidate;
-      const reply=parsed.reply;
-      const responseTimeMs = Math.max(0, (deps.now?.() ?? Date.now()) - started);
-      if (!reply) return res.status(502).json({ error: 'temporarily_unavailable', category: 'invalid_response' });
-      return res.status(200).json({ ...parsed, provider: 'gemini', modelId, responseTimeMs });
-    } catch (error) {
-      const category = classifyChatError(error);
-      const status = category === 'rate_limited' ? 429 : category === 'timeout' ? 504 : category === 'invalid_request' ? 400 : 502;
-      return res.status(status).json({ error: 'temporarily_unavailable', category });
-    }
-  };
+ const limiter=deps.limiter??createInMemoryRateLimiter(),clock=deps.now??Date.now;
+ return async(req:{method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown},res:ChatApiResponse,receivedAt=clock())=>{
+  const timeline:Record<string,number>={T2:receivedAt};
+  const entered=clock(),timing:ConversationTiming={server_import_ms:Math.max(0,entered-receivedAt)};
+  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
+  if(req.method==='GET')return res.status(200).json({enabled:isGeminiEnabled(deps.env),dataPolicy:['free','paid'].includes(deps.env.GEMINI_DATA_POLICY??'')?deps.env.GEMINI_DATA_POLICY:'unknown',...(deps.rateLimitMode?{rateLimitMode:deps.rateLimitMode}:{})});
+  if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).json({error:'method_not_allowed'});}
+  if(!isGeminiEnabled(deps.env))return res.status(503).json({error:'disabled',category:'disabled'});
+  const auth=req.headers.authorization,bearer=Array.isArray(auth)?auth[0]:auth;
+  const token=typeof bearer==='string'&&bearer.startsWith('Bearer ')?bearer.slice(7):'';
+  if(!token)return res.status(401).json({error:'authentication_required'});
+  let identity:{uid:string};
+  try{identity=await deps.verifyToken(token);}catch(error){
+   if(error instanceof EligibilityServiceError){console.error('camellia_eligibility_unavailable',{stage:error.stage});return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
+   if(error instanceof EligibilityError&&error.status===403)return res.status(403).json({error:error.code==='PROFILE_REQUIRED'?'profile_required':'authentication_required'});
+   return res.status(401).json({error:'authentication_required'});
+  }
+  timeline.T3=clock();timing.server_auth_ms=Math.max(0,timeline.T3-entered);
+  if(res.destroyed)return;
+  const body=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body as Record<string,unknown>:{};
+  if(Buffer.byteLength(JSON.stringify(body))>20000)return res.status(413).json({error:'invalid_request'});
+  if(typeof body.message!=='string'||!body.message.trim()||Array.from(body.message).length>1000)return res.status(400).json({error:'invalid_request'});
+  if(body.modelId!==undefined&&!isConversationModel(body.modelId))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
+  const modelId=defaultConversationModel(body.modelId),message=redactContactDetails(body.message).trim(),history=sanitizeHistory(body.history);
+  const urgent=immediateSafetyReply(message);
+  if(urgent)return res.status(200).json({reply:urgent,provider:'fallback',safety:true,modelId,timing:safeConversationTiming(timing)});
+  const controller=new AbortController(),disconnect=()=>controller.abort();
+  res.once?.('close',disconnect);
+  let streaming=false,heartbeat:ReturnType<typeof setInterval>|undefined,started=0;
+  const emit=(value:unknown)=>{if(!controller.signal.aborted)res.write?.(`data: ${JSON.stringify(value)}\n\n`);};
+  const finishTiming=()=>{if(started)timing.provider_total_ms=Math.max(0,clock()-started);return safeConversationTiming(timing);};
+  try{
+   const limitStart=clock();let allowed;
+   try{allowed=await limiter.take(identity.uid);}catch{return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
+   timeline.T4=clock();timing.server_rate_limit_ms=Math.max(0,timeline.T4-limitStart);
+   if(!allowed)return res.status(429).json({error:'temporarily_unavailable',category:'rate_limited'});
+   controller.signal.throwIfAborted();
+   const contextStart=clock();
+   const context=deps.loadContext?await deps.loadContext(identity.uid).catch(()=>({context:''})):await Promise.all([deps.getTodayMood(identity.uid,token).catch(()=>undefined),deps.getTodayContext?.(identity.uid,token).catch(()=>'')??Promise.resolve('')]).then(([mood,text])=>({mood,context:text}));
+   timeline.T5=clock();timing.server_context_ms=Math.max(0,timeline.T5-contextStart);
+   controller.signal.throwIfAborted();
+   const mood='mood'in context?normalizeMoodForPrompt(context.mood):undefined;
+   const moodText=mood?`\n\n今日のCheck（気分のみ・参考情報）: ${mood}\n必要な場合に限り自然に参考にし、ユーザーの状態を断定しないこと。`:'';
+   const prompt=`${CAMELLIA_SYSTEM_PROMPT}${CONVERSATION_MODEL_PROMPTS[modelId]}${moodText}${context.context}${ACTION_BRIDGE_INSTRUCTION}`;
+   const accept=req.headers.accept;
+   streaming=typeof accept==='string'&&accept.includes('text/event-stream')&&Boolean(deps.generateStream&&res.write&&res.end);
+   if(streaming){
+    res.status(200);res.setHeader('Content-Type','text/event-stream; charset=utf-8');res.setHeader('Cache-Control','no-cache, no-store, no-transform');res.setHeader('X-Accel-Buffering','no');res.flushHeaders?.();
+    emit({type:'start'});heartbeat=setInterval(()=>{if(!controller.signal.aborted)res.write?.(': keepalive\n\n');},10000);
+   }
+   started=clock();timeline.T6=started;timing.server_pre_generation_ms=Math.max(0,started-receivedAt);
+   const controls:GenerationControls={signal:controller.signal,onText:text=>emit({type:'delta',text}),onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
+   const generated=(await(streaming?deps.generateStream!:deps.generate)(buildGeminiContents(history,message),prompt,controls)).trim();
+   controller.signal.throwIfAborted();
+   const candidate=generated?parseConversationReply(generated,message):{reply:''};
+   const parsed=candidate.actionId&&!modelAllowsAction(modelId,message)?{reply:candidate.reply}:candidate;
+   if(!parsed.reply)throw Object.assign(new Error('EMPTY_GENERATION'),{code:'INVALID_RESPONSE'});
+   timeline.T9_server=clock();
+   const result={...parsed,...(deps.env.VERCEL_ENV==='preview'?{timeline}:{}),provider:'gemini',modelId,responseTimeMs:Math.max(0,clock()-started),timing:finishTiming()};
+   if(streaming){emit({type:'done',...result});res.end?.();}else return res.status(200).json(result);
+  }catch(error){
+   if(controller.signal.aborted)return;
+   const category=classifyChatError(error),result={error:'temporarily_unavailable',category,timing:finishTiming()};
+   if(streaming){emit({type:'error',...result});res.end?.();}
+   else return res.status(category==='rate_limited'?429:category==='timeout'?504:category==='invalid_request'?400:502).json(result);
+  }finally{if(heartbeat)clearInterval(heartbeat);res.off?.('close',disconnect);}
+ };
 }

@@ -1,5 +1,5 @@
 const transientNetworkCodes = new Set(['ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ECONNREFUSED', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_SOCKET']);
-const rejectedCodes = new Set<unknown>(['SAFETY_BLOCK', 'RESOURCE_EXHAUSTED', 'INVALID_ARGUMENT', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'API_KEY_INVALID', 400, 401, 403, 429]);
+const rejectedCodes = new Set<unknown>(['STREAM_INTERRUPTED', 'SAFETY_BLOCK', 'RESOURCE_EXHAUSTED', 'INVALID_ARGUMENT', 'UNAUTHENTICATED', 'PERMISSION_DENIED', 'API_KEY_INVALID', 400, 401, 403, 429]);
 
 /** Recognize transport errors without inspecting or logging exception messages. */
 export function isTransientNetworkError(error: unknown): boolean {

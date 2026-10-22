@@ -1,0 +1,100 @@
+{
+  "label": "Synthetic provider, real browser/HTTP/store; not live Gemini",
+  "summary": [
+    {
+      "width": 390,
+      "mode": "batch",
+      "firstVisibleMs": {
+        "median": 909.5,
+        "p90": 970,
+        "n": 6
+      },
+      "fullResponseMs": {
+        "median": 909.5,
+        "p90": 970,
+        "n": 6
+      },
+      "sendToRequestMs": {
+        "median": 13.5,
+        "p90": 28,
+        "n": 6
+      }
+    },
+    {
+      "width": 390,
+      "mode": "stream",
+      "firstVisibleMs": {
+        "median": 213.5,
+        "p90": 670,
+        "n": 6
+      },
+      "fullResponseMs": {
+        "median": 909.5,
+        "p90": 1081,
+        "n": 6
+      },
+      "sendToRequestMs": {
+        "median": 11.5,
+        "p90": 43,
+        "n": 6
+      }
+    },
+    {
+      "width": 1280,
+      "mode": "batch",
+      "firstVisibleMs": {
+        "median": 921.5,
+        "p90": 1836,
+        "n": 6
+      },
+      "fullResponseMs": {
+        "median": 921.5,
+        "p90": 1836,
+        "n": 6
+      },
+      "sendToRequestMs": {
+        "median": 13.0,
+        "p90": 28,
+        "n": 6
+      }
+    },
+    {
+      "width": 1280,
+      "mode": "stream",
+      "firstVisibleMs": {
+        "median": 217.5,
+        "p90": 868,
+        "n": 6
+      },
+      "fullResponseMs": {
+        "median": 912.5,
+        "p90": 1639,
+        "n": 6
+      },
+      "sendToRequestMs": {
+        "median": 11.5,
+        "p90": 21,
+        "n": 6
+      }
+    }
+  ],
+  "failureChecks": [
+    {
+      "case": "QA_FAIL",
+      "pass": true,
+      "partialAssistantPersisted": false
+    },
+    {
+      "case": "QA_SAFETY_LATE",
+      "pass": true,
+      "partialAssistantPersisted": false
+    },
+    {
+      "case": "reload mid-stream → explicit retry",
+      "pass": true,
+      "partialAssistantPersisted": false,
+      "duplicateUser": false
+    }
+  ],
+  "note": "Same synthetic provider; real HTTP/SSE/browser/store. n=6 per width/transport. Not real Gemini timing."
+}

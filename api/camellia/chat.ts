@@ -1,13 +1,11 @@
+import type {ChatApiResponse} from '../../lib/conversation/gemini-server.js';
 import { chatServerStatus, isGeminiEnabled } from '../../lib/conversation/gemini-server.js';
 type Request = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
 };
-type Response = {
-  setHeader: (key: string, value: string) => void;
-  status: (code: number) => { json: (value: unknown) => void };
-};
+type Response = ChatApiResponse;
 /** The public status probe must not initialize optional SDK/storage dependencies. */
 export default async function chat(request: Request, response: Response) {
   response.setHeader('Cache-Control', 'no-store');
@@ -31,11 +29,12 @@ export default async function chat(request: Request, response: Response) {
     return response
       .status(503)
       .json({ error: 'disabled', category: 'disabled' });
+  const receivedAt = Date.now();
   let initialized = false;
   try {
     const runtime = await import('../../lib/conversation/gemini-runtime.js');
     initialized = true;
-    return await runtime.default(request, response);
+    return await runtime.default(request, response, receivedAt);
   } catch (error) {
     // Never log request/SDK messages: they may contain user content or secrets.
     const code =

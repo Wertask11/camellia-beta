@@ -1,0 +1,29 @@
+{
+  "codeCommit": "691eb7fddf41587f032b683b6f2d59f975a39608",
+  "preview": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/",
+  "deploymentSucceededAt": "2026-10-22T08:49:16Z",
+  "ownerReported": {
+    "yuraBatchReply": "pass",
+    "yuraStreamingReply": "pass",
+    "yuraIncrementalDisplay": "pass",
+    "switchToLactoneReply": "pass",
+    "lactoneIncrementalDisplay": "pass"
+  },
+  "timingEvidence": {
+    "status": "not_observed",
+    "source": "PostHog project 594848, time-bounded metadata-only queries",
+    "queryWindowStart": "2026-10-22T08:49:16Z",
+    "queryWindowEnd": "2026-10-22T09:01:00Z",
+    "matchingEvents": 0,
+    "projectLatestEventAtQuery": "2026-10-22T08:40:04.212Z",
+    "projectLatestConversationEventAtQuery": "2026-10-22T07:29:04.775Z",
+    "clientDiagnosticRequested": true
+  },
+  "limitations": [
+    "Owner confirmation establishes working replies and incremental presentation, not exact latency or a specific foundation model.",
+    "No new live provider metadata or timing is available in this evidence record.",
+    "Missing telemetry is not attributed to a cause without evidence.",
+    "Synthetic browser A/B results are recorded separately and must not be represented as live Gemini timings."
+  ],
+  "productionDeployed": false
+}
