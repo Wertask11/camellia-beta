@@ -76,6 +76,23 @@ try{
   const history=await service.moderationHistory(moderator);assert.equal(history.audits[0].action,'dismiss');assert.ok(!JSON.stringify(history).includes('u-operator'));
   await assert.rejects(service.moderationHistory(alice),{code:'MODERATOR_REQUIRED'});
  });
+ await check('a report that she may not be eligible lets a moderator remove the text and stop the account; she cannot undo it herself',async()=>{
+  const carol={uid:'u-carol',moderator:false},dana={uid:'u-dana',moderator:false};
+  for(const who of [carol,dana])await service.join(who,'tired',{displayName:who===carol?'つばき':'さくら',guidelinesVersion:GUIDELINES_VERSION});
+  const posted=await service.write(carol,'tired',{text:'はじめまして。'});
+  await assert.rejects(service.report(dana,'post',posted.id,'女性ではない'),{code:'INVALID_INPUT'});
+  await service.report(dana,'post',posted.id,'対象外の利用者かもしれない');
+  const queue=await service.moderation(moderator);const item=queue.find(r=>r.targetId===posted.id);assert.equal(item.reason,'対象外の利用者かもしれない');
+  await assert.rejects(service.moderation(alice,{reportId:item.id,action:'suspend'}),{code:'MODERATOR_REQUIRED'});
+  await service.moderation(moderator,{reportId:item.id,action:'suspend'});
+  const access=(await db.doc('camellia_users/u-carol/admin/access').get()).data();
+  assert.equal(access.suspended,true);assert.equal(access.suspendedReason,'not_eligible');assert.equal(access.suspendedBy,'circle:u-operator');
+  assert.equal((await db.doc(`${base}/suspended/u-carol`).get()).data().reason,'not_eligible','listed on the SchoolPark admin screen');
+  assert.ok(!(await service.feed(dana,'tired')).posts.some(p=>p.id===posted.id&&p.text),'the text is removed');
+  assert.equal((await service.moderationHistory(moderator)).audits[0].action,'suspend');
+  const self=env.authenticatedContext('u-carol').firestore();
+  await assertFails(setDoc(doc(self,'camellia_users/u-carol/admin/access'),{suspended:false}));
+ });
  await check('Phase2A duplicate reports do not consume quota, unique report spam is bounded',async()=>{
   for(let i=0;i<10;i++)await service.report(alice,'post','page-00','その他');
   for(let i=1;i<10;i++)await service.report(alice,'post',`page-${i.toString().padStart(2,'0')}`,'その他');

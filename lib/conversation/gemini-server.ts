@@ -206,7 +206,7 @@ export function createGeminiChatHandler(deps: {
   let identity:{uid:string};
   try{identity=await deps.verifyToken(token);}catch(error){
    if(error instanceof EligibilityServiceError){console.error('camellia_eligibility_unavailable',{stage:error.stage});return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
-   if(error instanceof EligibilityError&&error.status===403)return res.status(403).json({error:error.code==='PROFILE_REQUIRED'?'profile_required':'authentication_required'});
+   if(error instanceof EligibilityError&&error.status===403)return res.status(403).json({error:error.code==='PROFILE_REQUIRED'?'profile_required':error.code==='SUSPENDED'?'suspended':error.code==='INVITE_REQUIRED'?'invite_required':'authentication_required'});
    return res.status(401).json({error:'authentication_required'});
   }
   timeline.T3=clock();timing.server_auth_ms=Math.max(0,timeline.T3-entered);

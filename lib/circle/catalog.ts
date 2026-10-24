@@ -38,6 +38,8 @@ export const REPORT_REASONS = [
   '危険な内容',
   'スパム',
   '不適切',
+  // Camellia is for women only. A moderator who confirms it can stop the account from the report.
+  '対象外の利用者かもしれない',
   'その他',
 ] as const;
 export const GUIDELINES_VERSION = '2026-10-16';
@@ -75,7 +77,7 @@ export type CircleReport = {
 };
 export type CircleAudit = {
   id: string;
-  action: 'remove' | 'dismiss';
+  action: 'remove' | 'dismiss' | 'suspend';
   note: string;
   targetId: string;
   targetKind: 'post' | 'comment';

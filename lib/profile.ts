@@ -11,5 +11,11 @@ export function currentAge(birthDate: string | undefined, now = new Date()) {
 }
 export function profileComplete(profile: Profile, now = new Date()) {
   const age = currentAge(profile.birthDate, now);
-  return Boolean(profile.name.trim() && age !== undefined && age >= MIN_AGE && age <= MAX_AGE && profile.womenServiceAcknowledged===true && typeof profile.agreedAt==='string' && Number.isFinite(Date.parse(profile.agreedAt)));
+  return Boolean(profile.name.trim() && age !== undefined && age >= MIN_AGE && age <= MAX_AGE && profile.womanSelfDeclared===true && typeof profile.agreedAt==='string' && Number.isFinite(Date.parse(profile.agreedAt)));
+}
+/** The rule before 2026-10-24, when the older "service for women" wording also counted. Analytics keep their
+ *  meaning with it: profile_view / profile_complete / needs_profile stay about a first profile, not about
+ *  someone confirming "I am a woman" once more. */
+export function firstProfileComplete(profile: Profile, now = new Date()) {
+  return profileComplete({ ...profile, womanSelfDeclared: profile.womanSelfDeclared === true || profile.womenServiceAcknowledged === true }, now);
 }

@@ -407,6 +407,11 @@ select {
 .profile-screen .profile-check input { width:20px; }
 .profile-screen textarea { border:1px solid var(--line); border-radius:12px; min-height:80px; padding:12px; }
 .profile-screen .primary { margin-top:20px; }
+.invite-screen form { display:grid; gap:12px; margin-top:12px; }
+.invite-screen input { min-width:0; width:100%; font-size:18px; letter-spacing:.12em; text-transform:uppercase; }
+.invite-screen .secondary-button { margin-top:20px; }
+.member-invite .invite-code { font-size:1.6rem; font-weight:700; letter-spacing:.14em; margin:8px 0 4px; }
+.member-invite-status { display:block; margin-top:8px; }
 .sheet { max-height: calc(100dvh - 24px); overflow-y:auto; padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
 .bottom-nav { padding-bottom:env(safe-area-inset-bottom); height:calc(76px + env(safe-area-inset-bottom)); }
 .composer input { min-width:0; font-size:16px; }

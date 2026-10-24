@@ -67,6 +67,20 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 
 [振り返りと事実・仮説、書き出し・削除の範囲](docs/reflection-phase2d.md)。人物の評価・順位付け・自動共有は追加しません。
 
+### 女性限定と招待制（2026-10-24）
+
+Camelliaは18〜45歳の女性に限ったサービスです。プロフィールで「私は女性です（自己申告）」を求めます（以前の「女性向けサービスであることの確認」だけの方には一度だけ確認し直してもらいます。記録はそのまま）。
+
+招待制・招待コード・利用停止は、SchoolParkのbackend（`backend/camellia-access.js`）が決め、運営はSchoolParkの管理画面（Camellia →「招待と利用停止」）から操作します。招待制は運営が入れるまで始まりません。入れる前にCamelliaの記録があった方は、そのまま使えます（Firestoreの`createTime`で判定）。
+
+- 招待リンク：`/?invite=コード&utm_source=invite&utm_campaign=配り先`。コードはログインまで端末に残し、URLからは消します。PostHogへはコードを送らず、結果と配り先名だけを送ります。
+- 利用者は友だちを3人まで招待できます（My →「友だちを招待する」）。
+- サーバー側では、会話とCircleの前に`lib/server/eligibility.ts`が同じ判定をします（停止中・招待が必要な人は403）。画面の判定は表示のためだけです。
+- Circleの通報に「対象外の利用者かもしれない」を追加し、運営は通報から「文章を削除し、利用を止める」を選べます。停止はSchoolParkの管理画面から戻せます。
+- 端末内だけで動く機能（Check等）は画面で止めています。サーバーの判定が無い分、ここは自己申告と同じ強さです。
+
+確認：`node tests/invite-access-cases.mjs`（`npm test`に含む）、`node tests/invite-browser.mjs`（Chromium・合成認証。外部通信なし）、`npm run test:firestore`（Circleの停止）。
+
 ### Analytics監査と確認用Preview
 
 送信/再送・Privacy・全イベント・未完了の実着信Gateは [2026-10-21 Analytics監査](docs/analytics-audit-20261021.md) と [イベント表](docs/analytics-event-inventory-20261021.md) を参照してください。本人のログイン確認は [固定Preview](docs/preview-workflow.md) を使います。HTTP受付、PostHog着信、Dashboard表示は別々に確認します。

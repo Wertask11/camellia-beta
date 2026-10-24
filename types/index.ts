@@ -50,7 +50,11 @@ export interface Profile {
   name: string;
   age: string;
   birthDate?: string;
+  /** Older wording: "this is a service for women". Kept for records saved before 2026-10-24. */
   womenServiceAcknowledged?: boolean;
+  /** "I am a woman" (self-declared). Required from 2026-10-24; Camellia is for women only. */
+  womanSelfDeclared?: boolean;
+  womanSelfDeclaredAt?: string;
   agreedAt?: string;
   agreedVersion?: string;
   region?: string;
@@ -260,7 +264,8 @@ export type AnalyticsEventName =
   | 'tree_leaf_open'
   | 'tree_leaf_edit'
   | 'tree_reflection_add'
-  | 'tree_archive';
+  | 'tree_archive'
+  | 'invite_view' | 'invite_submit' | 'invite_accepted' | 'access_suspended_view' | 'member_invite_open' | 'member_invite_share';
 export interface AnalyticsEvent {
   id: string;
   name: AnalyticsEventName;

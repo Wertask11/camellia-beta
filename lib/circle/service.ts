@@ -633,7 +633,7 @@ export class CircleService {
     const id = typeof body.reportId === 'string' ? body.reportId : '';
     requireValue(/^[\w-]{1,260}$/.test(id));
     const action = body.action ?? 'remove';
-    requireValue(action === 'remove' || action === 'dismiss');
+    requireValue(action === 'remove' || action === 'dismiss' || action === 'suspend');
     const note = typeof body.note === 'string' ? body.note.trim() : '';
     requireValue(Array.from(note).length <= 200);
     const report = this.col('circle_reports').doc(id);
@@ -649,9 +649,20 @@ export class CircleService {
       const original = await tx.get(target);
       requireValue(original.exists, 404, 'NOT_FOUND');
       const now = new Date().toISOString();
-      if (action === 'remove')
+      if (action !== 'dismiss')
         tx.update(target, { text: '', status: 'removed', updatedAt: now });
-      if (action === 'remove') this.changed(tx, original.data()!.circleId);
+      if (action !== 'dismiss') this.changed(tx, original.data()!.circleId);
+      /* Stop the author's account as well. Same documents as SchoolPark's admin screen
+         (backend/camellia-access.js), so the stop shows up and can be undone there. Records are kept. */
+      if (action === 'suspend') {
+        const authorUid = String(original.data()!.uid ?? '');
+        requireValue(/^[\w:-]{1,128}$/.test(authorUid), 404, 'NOT_FOUND');
+        const reason = data.reason === '対象外の利用者かもしれない' ? 'not_eligible' : 'terms';
+        const at = Date.now();
+        tx.set(this.db.doc(`camellia_users/${authorUid}/admin/access`), { suspended: true, suspendedReason: reason, suspendedAt: at, suspendedBy: `circle:${identity.uid}` }, { merge: true });
+        tx.set(this.col('suspended').doc(authorUid), { uid: authorUid, camelliaId: '', reason, suspendedAt: at, suspendedBy: `circle:${identity.uid}` });
+        tx.set(this.col('access_audit').doc(), { action: 'user.suspend', by: `circle:${identity.uid}`, uid: authorUid, reason, reportId: id, at });
+      }
       tx.update(report, {
         status: action === 'dismiss' ? 'dismissed' : 'resolved',
         resolvedAt: now,

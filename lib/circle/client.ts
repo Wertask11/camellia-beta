@@ -53,6 +53,8 @@ export async function circleRequest(
     const errors: Record<string, string> = {
       LOGIN_REQUIRED: 'もう一度ログインしてください。',
       PROFILE_REQUIRED: 'Myで利用開始時の設定を確認してください。',
+      INVITE_REQUIRED: '招待コードを入力してから利用できます。',
+      SUSPENDED: 'このアカウントの利用を止めています。',
       NOT_FOUND: 'この文章は削除されたか、今は表示できません。',
       NOT_AVAILABLE: 'この文章は今は表示できません。',
       MEMBERSHIP_REQUIRED: '参加してから利用できます。',

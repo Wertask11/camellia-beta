@@ -747,7 +747,7 @@ export function CircleScreen({
                   }
                 />
               </label>
-              {(['dismiss', 'remove'] as const).map((action) => (
+              {(['dismiss', 'remove', 'suspend'] as const).map((action) => (
                 <button
                   key={action}
                   disabled={busy}
@@ -755,7 +755,9 @@ export function CircleScreen({
                     void run(async () => {
                       if (
                         !window.confirm(
-                          action === 'remove'
+                          action === 'suspend'
+                            ? '文章を削除し、投稿した人の利用を止めますか？記録は消えません。SchoolParkの管理画面から戻せます。'
+                            : action === 'remove'
                             ? '対象の文章を削除して対応記録に残しますか？'
                             : '本文を残し、対応済みとして記録しますか？',
                         )
@@ -773,6 +775,8 @@ export function CircleScreen({
                 >
                   {action === 'dismiss'
                     ? '削除せず対応済みにする'
+                    : action === 'suspend'
+                    ? '文章を削除し、利用を止める'
                     : '文章を運営削除する'}
                 </button>
               ))}
@@ -795,7 +799,7 @@ export function CircleScreen({
           {audits.map((item) => (
             <article className="panel" key={item.id}>
               <p>
-                {item.action === 'dismiss' ? '削除せず対応済み' : '文章を削除'}{' '}
+                {item.action === 'dismiss' ? '削除せず対応済み' : item.action === 'suspend' ? '文章を削除し、利用を停止' : '文章を削除'}{' '}
                 ·{' '}
                 {new Date(item.createdAt).toLocaleString('ja-JP', {
                   timeZone: 'Asia/Tokyo',
