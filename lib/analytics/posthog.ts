@@ -56,6 +56,14 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   tree_leaf_edit: [],
   tree_reflection_add: [],
   tree_archive: [],
+  /** Invites. Never the code itself: only the result, whether it came from a link, and the channel name
+   *  the operator chose (instagram_1027). Member invites carry no channel. */
+  invite_view: ['from_link'],
+  invite_submit: ['result', 'from_link'],
+  invite_accepted: ['invite_kind', 'invite_channel'],
+  access_suspended_view: [],
+  member_invite_open: [],
+  member_invite_share: ['share_method'],
 };
 let initialized = false;
 let identifiedId = '';
@@ -285,12 +293,16 @@ const ENUMS: Record<string, readonly string[]> = {
   auth_flow: AUTH_FLOWS, stage: AUTH_STAGES, reason: AUTH_REASONS,
   reflection_stage: ['first_day','yesterday_compare','recent','weekly'],
   value: ['yes','some','no'], category: ['family','friend','love','work','learning','other'],
+  result: ['accepted','already','not_found','used_up','expired','revoked','own','invalid','rate_limited','suspended','error'],
+  invite_kind: ['operator','member'], share_method: ['share','copy'],
 };
 const COUNTS: Record<string, number> = { history_days: 36500, leafAgeDays: 36500, tagCount: 8 };
 function validProperty(key: string, value: unknown) {
   if (ENUMS[key]) return typeof value === 'string' && ENUMS[key].includes(value);
   if (key in COUNTS) return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= COUNTS[key];
-  if (['hasDetails','authenticated','needs_profile'].includes(key)) return typeof value === 'boolean';
+  if (['hasDetails','authenticated','needs_profile','from_link'].includes(key)) return typeof value === 'boolean';
+  // Same shape as a campaign label (attribution.ts): no prose, URLs, e-mail addresses or phone numbers.
+  if (key === 'invite_channel') return typeof value === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(value) && !/\d{7}/.test(value);
   if (key === 'cardId') return TAROT_CARDS.some(card => card.id === value);
   if (key === 'actionId') return ACTIONS.some(action => action.id === value);
   return true;

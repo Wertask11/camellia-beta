@@ -162,6 +162,8 @@ export function mapCamelliaState(
   if (state.profile.birthDate) root.birthDate = state.profile.birthDate;
   if (state.profile.agreedAt) root.agreedAt = state.profile.agreedAt;
   if (state.profile.agreedVersion) root.agreedVersion = state.profile.agreedVersion;
+  // SchoolPark's backend lets only women who declared it hand out invites (backend/camellia-access.js).
+  if (state.profile.womanSelfDeclared === true) root.womanSelfDeclared = true;
   if (passport) root.passport = passport;
   const profile = state.profile;
   const basic: Record<string, unknown> = {
@@ -174,6 +176,7 @@ export function mapCamelliaState(
     purposes: profile.purposes || [],
     concerns: profile.concerns || '',
     womenServiceAcknowledged: profile.womenServiceAcknowledged === true,
+    womanSelfDeclared: profile.womanSelfDeclared === true,
     interests: profile.interests,
     periodEnabled: profile.periodEnabled,
   };

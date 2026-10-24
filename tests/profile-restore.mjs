@@ -5,14 +5,14 @@ const root=fileURLToPath(new URL('..',import.meta.url));
 const server=await createServer({configFile:false,root,resolve:{alias:{'@':root}},server:{middlewareMode:true},appType:'custom'});
 try{
  const {emptyState,migrate,load,STORAGE_KEY}=await server.ssrLoadModule('/hooks/useCamelliaStore.ts');
- const {currentAge,profileComplete}=await server.ssrLoadModule('/lib/profile.ts');
+ const {currentAge,profileComplete,firstProfileComplete}=await server.ssrLoadModule('/lib/profile.ts');
  const {restoreArchive,hasPersonalData,remoteContainedInLocal}=await server.ssrLoadModule('/lib/schoolpark/restore.ts');
  const {mapCamelliaState}=await server.ssrLoadModule('/lib/schoolpark/map.ts');
  const now=new Date('2026-10-06T15:00:00Z');
  assert.equal(currentAge('2008-10-07',now),18);assert.equal(currentAge('2008-10-07',new Date(now.getTime()-1)),17);
  assert.equal(currentAge('1980-10-07',now),46);assert.equal(currentAge('1980-10-07',new Date(now.getTime()-1)),45);
  for(const invalid of ['2026-02-30','2100-01-01','bad'])assert.equal(currentAge(invalid,now),undefined);
- const state=emptyState();state.profile={...state.profile,name:'Synthetic user',birthDate:'2000-10-07',womenServiceAcknowledged:true,agreedAt:'2026-10-01T00:00:00Z'};assert.ok(profileComplete(state.profile,now));
+ const state=emptyState();state.profile={...state.profile,name:'Synthetic user',birthDate:'2000-10-07',womenServiceAcknowledged:true,agreedAt:'2026-10-01T00:00:00Z'};assert.equal(profileComplete(state.profile,now),false,'the older wording alone asks once more');assert.equal(firstProfileComplete(state.profile,now),true,'but it is not a first profile: profile_view/profile_complete keep their meaning');state.profile.womanSelfDeclared=true;state.profile.womanSelfDeclaredAt='2026-10-24T00:00:00Z';assert.ok(profileComplete(state.profile,now));assert.equal(mapCamelliaState(state).find(x=>x.path==='').data.womanSelfDeclared,true,'the backend reads the declaration from the root record');
  const at='2026-10-01T00:00:00Z';
  state.checkins=[{id:'check',mood:3,sleep:0,periodDays:0,createdAt:at,updatedAt:at}];
  state.actions=[{id:'action',actionId:'music',title:'Music',category:'PLAY',status:'completed',createdAt:at,updatedAt:at}];

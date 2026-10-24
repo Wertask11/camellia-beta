@@ -7,11 +7,12 @@ import {LIVE_DESTINATIONS} from '@/lib/features';
 import { ACTIONS } from '@/data/actions';
 import { generateInsights } from '@/lib/insight/engine';
 import { AccountSettings } from '@/components/AccountSettings';
+import { MemberInvite } from '@/components/MemberInvite';
 import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
 import type { CamelliaState } from '@/types';
 
-export function MyScreen({onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onTrack?:(name:'member_invite_open'|'member_invite_share',properties?:Record<string,string>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
@@ -39,6 +40,7 @@ export function MyScreen({onCircles,onPlaces,state,devNight,onEditProfile,onForg
     <details className="my-profile"><summary>プロフィール</summary><section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section></details>
     <details className="account-records"><summary>アカウントと記録 <span>{sync.phase==='saved'?'保存済み':sync.phase==='error'?'確認が必要':sync.phase==='pending'?'保存中':'確認中'}</span></summary>
     <AccountSettings distinctId={state.profile.id}/>
+    <MemberInvite onTrack={onTrack}/>
     <section className="panel"><h2>記録の保存</h2><p>{sync.phase==='saved'?'アカウントへの保存を確認しました。':sync.phase==='pending'?'端末の記録をアカウントへ保存しています。':sync.phase==='error'?'この端末の記録は残っています。アカウントへの保存は、まだ確認できていません。':'アカウントへの保存状態を確認しています。'}</p>{sync.at&&<small>最終確認：{new Date(sync.at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})}</small>}{sync.phase==='error'&&<><p role="alert">{sync.error==='SYNC_CONFLICT'?'別端末の更新があるため、自動で上書きしていません。再読み込みして記録を確認してください。':'通信を確認して、もう一度お試しください。'}</p><button className="secondary-button" onClick={()=>void flushSchoolParkSync()}>保存をもう一度確認する</button></>}</section>
     {backups.length>0&&<section className="panel"><h2>別に残した端末の記録</h2><p>アカウントの記録を開いたときの控えが{backups.length}件あります。</p><button className="secondary-button" onClick={exportBackups}>控えをファイルに保存する</button></section>}
     </details>

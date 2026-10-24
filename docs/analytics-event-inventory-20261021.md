@@ -56,6 +56,12 @@
 | tree_leaf_edit | `screens/TreeScreen.tsx:26` | 葉の編集を保存 | なし | 実装経路あり / allowlist / 今回の実着信は未検証 | 指定4件で未使用 |
 | tree_reflection_add | `hooks/useCamelliaStore.ts:103` | 本人が振り返りを保存。本文なし | なし | 実装経路あり / allowlist / 今回の実着信は未検証 | 指定4件で未使用 |
 | tree_archive | `screens/TreeScreen.tsx:34` | 思い出の葉へ変更 | なし | 実装経路あり / allowlist / 今回の実着信は未検証 | 指定4件で未使用 |
+| invite_view | `screens/InviteScreen.tsx` | 招待コード入力画面の表示（2026-10-24追加）。セッション内1回 | from_link（リンクのコードが入っているか） | 実装経路あり / allowlist / 未着信。コード本体は送らない | 指定4件で未使用 |
+| invite_submit | `app/page.tsx`（リンクのコード）<br>`screens/InviteScreen.tsx`（入力） | 招待コードを確かめた結果 | result（accepted/already/not_found/used_up/expired/revoked/own/invalid/rate_limited/suspended/error）, from_link | 実装経路あり / allowlist / 未着信。コード本体は送らない | 指定4件で未使用 |
+| invite_accepted | `app/page.tsx` | 招待コードで入れたとき | invite_kind（operator/member）, invite_channel（運営が付けた配り先名。英字で始まり数字7連続なし。利用者の招待は無し） | 実装経路あり / allowlist / 未着信 | 指定4件で未使用 |
+| access_suspended_view | `screens/InviteScreen.tsx` | 利用停止の画面の表示。セッション内1回 | なし | 実装経路あり / allowlist / 未着信 | 指定4件で未使用 |
+| member_invite_open | `components/MemberInvite.tsx` | Myで自分の招待コードを表示・作成。セッション内1回 | なし | 実装経路あり / allowlist / 未着信。コード本体は送らない | 指定4件で未使用 |
+| member_invite_share | `components/MemberInvite.tsx` | 招待を共有・コピー | share_method（share/copy） | 実装経路あり / allowlist / 未着信 | 指定4件で未使用 |
 
 共通項目: UTM（文字種制限）、$insert_id、event_schema=1、app_version=beta-v3、usage_cohort、機能利用有無の真偽、$process_person_profile=false。匿名のprofile由来distinct_idと限定したSDK端末/ページ情報も付与。sessionIdは端末内の重複防止専用で外部送信しません。
 

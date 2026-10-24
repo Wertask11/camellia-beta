@@ -115,7 +115,7 @@ with sync_playwright() as p:
         assert events().count('profile_view') == 1
         page.get_by_label('名前／ニックネーム').fill('テスト')
         page.get_by_label('生年月日').fill('2000-01-01')
-        page.get_by_label('女性向けウェルビーイングサービスであることを確認しました（自己申告）').check()
+        page.get_by_label('私は女性です（自己申告）').check()
         button('今日の私をCheckする').click()
         page.locator('.today--unchecked').wait_for()
         names = events()

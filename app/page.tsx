@@ -12,7 +12,7 @@ import { ConversationWorkspace } from '@/screens/ConversationWorkspace';
 import { DiscoverScreen } from '@/screens/DiscoverScreen';
 import { MyScreen } from '@/screens/MyScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
-import { profileComplete } from '@/lib/profile';
+import { firstProfileComplete, profileComplete } from '@/lib/profile';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { PrivacyScreen } from '@/screens/PrivacyScreen';
 import { FortuneScreen } from '@/screens/FortuneScreen';
@@ -28,6 +28,8 @@ import { applyLessExplain, readLessExplain } from '@/lib/today/display';
 import { firstInSession } from '@/lib/analytics/once';
 import { WelcomeScreen } from '@/screens/WelcomeScreen';
 import { AccountScreen } from '@/screens/AccountScreen';
+import { InviteScreen, SuspendedScreen } from '@/screens/InviteScreen';
+import { cachedAccess, captureInviteFromUrl, clearPendingInvite, fetchAccess, pendingInvite, redeemInvite, rememberAccess, type AccessStatus, type InviteResult } from '@/lib/auth/access';
 import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { AuthFlowError, finishAuthCallback, logoutCamellia } from '@/lib/auth/camellia';
@@ -65,6 +67,10 @@ export default function Page() {
   const [accountError,setAccountError]=useState('');
   const [authNotice,setAuthNotice]=useState('');
   const [editingProfile,setEditingProfile]=useState(false);
+  /* Women only, by invite (lib/auth/access.ts). status null = unknown (offline, server waking up): let her
+     in; the server checks again before a conversation or Circle. */
+  const [access,setAccess]=useState<{uid:string;status:AccessStatus|null;inviteResult?:InviteResult}>();
+  useEffect(()=>{captureInviteFromUrl();},[]);
   const callbackHandled=useRef(false);
   const [tab, setTab] = useState<MainTab>('today');
   const [category, setCategory] = useState<Category>();
@@ -113,7 +119,9 @@ export default function Page() {
   /* profile_view：はじめてのプロフィール入力が実際に表示されたとき、1回だけ。
      login_success → profile_view → profile_complete で、入力の手前で止まった人が分かる。
      My からの編集は数えない。StrictMode の二重実行と再読み込みは sessionStorage で防ぐ。 */
-  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !editingProfile && !profileComplete(store.state.profile));
+  const accessFor=accountUser&&access?.uid===accountUser.uid?access.status:undefined;
+  const accessBlocked=accessFor===undefined||Boolean(accessFor?.suspended||accessFor?.needsInvite);
+  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !accessBlocked && !editingProfile && !firstProfileComplete(store.state.profile));
   useEffect(() => {
     if (!viewingPublicPlaceDemo() && showingFirstProfile && firstInSession('camellia-profile-view')) store.track('profile_view');
   }, [showingFirstProfile, store.track, placeDemo]);
@@ -155,6 +163,32 @@ export default function Page() {
       const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry('account');
     });
   },[store.ready,accountReady,store.state.profile.id,store.state.profile,store.state.onboardingComplete]);
+  const accessStarted=useRef('');
+  useEffect(()=>{
+    if(!accountReady||accountError||!accountUser||accessStarted.current===accountUser.uid)return;
+    const uid=accountUser.uid;accessStarted.current=uid;let settled=false;
+    // Answers for someone who has since logged out are dropped.
+    const current=()=>accessStarted.current===uid;
+    const settle=(status:AccessStatus|null,inviteResult?:InviteResult)=>{if(!current())return;settled=true;if(status)rememberAccess(uid,status);setAccess({uid,status,inviteResult});};
+    const known=cachedAccess(uid);
+    if(known&&!known.needsInvite&&!known.suspended)settle(known);
+    // Nobody waits more than a few seconds on a sleeping server; the later answer still applies.
+    const wait=setTimeout(()=>{if(!settled&&current())setAccess({uid,status:known});},5000);
+    void (async()=>{
+      let status=await fetchAccess(),inviteResult:InviteResult|undefined;
+      const code=pendingInvite();
+      // A code from a link is used once she is logged in, also while invites are off (it records where she came from).
+      if(code&&status&&!status.suspended&&!status.admitted){
+        const answer=await redeemInvite(code);inviteResult=answer.result;
+        store.track('invite_submit',{result:answer.result,from_link:true});
+        if(answer.result==='accepted'){store.track('invite_accepted',{invite_kind:answer.kind??'operator',...(answer.label?{invite_channel:answer.label}:{})});status=await fetchAccess()??{...status,admitted:true,needsInvite:false};}
+        if(answer.result!=='error'&&answer.result!=='rate_limited')clearPendingInvite();
+      }else if(code&&status?.admitted)clearPendingInvite();
+      clearTimeout(wait);
+      if(status)settle(status,inviteResult);else if(!settled&&current())setAccess({uid,status:known});
+    })();
+  },[accountReady,accountError,accountUser,store.track]);
+  const logoutToAccount=()=>{setAccountReady(false);accessStarted.current='';void logoutCamellia().catch(()=>{}).finally(()=>{setAccess(undefined);setAccountUser(null);setEntry('account');setAccountReady(true);});};
   // Successful auth belongs to the restored profile, not the callback effect's stale pre-login closure.
   useEffect(()=>{
     if(!pendingAuthAnalytics||sentAuthAnalytics.current===pendingAuthAnalytics||!accountReady||accountError||!accountUser||store.storageError)return;
@@ -162,7 +196,7 @@ export default function Page() {
     const {method,flow,linked}=pendingAuthAnalytics;
     captureAuthEvent('auth_returned',{method,auth_flow:flow},store.state.profile.id);
     if(linked)captureAuthEvent('account_link_success',{auth_method:method},store.state.profile.id);
-    else captureAuthEvent('login_success',{method,needs_profile:!profileComplete(store.state.profile)},store.state.profile.id);
+    else captureAuthEvent('login_success',{method,needs_profile:!firstProfileComplete(store.state.profile)},store.state.profile.id);
   },[pendingAuthAnalytics,accountReady,accountError,accountUser,store.storageError,store.state.profile]);
   if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
   if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage}/>;
@@ -189,7 +223,13 @@ export default function Page() {
   }
   if(showWelcome)return <WelcomeScreen onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period});setEntry('account');}}/>;
   if(!accountUser)return <AccountScreen returning={returning} notice={authNotice} onBack={returning?undefined:()=>setEntry('welcome')} onSelect={method=>{setAuthNotice('');captureAuthEvent('auth_method_selected',{method,auth_method:method},store.state.profile.id);}} onAuthReturned={method=>{popupAuthReturned.current=method;}} onLoginSuccess={method=>{popupAuthReturned.current=undefined;setPendingAuthAnalytics({method,flow:'popup'});}} onLoginFailure={(method,reason,stage)=>{if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup'},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage},store.state.profile.id);}} onContinue={()=>setEntry('app')}/>;
-  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!profileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
+  if(accessFor===undefined)return <output className="loading">Camelliaの記録を確認しています…</output>;
+  if(accessFor?.suspended)return <div className="app-shell"><SuspendedScreen onLogout={logoutToAccount} onTrack={name=>store.track(name)}/></div>;
+  if(accessFor?.needsInvite)return <div className="app-shell"><InviteScreen initialCode={pendingInvite()} initialResult={access?.inviteResult} onTrack={(name,properties)=>store.track(name,properties)} onLogout={logoutToAccount} onAccepted={result=>{
+    if(result.kind)store.track('invite_accepted',{invite_kind:result.kind,...(result.label?{invite_channel:result.label}:{})});
+    clearPendingInvite();const status={...accessFor,admitted:true,needsInvite:false};rememberAccess(accountUser.uid,status);setAccess({uid:accountUser.uid,status});
+  }}/></div>;
+  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!firstProfileComplete(store.state.profile))store.track('profile_complete');store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   const openAction = (r: Recommendation) => {
     if (r.action.opens === 'camellia') {
       setFeature(undefined);
@@ -358,7 +398,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
+        <MyScreen onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}

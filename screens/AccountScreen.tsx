@@ -148,6 +148,7 @@ export function AccountScreen({
             <button className="schoolpark-help" onClick={() => setShowSchoolParkInfo(true)}>
               SchoolParkを利用している方はこちら <span>→ 連携について</span>
             </button>
+            <p className="account-policy account-eligibility">Camelliaは、18〜45歳の女性に限ったサービスです。</p>
             <p className="account-policy account-consent">ログインまたは登録することで、<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したものとみなします。</p>
             {(notice || error) && <p className="auth-error" role="alert">{notice || error}</p>}
           </>
