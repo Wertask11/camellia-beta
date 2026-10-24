@@ -22,7 +22,8 @@ export function MemberInvite({onTrack}:{onTrack?:(name:'member_invite_open'|'mem
     }catch(error){setMessage(ERRORS[(error as {code?:string}).code??'']??'いまは表示できません。通信を確認して、もう一度お試しください。');}
     finally{setBusy(false);}
   };
-  const text=invite?`Camelliaに招待します。18〜45歳の女性に限ったウェルビーイングのサービスです。\n招待コード：${formatInviteCode(invite.code)}\n${invite.url}`:'';
+  // Same wording as the operator's invite message on SchoolPark's admin screen.
+  const text=invite?`Camelliaに招待します 🌸${invite.url}`:'';
   const share=async()=>{
     if(!invite)return;
     try{
