@@ -77,7 +77,7 @@ try{
  await click('招待コードを作る');
  assert.ok(host.textContent.includes('Q4RT-8WXY'));assert.ok(host.textContent.includes('あと2人招待できます'));
  await click('招待を送る');
- assert.ok(shared.text.includes('Q4RT-8WXY')&&shared.text.includes('utm_source=member_invite')&&shared.text.includes('女性に限った'));
+ assert.equal(shared.text,'Camelliaに招待します 🌸https://camellia-beta.vercel.app/?invite=Q4RT8WXY&utm_source=member_invite');
  assert.deepEqual(tracked.slice(-2),[['member_invite_open',undefined],['member_invite_share',{share_method:'share'}]]);
  console.log('PASS a member creates one code on request and shares it');
 
