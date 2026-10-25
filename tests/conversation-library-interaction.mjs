@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 const dom=new Window({url:'http://localhost/'});
 for(const key of ['window','document','HTMLElement','HTMLInputElement','Event','MouseEvent','localStorage','sessionStorage'])globalThis[key]=key==='window'?dom:dom[key];
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+// The reaction's moment before her reply (about 1.5s) is not what this test is about (tests/reaction-browser.mjs is): run it at once.
+const realSetTimeout=globalThis.setTimeout;globalThis.setTimeout=(fn,ms,...rest)=>realSetTimeout(fn,ms>=300&&ms<=1500?0:ms,...rest);
 const {createRoot}=await import('react-dom/client');
 const root=fileURLToPath(new URL('..',import.meta.url));
 const server=await createServer({configFile:false,root,resolve:{alias:{'@':root}},server:{middlewareMode:true},appType:'custom',plugins:[{name:'isolated-storage-test',enforce:'pre',resolveId(id){if(id.includes('schoolpark/sync'))return '\0sync';if(id.includes('analytics/posthog'))return '\0analytics';},load(id){if(id==='\0sync')return 'export const syncToSchoolPark=()=>{};export const deleteSyncedCamelliaData=async()=>{};export const prepareSchoolParkAccount=async s=>s;';if(id==='\0analytics')return 'export const forwardEvent=()=>{};export const resetAnalyticsIdentity=()=>{};';}}]});
