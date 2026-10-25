@@ -13,18 +13,19 @@ try{
  const {validConversationEntry}=await server.ssrLoadModule('/lib/conversation/entries.ts');
  const analytics=await server.ssrLoadModule('/lib/analytics/posthog.ts');
 
- assert.deepEqual(Object.values(REACTION_EMOJI),['💓','😀','👏','👍']);
+ assert.deepEqual(Object.values(REACTION_EMOJI),['💓','😀','👏','👍','😭']);
  assert.equal(safeReaction('clap','今日はプレゼンを最後までやりきった'),'clap');
- assert.equal(safeReaction('none','明日の天気は？'),undefined);
- assert.equal(safeReaction('party','楽しい'),undefined,'only the four');
- for(const painful of ['母が亡くなった','仕事がつらい','眠れないし不安','失恋して最悪'])assert.equal(safeReaction('smile',painful),'heart',painful);
- assert.equal(safeReaction('heart','仕事がつらい'),'heart');
+ assert.equal(safeReaction('none','明日の天気は？'),'heart','every message gets one; 💓 when the model gave none');
+ assert.equal(safeReaction('party','楽しい'),'heart','only the five');
+ for(const painful of ['母が亡くなった','仕事がつらい','眠れないし不安','失恋して最悪','しんどい'])for(const chosen of ['smile','heart','none'])assert.equal(safeReaction(chosen,painful),'cry',painful);
+ assert.equal(safeReaction('cry','ちょっと疲れた'),'cry','the model may choose 😭 itself');
  assert.deepEqual(Object.keys(CONVERSATION_RESPONSE_SCHEMA.properties),['reaction','reply','actionId'],'the reaction is written first, so it can be shown first');
- console.log('PASS only 💓😀👏👍, and a painful message gets 💓 at most');
+ console.log('PASS only 💓😀👏👍😭, and a painful message always gets 😭');
 
  assert.deepEqual(parseConversationReply('{"reaction":"thumbs","reply":"いい考えだね。","actionId":null}','この方法でやってみる'),{reply:'いい考えだね。',reaction:'thumbs'});
- assert.deepEqual(parseConversationReply('{"reaction":"none","reply":"そうなんだね。","actionId":null}','明日の予定'),{reply:'そうなんだね。'});
- assert.deepEqual(parseConversationReply('{"reply":"older shape still works","actionId":null}','x'),{reply:'older shape still works'});
+ assert.deepEqual(parseConversationReply('{"reaction":"none","reply":"そうなんだね。","actionId":null}','明日の予定'),{reply:'そうなんだね。',reaction:'heart'});
+ assert.deepEqual(parseConversationReply('{"reply":"older shape still works","actionId":null}','x'),{reply:'older shape still works',reaction:'heart'});
+ assert.equal(CONVERSATION_RESPONSE_SCHEMA.properties.reaction.enum.includes('none'),false,'the model must pick one');
  assert.equal(partialReaction('{"reaction":"cl'),undefined,'not before the value is complete');
  assert.equal(partialReaction('{"reaction":"clap","re'),'clap');
  assert.equal(partialReply('{"reaction":"clap","reply":"すごい、最後まで'),'すごい、最後まで','the reply preview still works after the reaction');
@@ -55,10 +56,10 @@ try{
  assert.deepEqual(happy.written.map(e=>e.type),['start','reaction','delta','done']);
  assert.equal(happy.written[1].reaction,'smile');assert.equal(happy.written.at(-1).reaction,'smile');
  const sad=await run('最近ずっとつらい');
- assert.equal(sad.written[1].reaction,'heart');assert.equal(sad.written.at(-1).reaction,'heart','the final answer follows the same rule');
+ assert.equal(sad.written[1].reaction,'cry');assert.equal(sad.written.at(-1).reaction,'cry','the final answer follows the same rule');
  const urgent=await run('死にたい');
  assert.equal(urgent.written[0].json.safety,true);assert.equal(urgent.written[0].json.reaction,undefined,'no reaction on an urgent safety reply');
- console.log('PASS the server sends the reaction first, softens it on painful messages, and adds none to safety replies');
+ console.log('PASS the server sends the reaction first, 😭 on painful messages, and none on safety replies');
 
  const at=new Date().toISOString();
  assert.equal(validConversationEntry({id:'u',role:'user',text:'x',createdAt:at,reaction:'clap'}),true);

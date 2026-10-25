@@ -59,7 +59,7 @@ const server = await createServer({
       /* Synthetic invite/suspension answers (lib/auth/access.ts). Cookie ux-access=invite|suspended|open
          chooses the state; the code K7QM2XPA is accepted. Nothing leaves this machine. */
       /* Synthetic conversation: the reaction first, then the reply in pieces (lib/conversation/stream.ts).
-         Nothing is sent to any provider. A message with つらい gets 💓 like the real server. */
+         Nothing is sent to any provider. A message with つらい gets 😭 like the real server. */
       s.middlewares.use((req, res, next) => {
         if (req.url?.split('?')[0] !== '/api/camellia/chat') return next();
         res.setHeader('Content-Type', req.method === 'GET' ? 'application/json' : 'text/event-stream');
@@ -67,8 +67,8 @@ const server = await createServer({
         let raw = ''; req.on('data', chunk => { raw += chunk; });
         req.on('end', () => {
           const message = String(JSON.parse(raw || '{}').message ?? ''), modelId = JSON.parse(raw || '{}').modelId ?? 'yura';
-          const reaction = /つらい/.test(message) ? 'heart' : /できた|やった|やりき/.test(message) ? 'clap' : 'smile';
-          const reply = reaction === 'heart' ? 'そうだったんだね。話してくれてありがとう。' : reaction === 'clap' ? 'すごい、最後までやりきったんだね。' : 'それはうれしいね。';
+          const reaction = /つらい/.test(message) ? 'cry' : /できた|やった|やりき/.test(message) ? 'clap' : 'smile';
+          const reply = reaction === 'cry' ? 'そうだったんだね。話してくれてありがとう。' : reaction === 'clap' ? 'すごい、最後までやりきったんだね。' : 'それはうれしいね。';
           const send = value => res.write(`data: ${JSON.stringify(value)}\n\n`);
           send({ type: 'start' }); send({ type: 'reaction', reaction });
           setTimeout(() => { send({ type: 'delta', text: reply.slice(0, 6) }); setTimeout(() => { send({ type: 'delta', text: reply }); send({ type: 'done', reply, provider: 'gemini', modelId, reaction }); res.end(); }, 400); }, 400);

@@ -245,11 +245,12 @@ export function createGeminiChatHandler(deps: {
    }
    started=clock();timeline.T6=started;timing.server_pre_generation_ms=Math.max(0,started-receivedAt);
    // The reaction goes out as soon as the model writes it, before the reply text; the same safety rule as the final answer.
-   const controls:GenerationControls={signal:controller.signal,onText:text=>emit({type:'delta',text}),onReaction:value=>{const reaction=safeReaction(value,message);if(reaction)emit({type:'reaction',reaction});},onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
+   const controls:GenerationControls={signal:controller.signal,onText:text=>emit({type:'delta',text}),onReaction:value=>emit({type:'reaction',reaction:safeReaction(value,message)}),onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
    const generated=(await(streaming?deps.generateStream!:deps.generate)(buildGeminiContents(history,message),prompt,controls)).trim();
    controller.signal.throwIfAborted();
-   const candidate=generated?parseConversationReply(generated,message):{reply:''};
-   const parsed=candidate.actionId&&!modelAllowsAction(modelId,message)?{reply:candidate.reply}:candidate;
+   const candidate:Partial<ReturnType<typeof parseConversationReply>>&{reply:string}=generated?parseConversationReply(generated,message):{reply:''};
+   // Dropping an action the form may not suggest keeps the reaction.
+   const parsed=candidate.actionId&&!modelAllowsAction(modelId,message)?{reply:candidate.reply,reaction:candidate.reaction}:candidate;
    if(!parsed.reply)throw Object.assign(new Error('EMPTY_GENERATION'),{code:'INVALID_RESPONSE'});
    timeline.T9_server=clock();
    const result={...parsed,...(deps.env.VERCEL_ENV==='preview'?{timeline}:{}),provider:'gemini',modelId,responseTimeMs:Math.max(0,clock()-started),timing:finishTiming()};
