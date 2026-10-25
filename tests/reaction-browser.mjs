@@ -61,6 +61,8 @@ try {
   await page.locator('.bubble.user .message-reaction').nth(1).waitFor({ timeout: 1500 });
   assert.ok((await page.locator('.bubble.user .message-reaction').nth(1).textContent()).includes('😭'), 'つらい gets 😭');
   assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '😭');
+  assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-cry.svg', 'and メリィ cries with her');
+  if (shots) await page.screenshot({ path: `${shots}/reaction-cry.png` });
   await page.locator('.bubble.assistant:not(.chat-loading)').nth(1).waitFor();
   if (shots) await page.screenshot({ path: `${shots}/reaction-after-reply.png` });
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('camellia-prototype-v3')).aiConversations.flatMap(c => c.messages).filter(m => m.role === 'user').map(m => m.reaction));

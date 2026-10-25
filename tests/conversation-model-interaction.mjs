@@ -30,7 +30,9 @@ try{
  function Harness(){const current=useCamelliaStore();useEffect(()=>{store=current;});return current.ready?createElement(ConversationWorkspace,{state:current.state,recommendations:[],onSaveConversation:current.addConversation,onReplaceConversationAssistant:current.replaceConversationAssistant,onSelectConversationModel:current.selectConversationModel,onRemember:current.remember,onTrack:current.track,onClearTreeContext:noop,onOpenAction:noop,onNavigate:noop,onTree:noop}):null;}
  const host=document.createElement('div');document.body.append(host);
  const pause=()=>new Promise(resolve=>setTimeout(resolve,20));
- const click=async(name)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===name||b.textContent.includes(name));assert.ok(button,name);assert.equal(button.disabled,false,name);await act(async()=>{button.click();await pause();});};
+ // A reply in progress (her reaction's moment, then the reply) keeps the buttons disabled for a few timer turns.
+ const find=name=>[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===name||b.textContent.includes(name));
+ const click=async(name)=>{let button=find(name);for(let n=0;n<50&&button?.disabled;n++){await act(pause);button=find(name);}assert.ok(button,name);assert.equal(button.disabled,false,name);await act(async()=>{button.click();await pause();});};
  const choose=async(model)=>{const trigger=host.querySelector('.model-selector-trigger');assert.ok(trigger);await act(async()=>{trigger.click();await pause();});const option=[...host.querySelectorAll('[role="menuitemradio"]')].find(b=>b.textContent.startsWith(model));assert.ok(option);await act(async()=>{option.click();await pause();});};
  const mount=async()=>{app=createRoot(host);await act(async()=>{app.render(createElement(Harness));await pause();});await act(pause);};
  const send=()=>click('今日あったことを話したい');
