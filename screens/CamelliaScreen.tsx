@@ -6,7 +6,7 @@ import { firstInSession } from '@/lib/analytics/once';
 import { ConversationModelSelector } from '@/components/ConversationModelSelector';
 import { conversationModelName, defaultConversationModel, isConversationModel } from '@/lib/conversation/models';
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
-import { REACTION_EMOJI, REACTION_LABEL, type ConversationReaction } from '@/lib/conversation/reactions';
+import { REACTION_EMOJI, REACTION_LABEL, REACTION_LEAD_MS, type ConversationReaction } from '@/lib/conversation/reactions';
 import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel, characterName, type CharacterExpression } from '@/components/CamelliaCharacter';
 import { CharacterProfileSheet } from '@/components/CharacterProfileSheet';
 import {requestGemini,type ChatError} from '@/lib/conversation/client';
@@ -156,8 +156,25 @@ export function CamelliaScreen({
     });
   };
   // The reaction lands on her message as soon as it arrives, before the reply text.
-  const showReaction=(userId:string,reaction:ConversationReaction|undefined)=>{if(!mounted.current)return;setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));if(reaction)flash(EXPRESSION_FOR_REACTION[reaction],1400);};
-  const streamOptions=(controller:AbortController,userId:string)=>({signal:controller.signal,onReaction:(reaction:ConversationReaction)=>{if(!controller.signal.aborted)showReaction(userId,reaction);},onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)setDraftReply(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
+  /* The reaction comes first, then the reply: the model writes both at once, so the reply text waits
+     REACTION_LEAD_MS after the reaction appears (a person nods, then speaks). */
+  const reactionHold=useRef(0),heldDraft=useRef<string|undefined>(undefined),draftTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
+  useEffect(()=>()=>clearTimeout(draftTimer.current),[]);
+  const showReaction=(userId:string,reaction:ConversationReaction|undefined)=>{if(!mounted.current)return;setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));if(reaction){flash(EXPRESSION_FOR_REACTION[reaction],1400);reactionHold.current=monotonicNow()+REACTION_LEAD_MS;}};
+  const showDraft=(text:string)=>{
+    const wait=reactionHold.current-monotonicNow();
+    if(wait<=0){setDraftReply(text);return;}
+    heldDraft.current=text;
+    draftTimer.current??=setTimeout(()=>{draftTimer.current=undefined;if(mounted.current&&heldDraft.current!==undefined)setDraftReply(heldDraft.current);},wait);
+  };
+  /** Before the finished reply is placed: the reaction (even one known only now) gets its moment first. */
+  const leadWithReaction=async(userId:string,reaction:ConversationReaction|undefined,shown:boolean)=>{
+    if(reaction&&!shown)showReaction(userId,reaction);
+    const wait=reactionHold.current-monotonicNow();
+    if(wait>0)await new Promise(resolve=>setTimeout(resolve,wait));
+    clearTimeout(draftTimer.current);draftTimer.current=undefined;heldDraft.current=undefined;
+  };
+  const streamOptions=(controller:AbortController,userId:string)=>({signal:controller.signal,onReaction:(reaction:ConversationReaction)=>{if(!controller.signal.aborted)showReaction(userId,reaction);},onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)showDraft(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
   const send = async (value = input) => {
     const pressedAt=monotonicNow();
     const clean = value.trim();
@@ -194,7 +211,10 @@ export function CamelliaScreen({
 
     if (useGemini && !urgentReply) {
       try {
+        reactionHold.current=0;
         const result = await requestGemini(geminiMessage, previousHistory,requestModel,streamOptions(controller,userId));
+        if(!mounted.current||controller.signal.aborted)return;
+        await leadWithReaction(userId,result.safety?undefined:result.reaction,reactionHold.current>0);
         if(!mounted.current||controller.signal.aborted)return;
         sample.timing=result.timing;sample.timeline=result.timeline;sample.transport=result.transport;sample.end=monotonicNow()-sample.start;
         reply = result.reply;
@@ -241,7 +261,10 @@ export function CamelliaScreen({
     stickToEnd.current=true;setRetrying(true);setDraftReply('');
     setChatError(null);
     try {
+      reactionHold.current=0;
       const result = await requestGemini(retryState.message, retryState.history,retryState.modelId,streamOptions(controller,retryState.userId));
+      if(!mounted.current||controller.signal.aborted)return;
+      await leadWithReaction(retryState.userId,result.safety?undefined:result.reaction,reactionHold.current>0);
       if(!mounted.current||controller.signal.aborted)return;
       sample.timing=result.timing;sample.timeline=result.timeline;sample.transport=result.transport;sample.end=monotonicNow()-sample.start;setDraftReply('');
       setSuggestedAction(result.actionId);
@@ -287,7 +310,14 @@ export function CamelliaScreen({
 
   return (
     <main className="screen camellia">
-      <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>Camellia</h1><ConversationModelSelector value={activeModel} onSelect={chooseModel} disabled={sending||retrying||availability==='disabled'||Boolean(treeContext)}/></div><span className="avatar-flower" aria-hidden="true">✿</span></header>
+      <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>Camellia</h1><ConversationModelSelector value={activeModel} onSelect={chooseModel} disabled={sending||retrying||availability==='disabled'||Boolean(treeContext)}/></div>{/* メリィ lives at the top of the conversation, next to the title, so she never covers a message: she bobs
+          (YURA also sways), thinks while the reply comes, and reacts for a moment. Tap her for her profile. */}
+        <div className={`chat-mascot chat-mascot--${mascotForm}${busy?' chat-mascot--busy':''}`}>
+          <button className="chat-mascot-button" onClick={()=>{setProfileOpen(true);onTrack('character_profile_open',{model_id:mascotForm});}} aria-label={`${characterName(characterNameSetting)}のプロフィールを開く`}>
+            <span className="chat-mascot-figure" key={moment?.key??mascotExpression} aria-hidden="true"><CamelliaCharacter form={mascotForm} expression={mascotExpression} size={76}/></span>
+            <span className="chat-mascot-name" aria-hidden="true">{characterName(characterNameSetting)}{busy?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
+          </button>
+        </div></header>
       {availability==='disabled'&&!treeContext&&<output className="meta">今は共通の返答でお話ししています。</output>}
       {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。記録を参照している間は、共通の話し方でお返しします。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
@@ -295,14 +325,6 @@ export function CamelliaScreen({
       {profileOpen&&<CharacterProfileSheet name={characterNameSetting} form={mascotForm} busy={busy} canSwitch={!busy&&availability!=='disabled'&&!treeContext} onClose={()=>setProfileOpen(false)} onSwitch={chooseModel} onRename={name=>{onRenameCharacter?.(name);onTrack('character_renamed',{custom_name:name!==null});}}/>}
       <div ref={chatViewport} onScroll={()=>{const v=chatViewport.current;if(v)stickToEnd.current=v.scrollHeight-v.scrollTop-v.clientHeight<80;}} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
-        {/* メリィ floats at the top of the conversation (like a companion app): she sways while listening,
-            thinks while the reply comes, and reacts for a moment. Decorative: the messages themselves are announced. */}
-        <div className={`chat-mascot chat-mascot--${mascotForm}${busy?' chat-mascot--busy':''}`}>
-          <button className="chat-mascot-button" onClick={()=>{setProfileOpen(true);onTrack('character_profile_open',{model_id:mascotForm});}} aria-label={`${characterName(characterNameSetting)}のプロフィールを開く`}>
-            <span className="chat-mascot-figure" key={moment?.key??mascotExpression} aria-hidden="true"><CamelliaCharacter form={mascotForm} expression={mascotExpression} size={88}/></span>
-            <span className="chat-mascot-name" aria-hidden="true">{characterName(characterNameSetting)}{busy?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
-          </button>
-        </div>
         {messages.slice(-visibleCount).map((message) => {
           if(isModelSwitchMessage(message))return <div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>;
           if(message.role==='assistant'){

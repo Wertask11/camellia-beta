@@ -7,7 +7,8 @@ import type { ConversationReaction } from '@/lib/conversation/reactions';
    48px and smaller always use the icon art (face only); the full body is for 200px and up. */
 export type CharacterExpression = 'listen' | 'receive' | 'happy' | 'praise' | 'like' | 'think';
 export const DEFAULT_CHARACTER_NAME = 'メリィ';
-export const EXPRESSION_FOR_REACTION: Record<ConversationReaction, CharacterExpression> = { heart: 'receive', smile: 'happy', clap: 'praise', thumbs: 'like' };
+// 😭 has no face of its own in the art yet; she shows her "receive" face (taking it in, beside her).
+export const EXPRESSION_FOR_REACTION: Record<ConversationReaction, CharacterExpression> = { heart: 'receive', smile: 'happy', clap: 'praise', thumbs: 'like', cry: 'receive' };
 export const characterName = (name: string | null | undefined) => name?.trim() || DEFAULT_CHARACTER_NAME;
 
 export const CHARACTER_NAME_MAX = 12;

@@ -1300,8 +1300,9 @@ details {
 .message-reaction{position:absolute;left:-6px;bottom:-14px;display:grid;place-items:center;width:28px;height:28px;border:1px solid #f0e2e4;border-radius:50%;background:#fffaf9;font-size:15px;line-height:1;box-shadow:0 2px 6px #5f454522;animation:reaction-pop .38s cubic-bezier(.2,.9,.3,1.5)}
 @keyframes reaction-pop{0%{transform:scale(.2) rotate(-25deg);opacity:0}70%{transform:scale(1.15) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
 /* メリィ floats at the top of the conversation; messages scroll underneath. */
-.chat-mascot{position:sticky;top:0;z-index:2;justify-self:center;margin:-4px 0 4px;pointer-events:none}
-.chat-mascot-button{pointer-events:auto;display:grid;justify-items:center;gap:2px;padding:0;border:0;background:transparent;cursor:pointer;border-radius:24px}
+/* メリィ sits at the top right of the conversation header, beside the title (never over a message). */
+.chat-mascot{flex-shrink:0;margin:-6px -4px 0 8px}
+.chat-mascot-button{display:grid;justify-items:center;gap:2px;padding:0;border:0;background:transparent;cursor:pointer;border-radius:24px}
 .chat-mascot-button:focus-visible{outline:3px solid #aa547a;outline-offset:2px}
 .chat-mascot-figure{filter:drop-shadow(0 6px 10px #5f454526);animation:mascot-float 3.2s ease-in-out infinite alternate,mascot-hop .42s cubic-bezier(.2,.9,.3,1.4)}
 .chat-mascot--yura .chat-mascot-figure .camellia-character{transform-origin:50% 90%;animation:yura-sway 4s ease-in-out infinite alternate}
@@ -1325,3 +1326,5 @@ details {
 .character-profile-status{margin:2px 0 10px;font-size:13px;color:#6f6268}
 .character-profile-form{margin:0 0 12px;font-size:14px}.character-profile-form small{color:#6f6268}
 .character-name-editor{display:grid;gap:8px;text-align:left;margin:8px 0}.character-name-editor input{width:100%;font-size:16px;border:1px solid #e3b9c5;border-radius:12px}
+/* The β label overlapped the new-conversation button in an open conversation; the toolbar already says where she is. */
+.app-shell:has(.conversation-workspace--open)>.beta-badge{display:none}
