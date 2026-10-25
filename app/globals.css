@@ -1282,3 +1282,25 @@ details {
 
 /* Conversation streaming: real activity only, no simulated words/progress. */
 .typing-dots{display:inline-flex;gap:5px;align-items:center;min-height:26px;padding:0 3px}.typing-dots i{width:6px;height:6px;border-radius:50%;background:#a65c78;animation:chat-dot 1.2s ease-in-out infinite}.typing-dots i:nth-child(2){animation-delay:.15s}.typing-dots i:nth-child(3){animation-delay:.3s}.stream-draft{white-space:pre-wrap;overflow-wrap:anywhere}.chat-loading{align-self:flex-start}.chat-error>span{display:block;font-size:13px;color:#8e3f5b;margin-bottom:4px}@keyframes chat-dot{0%,70%,100%{opacity:.35;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)}}@media(prefers-reduced-motion:reduce){.typing-dots i{animation:none;opacity:.65}}
+/* Camellia's character メリィ and her reactions (design handoff 2026-10-25). */
+.chat .bubble{border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;line-height:1.6}
+.chat .bubble.user{background:#9b3c59;color:#fff;position:relative}
+.chat .bubble.user .meta{color:#fbe8ee}
+.chat .bubble.user .memory-message-button{color:#fbe8ee}
+.chat .bubble.user .memory-message-button:focus-visible{outline-color:#fff}
+.chat .bubble.user:has(.message-reaction){margin-bottom:14px}
+.assistant-row{display:flex;align-items:flex-end;gap:8px;justify-self:start;max-width:92%}
+.assistant-row .bubble{max-width:none;border-radius:16px 16px 16px 4px}
+.assistant-row--yura .bubble,.bubble--yura{background:#fbeef1;color:#342b30}
+.assistant-row--lactone .bubble,.bubble--lactone{background:#f6efe7;color:#342b30}
+.camellia-character{display:block;flex-shrink:0;user-select:none}
+.message-reaction{position:absolute;right:8px;bottom:-15px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 2px;border:1px solid #f0e2e4;border-radius:999px;background:#fffaf9;color:#342b30;font-size:13px;line-height:1;box-shadow:0 2px 6px #5f454518;animation:reaction-pop .32s cubic-bezier(.2,.9,.3,1.4)}
+.message-reaction .camellia-character{border-radius:50%}
+@keyframes reaction-pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
+/* YURA sways a little while she listens; Lactone stays still. */
+.camellia-character--yura.camellia-character--idle{transform-origin:50% 90%;animation:yura-sway 4s ease-in-out infinite alternate}
+@keyframes yura-sway{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){.message-reaction,.camellia-character--yura.camellia-character--idle{animation:none}}
+.character-name-setting form{display:grid;gap:8px}.character-name-setting input{width:100%;font-size:16px;border:1px solid #e3b9c5;border-radius:12px}
+.character-name-preview{display:flex;gap:12px;margin-bottom:8px}.character-name-preview .camellia-character{border-radius:50%;padding:4px;box-sizing:border-box}
+.character-name-preview .camellia-character--yura{background:#f4d4dc}.character-name-preview .camellia-character--lactone{background:#ebdfd2}

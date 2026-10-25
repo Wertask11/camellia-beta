@@ -2,6 +2,7 @@ import { createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto
 import { parseConversationReply, ACTION_BRIDGE_INSTRUCTION } from './action-bridge.js';
 import { immediateSafetyReply } from './safety.js';
 import { EligibilityError, EligibilityServiceError } from '../server/eligibility.js';
+import { safeReaction } from './reactions.js';
 import { isTransientNetworkError } from './provider-recovery.js';
 import { defaultConversationModel, isConversationModel } from './models.js';
 import {safeConversationTiming,type ConversationTiming} from './performance.js';
@@ -174,7 +175,7 @@ export function buildGeminiContents(history: SafeHistoryMessage[], currentMessag
   ];
 }
 
-export type GenerationControls = {signal:AbortSignal;onText:(text:string)=>void;onFirstChunk:()=>void};
+export type GenerationControls = {signal:AbortSignal;onText:(text:string)=>void;onFirstChunk:()=>void;onReaction?:(reaction:string)=>void};
 export type ChatApiResponse = {
   setHeader:(name:string,value:string)=>void;
   status:(code:number)=>{json:(body:unknown)=>void};
@@ -243,7 +244,8 @@ export function createGeminiChatHandler(deps: {
     emit({type:'start'});heartbeat=setInterval(()=>{if(!controller.signal.aborted)res.write?.(': keepalive\n\n');},10000);
    }
    started=clock();timeline.T6=started;timing.server_pre_generation_ms=Math.max(0,started-receivedAt);
-   const controls:GenerationControls={signal:controller.signal,onText:text=>emit({type:'delta',text}),onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
+   // The reaction goes out as soon as the model writes it, before the reply text; the same safety rule as the final answer.
+   const controls:GenerationControls={signal:controller.signal,onText:text=>emit({type:'delta',text}),onReaction:value=>{const reaction=safeReaction(value,message);if(reaction)emit({type:'reaction',reaction});},onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
    const generated=(await(streaming?deps.generateStream!:deps.generate)(buildGeminiContents(history,message),prompt,controls)).trim();
    controller.signal.throwIfAborted();
    const candidate=generated?parseConversationReply(generated,message):{reply:''};

@@ -36,7 +36,7 @@ with sync_playwright() as p:
   assert page.evaluate('v3Fixture.calls[3].history.length')==6
   assert page.evaluate('v3Fixture.calls.every(c=>c.history.length<=8&&!JSON.stringify(c.history).includes("system_model_switch"))')
   trigger.click();page.keyboard.press('Home');page.keyboard.press('Enter');expect(trigger).to_contain_text('YURA');expect(page.locator('.model-switch-marker')).to_have_count(2)
-  assert page.locator('.message-model-label').all_text_contents()==['YURA']*3+['Lactone']*3
+  assert page.locator('.message-model-label').all_text_contents()==['メリィ · YURA']*3+['メリィ · Lactone']*3
   composer=page.locator('.composer').bounding_box();assert composer['y']>=0 and composer['y']+composer['height']<=height-76+2,(width,composer)
   page.screenshot(path=str(out/f'{width}-thread.png'))
   page.set_viewport_size({'width':width,'height':520});page.get_by_role('textbox',name='Camelliaへのメッセージ').focus();composer=page.locator('.composer').bounding_box();assert composer['y']+composer['height']<=520-76+2,(width,composer);assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')

@@ -67,6 +67,14 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 
 [振り返りと事実・仮説、書き出し・削除の範囲](docs/reflection-phase2d.md)。人物の評価・順位付け・自動共有は追加しません。
 
+### キャラクター「メリィ」と会話のリアクション（2026-10-25）
+
+Camellia のキャラクターは1体（初期名「メリィ」）で、会話では YURA（ピンク・椿が左・ゆらぐ）と Lactone（ベージュ・椿と葉が右・手帳）の2つの姿で出ます。絵はデザインの引き継ぎ（`public/character/{icon,full}/{yura,lactone}-{listen,receive,happy,praise,like,think}.svg`）をそのまま使い、48px 以下は顔だけの icon を使います（`components/CamelliaCharacter.tsx`）。名前は My →「Camelliaのキャラクター」で 1〜12文字に変えられ（`profile.characterName`、空欄で初期名）、会話では「メリィ · YURA」のように出ます。
+
+返事と同じ1回の生成で、彼女のメッセージに 💓😀👏👍 のどれか（または無し）を付けます（`lib/conversation/reactions.ts`）。JSON の先頭に reaction を書かせ、ストリームの最初のほうで送るので、返事の文章より先にメッセージの右下へ付きます。つらい話・体調・安全の話には 💓 だけ（サーバーで決める）、緊急の安全の返事には付けません。リアクションは彼女のメッセージに保存され、PostHog には `conversation_reaction_shown` でリアクション名だけを送ります。
+
+確認：`node tests/conversation-reaction-cases.mjs`（`npm test` に含む）、`node tests/reaction-browser.mjs`（Chromium・合成の会話。外部通信なし）。
+
 ### 女性限定と招待制（2026-10-24）
 
 Camelliaは18〜45歳の女性に限ったサービスです。プロフィールで「私は女性です（自己申告）」を求めます（以前の「女性向けサービスであることの確認」だけの方には一度だけ確認し直してもらいます。記録はそのまま）。

@@ -6,6 +6,8 @@ import { firstInSession } from '@/lib/analytics/once';
 import { ConversationModelSelector } from '@/components/ConversationModelSelector';
 import { conversationModelName, defaultConversationModel, isConversationModel } from '@/lib/conversation/models';
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
+import { REACTION_EMOJI, REACTION_LABEL, type ConversationReaction } from '@/lib/conversation/reactions';
+import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel } from '@/components/CamelliaCharacter';
 import {requestGemini,type ChatError} from '@/lib/conversation/client';
 import {conversationPerformance,previewBatchTransport,afterConversationPaint,safeConversationTiming,type ConversationTiming} from '@/lib/conversation/performance';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
@@ -49,7 +51,7 @@ export function CamelliaScreen({
   conversationId?: string;
   state: CamelliaState;
   recommendations: Recommendation[];
-  onSaveConversation: (user: string, assistant: string, intent: ConversationIntent, topics: ConversationTopic[], provider?: Provider, assistantModel?:ConversationModelId|null, requestModel?:ConversationModelId,userId?:string,pending?:boolean) => void;
+  onSaveConversation: (user: string, assistant: string, intent: ConversationIntent, topics: ConversationTopic[], provider?: Provider, assistantModel?:ConversationModelId|null, requestModel?:ConversationModelId,userId?:string,pending?:boolean,reaction?:ConversationReaction) => void;
   onPendingConversation?:(message:AIMessage,model:ConversationModelId)=>void;
   onReplaceConversationAssistant: (user: string, assistant: string, provider: Provider, assistantModel?:ConversationModelId|null) => void;
   initialModel?:ConversationModelId;
@@ -125,10 +127,10 @@ export function CamelliaScreen({
     if(from!==next&&hasConversation)onTrack('conversation_model_switched',{from_model:from,to_model:next});
   };
 
-  const savePair = (userText: string, assistantText: string, provider: Provider, assistantModel:ConversationModelId|null, requestModel:ConversationModelId,userId:string,pending=false) => {
+  const savePair = (userText: string, assistantText: string, provider: Provider, assistantModel:ConversationModelId|null, requestModel:ConversationModelId,userId:string,pending=false,reaction?:ConversationReaction) => {
     const intent = classifyIntent(userText);
     const topics = classifyTopics(userText);
-    onSaveConversation(userText, assistantText, intent, topics, provider,assistantModel,requestModel,userId,pending);
+    onSaveConversation(userText, assistantText, intent, topics, provider,assistantModel,requestModel,userId,pending,reaction);
     return { intent, topics };
   };
 
@@ -142,7 +144,9 @@ export function CamelliaScreen({
       onTrack('conversation_response_received',{...extra,...timing,transport:sample.transport??'json'});
     });
   };
-  const streamOptions=(controller:AbortController)=>({signal:controller.signal,onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)setDraftReply(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
+  // The reaction lands on her message as soon as it arrives, before the reply text.
+  const showReaction=(userId:string,reaction:ConversationReaction|undefined)=>{if(mounted.current)setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));};
+  const streamOptions=(controller:AbortController,userId:string)=>({signal:controller.signal,onReaction:(reaction:ConversationReaction)=>{if(!controller.signal.aborted)showReaction(userId,reaction);},onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)setDraftReply(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
   const send = async (value = input) => {
     const pressedAt=monotonicNow();
     const clean = value.trim();
@@ -175,13 +179,15 @@ export function CamelliaScreen({
     let responseTimeMs: number | undefined;
     let failedCategory: ChatError | null = null;
     let assistantModel:ConversationModelId|null=null;
+    let reaction:ConversationReaction|undefined;
 
     if (useGemini && !urgentReply) {
       try {
-        const result = await requestGemini(geminiMessage, previousHistory,requestModel,streamOptions(controller));
+        const result = await requestGemini(geminiMessage, previousHistory,requestModel,streamOptions(controller,userId));
         if(!mounted.current||controller.signal.aborted)return;
         sample.timing=result.timing;sample.timeline=result.timeline;sample.transport=result.transport;sample.end=monotonicNow()-sample.start;
         reply = result.reply;
+        reaction = result.safety ? undefined : result.reaction;
         setSuggestedAction(result.actionId);
         provider = result.provider;
         safety = result.safety === true;
@@ -199,12 +205,13 @@ export function CamelliaScreen({
     }
 
     const now = new Date().toISOString();
-    const userMessage: AIMessage = { id: userId, role: 'user', text: clean, intent: local.intent, topics: local.topics, createdAt: now,...(failedCategory?{pending:true,requestModel}:{}) };
+    const userMessage: AIMessage = { id: userId, role: 'user', text: clean, intent: local.intent, topics: local.topics, createdAt: now,...(failedCategory?{pending:true,requestModel}:{}),...(reaction?{reaction}:{}) };
     const assistantMessage: AIMessage = { id: `${userId}-a`, role: 'assistant', text: reply, provider, assistantModel, intent: local.intent, topics: local.topics, createdAt: now };
     if(!mounted.current||controller.signal.aborted)return;
     setDraftReply('');
     setMessages((current) => [...current.filter(message=>message.id!==userId), userMessage, assistantMessage]);
-    const { intent, topics } = savePair(clean, reply, provider,assistantModel,requestModel,userId,Boolean(failedCategory));
+    const { intent, topics } = savePair(clean, reply, provider,assistantModel,requestModel,userId,Boolean(failedCategory),reaction);
+    if(reaction)onTrack('conversation_reaction_shown',{reaction,model_id:requestModel});
     setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety || failedCategory ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
@@ -223,13 +230,14 @@ export function CamelliaScreen({
     stickToEnd.current=true;setRetrying(true);setDraftReply('');
     setChatError(null);
     try {
-      const result = await requestGemini(retryState.message, retryState.history,retryState.modelId,streamOptions(controller));
+      const result = await requestGemini(retryState.message, retryState.history,retryState.modelId,streamOptions(controller,retryState.userId));
       if(!mounted.current||controller.signal.aborted)return;
       sample.timing=result.timing;sample.timeline=result.timeline;sample.transport=result.transport;sample.end=monotonicNow()-sample.start;setDraftReply('');
       setSuggestedAction(result.actionId);
       const now = new Date().toISOString();
       const assistantModel=result.provider==='gemini'&&!result.safety&&isConversationModel(result.modelId)?result.modelId:null;
-      setMessages(current=>{const next=current.map(message=>message.id===retryState.userId?{...message,pending:false}:message.id===`${retryState.userId}-a`?{...message,text:result.reply,provider:result.provider,assistantModel,createdAt:now}:message);return next.some(message=>message.id===`${retryState.userId}-a`)?next:[...next,{id:`${retryState.userId}-a`,role:'assistant',text:result.reply,provider:result.provider,assistantModel,createdAt:now}];});
+      const retryReaction=result.safety?undefined:result.reaction;
+      setMessages(current=>{const next=current.map(message=>message.id===retryState.userId?{...message,pending:false,reaction:retryReaction}:message.id===`${retryState.userId}-a`?{...message,text:result.reply,provider:result.provider,assistantModel,createdAt:now}:message);return next.some(message=>message.id===`${retryState.userId}-a`)?next:[...next,{id:`${retryState.userId}-a`,role:'assistant',text:result.reply,provider:result.provider,assistantModel,createdAt:now}];});
       onReplaceConversationAssistant(retryState.originalMessage, result.reply, result.provider,assistantModel);
       setLast((current) => current ? { ...current, text: result.reply, choices: [], showAction: false, showCircle: false } : current);
       setLastSafety(result.safety === true);
@@ -247,6 +255,12 @@ export function CamelliaScreen({
       setRetrying(false);
     }
   };
+
+  // Who reacted: the form that answered this message, or the one she is talking with now.
+  const characterNameSetting=state.profile.characterName;
+  const reactionForm=(userId:string):ConversationModelId=>{const answer=messages.find(item=>item.id===`${userId}-a`);return isConversationModel(answer?.assistantModel)?answer.assistantModel:activeModel;};
+  const lastAssistantId=messages.findLast(item=>item.role==='assistant')?.id;
+  const thinkingForm:ConversationModelId=retrying&&retryState?retryState.modelId:activeModel;
 
   const errorCopy: Record<ChatError, string> = {
     rate_limited: '今は少し混み合っているみたい。時間をおいて、もう一度試してみてください。',
@@ -268,8 +282,22 @@ export function CamelliaScreen({
 
       <div ref={chatViewport} onScroll={()=>{const v=chatViewport.current;if(v)stickToEnd.current=v.scrollHeight-v.scrollTop-v.clientHeight<80;}} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
-        {messages.slice(-visibleCount).map((message) => isModelSwitchMessage(message)?<div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>:<div className={`bubble ${message.role}`} key={message.id}>{message.role==='assistant'&&<span className="message-model-label">{conversationModelName(message.assistantModel)}</span>}{message.text}{message.pending&&!sending&&!retrying&&<small className="meta">返答はまだ確定していません</small>}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}</div>)}
-        {(sending||retrying)&&<div className="bubble assistant chat-loading" aria-label="返答を受信中" aria-busy="true">{draftReply?<span className="stream-draft" aria-live="off">{draftReply}</span>:<output className="typing-dots"><span className="sr-only">返答を受信中</span><i/><i/><i/></output>}</div>}
+        {messages.slice(-visibleCount).map((message) => {
+          if(isModelSwitchMessage(message))return <div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>;
+          if(message.role==='assistant'){
+            const form=isConversationModel(message.assistantModel)?message.assistantModel:undefined;
+            const answered=messages.find(item=>item.role==='user'&&`${item.id}-a`===message.id)?.reaction;
+            return <div className={`assistant-row${form?` assistant-row--${form}`:''}`} key={message.id}>
+              {form&&<CamelliaCharacter form={form} expression={answered?EXPRESSION_FOR_REACTION[answered]:'listen'} size={32} className={message.id===lastAssistantId?'camellia-character--idle':undefined}/>}
+              <div className={`bubble assistant${form?` bubble--${form}`:''}`}>{form?<span className="message-model-label">{characterLabel(characterNameSetting,form)}</span>:<span className="message-model-label">{conversationModelName(message.assistantModel)}</span>}{message.text}</div>
+            </div>;
+          }
+          const reactedBy=reactionForm(message.id);
+          return <div className={`bubble ${message.role}`} key={message.id}>{message.text}{message.pending&&!sending&&!retrying&&<small className="meta">返答はまだ確定していません</small>}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}
+            {message.role==='user'&&message.reaction&&<span className="message-reaction"><CamelliaCharacter form={reactedBy} expression={EXPRESSION_FOR_REACTION[message.reaction]} size={24} label={`${characterLabel(characterNameSetting,reactedBy)}：${REACTION_LABEL[message.reaction]}`}/><span aria-hidden="true">{REACTION_EMOJI[message.reaction]}</span></span>}
+          </div>;
+        })}
+        {(sending||retrying)&&<div className={`assistant-row assistant-row--${thinkingForm}`}><CamelliaCharacter form={thinkingForm} expression="think" size={32} className="camellia-character--idle"/><div className={`bubble assistant bubble--${thinkingForm} chat-loading`} aria-label="返答を受信中" aria-busy="true">{draftReply?<span className="stream-draft" aria-live="off">{draftReply}</span>:<output className="typing-dots"><span className="sr-only">返答を受信中</span><i/><i/><i/></output>}</div></div>}
         <div ref={messageEnd} aria-hidden="true"/>
       </div>
       <div className="conversation-followups">

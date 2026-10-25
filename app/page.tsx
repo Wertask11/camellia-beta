@@ -398,7 +398,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
+        <MyScreen onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}

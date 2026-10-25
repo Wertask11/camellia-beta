@@ -33,6 +33,8 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   conversation_response_received: ['provider', 'response_time_ms','model_id','transport',...PERFORMANCE_KEYS],
   conversation_error: ['provider', 'error_category','model_id',...PERFORMANCE_KEYS],
   conversation_model_selected: ['model_id'],
+  /** Which of the four reactions YURA / Lactone put on her message. Never the message. */
+  conversation_reaction_shown: ['reaction', 'model_id'],
   conversation_model_switched: ['model_id','from_model','to_model'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
@@ -295,6 +297,7 @@ const ENUMS: Record<string, readonly string[]> = {
   value: ['yes','some','no'], category: ['family','friend','love','work','learning','other'],
   result: ['accepted','already','not_found','used_up','expired','revoked','own','invalid','rate_limited','suspended','error'],
   invite_kind: ['operator','member'], share_method: ['share','copy'],
+  reaction: ['heart','smile','clap','thumbs'],
 };
 const COUNTS: Record<string, number> = { history_days: 36500, leafAgeDays: 36500, tagCount: 8 };
 function validProperty(key: string, value: unknown) {

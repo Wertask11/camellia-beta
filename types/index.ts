@@ -46,6 +46,8 @@ export type DismissReason =
 export type SaveTiming = 'later_today' | 'holiday' | 'when_free' | 'save_only';
 export interface Profile {
   lastConversationModel?: ConversationModelId;
+  /** The name she gave Camellia's character; null or absent means the default メリィ. */
+  characterName?: string | null;
   id: string;
   name: string;
   age: string;
@@ -110,6 +112,8 @@ export interface SavedAction {
 export interface AIMessage {
   /** Only the user message can be pending; partial assistant output is never persisted. */
   pending?: boolean;
+  /** On a user message: the reaction YURA / Lactone put on it (lib/conversation/reactions.ts). */
+  reaction?: import('@/lib/conversation/reactions').ConversationReaction;
   requestModel?: ConversationModelId;
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -265,6 +269,7 @@ export type AnalyticsEventName =
   | 'tree_leaf_edit'
   | 'tree_reflection_add'
   | 'tree_archive'
+  | 'conversation_reaction_shown'
   | 'invite_view' | 'invite_submit' | 'invite_accepted' | 'access_suspended_view' | 'member_invite_open' | 'member_invite_share';
 export interface AnalyticsEvent {
   id: string;

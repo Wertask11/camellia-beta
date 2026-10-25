@@ -63,7 +63,7 @@ async function generate(contents:Parameters<ReturnType<typeof createGeminiChatHa
     try{
      if(streaming&&controls){
       const chunks=await ai.models.generateContentStream(params);
-      reply=await collectReplyStream(chunks,text=>{previewed=true;controls.onText(text);},controls.onFirstChunk,attemptSignal);
+      reply=await collectReplyStream(chunks,text=>{previewed=true;controls.onText(text);},controls.onFirstChunk,attemptSignal,controls.onReaction);
      }else reply=readProviderReply(await ai.models.generateContent(params));
     }catch(error){
      // A retry after displaying a prefix would mix two independent replies. Never do it.
