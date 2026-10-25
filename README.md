@@ -69,9 +69,9 @@ server credentialsがあれば共有制限を使用します。`CAMELLIA_SHARED_
 
 ### キャラクター「メリィ」と会話のリアクション（2026-10-25）
 
-Camellia のキャラクターは1体（初期名「メリィ」）で、会話では YURA（ピンク・椿が左・ゆらぐ）と Lactone（ベージュ・椿と葉が右・手帳）の2つの姿で出ます。絵はデザインの引き継ぎ（`public/character/{icon,full}/{yura,lactone}-{listen,receive,happy,praise,like,think}.svg`）をそのまま使い、48px 以下は顔だけの icon を使います（`components/CamelliaCharacter.tsx`）。名前は My →「Camelliaのキャラクター」で 1〜12文字に変えられ（`profile.characterName`、空欄で初期名）、会話では「メリィ · YURA」のように出ます。
+Camellia のキャラクターは1体（初期名「メリィ」）で、会話では YURA（ピンク・椿が左・ゆらぐ）と Lactone（ベージュ・椿と葉が右・手帳）の2つの姿で出ます。会話画面では、メリィが上に浮かんで（ふわっと上下、YURA は左右にもゆらぐ）、返事を作っている間は「メリィは考え中です」と考える顔になり、リアクションのときと返事のあとに一瞬その顔になります（動きを減らす設定では止まる）。絵はデザインの引き継ぎ（`public/character/{icon,full}/{yura,lactone}-{listen,receive,happy,praise,like,think}.svg`）をそのまま使い、48px 以下は顔だけの icon を使います（`components/CamelliaCharacter.tsx`）。名前は My →「Camelliaのキャラクター」で 1〜12文字に変えられ（`profile.characterName`、空欄で初期名）、会話では「メリィ · YURA」のように出ます。
 
-返事と同じ1回の生成で、彼女のメッセージに 💓😀👏👍 のどれか（または無し）を付けます（`lib/conversation/reactions.ts`）。JSON の先頭に reaction を書かせ、ストリームの最初のほうで送るので、返事の文章より先にメッセージの右下へ付きます。つらい話・体調・安全の話には 💓 だけ（サーバーで決める）、緊急の安全の返事には付けません。リアクションは彼女のメッセージに保存され、PostHog には `conversation_reaction_shown` でリアクション名だけを送ります。
+返事と同じ1回の生成で、彼女のメッセージに 💓😀👏👍 のどれか（または無し）を付けます（`lib/conversation/reactions.ts`）。JSON の先頭に reaction を書かせ、ストリームの最初のほうで送るので、返事の文章より先にメッセージの角へ絵文字で付きます。つらい話・体調・安全の話には 💓 だけ（サーバーで決める）、緊急の安全の返事には付けません。リアクションは彼女のメッセージに保存され、PostHog には `conversation_reaction_shown` でリアクション名だけを送ります。
 
 確認：`node tests/conversation-reaction-cases.mjs`（`npm test` に含む）、`node tests/reaction-browser.mjs`（Chromium・合成の会話。外部通信なし）。
 

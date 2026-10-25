@@ -7,7 +7,7 @@ import { ConversationModelSelector } from '@/components/ConversationModelSelecto
 import { conversationModelName, defaultConversationModel, isConversationModel } from '@/lib/conversation/models';
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
 import { REACTION_EMOJI, REACTION_LABEL, type ConversationReaction } from '@/lib/conversation/reactions';
-import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel } from '@/components/CamelliaCharacter';
+import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel, characterName, type CharacterExpression } from '@/components/CamelliaCharacter';
 import {requestGemini,type ChatError} from '@/lib/conversation/client';
 import {conversationPerformance,previewBatchTransport,afterConversationPaint,safeConversationTiming,type ConversationTiming} from '@/lib/conversation/performance';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
@@ -74,6 +74,12 @@ export function CamelliaScreen({
   const chatViewport=useRef<HTMLDivElement>(null),stickToEnd=useRef(true);
   const recovered=messages.findLast(message=>message.role==='user'&&message.pending);
   const [draftReply,setDraftReply]=useState('');
+  /* The floating character reacts for a moment (a nod when her message gets a reaction, a face after the reply),
+     then goes back to thinking or listening. The key restarts the little hop animation. */
+  const [moment,setMoment]=useState<{expression:CharacterExpression;key:number}>();
+  const momentTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),momentCount=useRef(0);
+  const flash=(expression:CharacterExpression,ms:number)=>{clearTimeout(momentTimer.current);momentCount.current+=1;setMoment({expression,key:momentCount.current});momentTimer.current=setTimeout(()=>{if(mounted.current)setMoment(undefined);},ms);};
+  useEffect(()=>()=>clearTimeout(momentTimer.current),[]);
   const abortRequest=useRef<AbortController|undefined>(undefined),mounted=useRef(true);
   const measurement=useRef<{start:number;request?:number;firstVisible?:number;model:ConversationModelId;timing?:ConversationTiming;transport?:string;done?:boolean;end?:number;paintScheduled?:boolean;epoch?:number;timeline?:Record<string,number>}|undefined>(undefined);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;abortRequest.current?.abort();};},[state.profile.id,conversationId]);
@@ -145,7 +151,7 @@ export function CamelliaScreen({
     });
   };
   // The reaction lands on her message as soon as it arrives, before the reply text.
-  const showReaction=(userId:string,reaction:ConversationReaction|undefined)=>{if(mounted.current)setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));};
+  const showReaction=(userId:string,reaction:ConversationReaction|undefined)=>{if(!mounted.current)return;setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));if(reaction)flash(EXPRESSION_FOR_REACTION[reaction],1400);};
   const streamOptions=(controller:AbortController,userId:string)=>({signal:controller.signal,onReaction:(reaction:ConversationReaction)=>{if(!controller.signal.aborted)showReaction(userId,reaction);},onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)setDraftReply(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
   const send = async (value = input) => {
     const pressedAt=monotonicNow();
@@ -211,7 +217,7 @@ export function CamelliaScreen({
     setDraftReply('');
     setMessages((current) => [...current.filter(message=>message.id!==userId), userMessage, assistantMessage]);
     const { intent, topics } = savePair(clean, reply, provider,assistantModel,requestModel,userId,Boolean(failedCategory),reaction);
-    if(reaction)onTrack('conversation_reaction_shown',{reaction,model_id:requestModel});
+    if(reaction){onTrack('conversation_reaction_shown',{reaction,model_id:requestModel});flash(EXPRESSION_FOR_REACTION[reaction],3200);}
     setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety || failedCategory ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
@@ -259,8 +265,9 @@ export function CamelliaScreen({
   // Who reacted: the form that answered this message, or the one she is talking with now.
   const characterNameSetting=state.profile.characterName;
   const reactionForm=(userId:string):ConversationModelId=>{const answer=messages.find(item=>item.id===`${userId}-a`);return isConversationModel(answer?.assistantModel)?answer.assistantModel:activeModel;};
-  const lastAssistantId=messages.findLast(item=>item.role==='assistant')?.id;
-  const thinkingForm:ConversationModelId=retrying&&retryState?retryState.modelId:activeModel;
+  const busy=sending||retrying;
+  const mascotForm:ConversationModelId=retrying&&retryState?retryState.modelId:activeModel;
+  const mascotExpression:CharacterExpression=moment?.expression??(busy?'think':'listen');
 
   const errorCopy: Record<ChatError, string> = {
     rate_limited: '今は少し混み合っているみたい。時間をおいて、もう一度試してみてください。',
@@ -282,22 +289,24 @@ export function CamelliaScreen({
 
       <div ref={chatViewport} onScroll={()=>{const v=chatViewport.current;if(v)stickToEnd.current=v.scrollHeight-v.scrollTop-v.clientHeight<80;}} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
+        {/* メリィ floats at the top of the conversation (like a companion app): she sways while listening,
+            thinks while the reply comes, and reacts for a moment. Decorative: the messages themselves are announced. */}
+        <div className={`chat-mascot chat-mascot--${mascotForm}${busy?' chat-mascot--busy':''}`} aria-hidden="true">
+          <div className="chat-mascot-figure" key={moment?.key??mascotExpression}><CamelliaCharacter form={mascotForm} expression={mascotExpression} size={88}/></div>
+          <span className="chat-mascot-name">{characterName(characterNameSetting)}{busy?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
+        </div>
         {messages.slice(-visibleCount).map((message) => {
           if(isModelSwitchMessage(message))return <div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>;
           if(message.role==='assistant'){
             const form=isConversationModel(message.assistantModel)?message.assistantModel:undefined;
-            const answered=messages.find(item=>item.role==='user'&&`${item.id}-a`===message.id)?.reaction;
-            return <div className={`assistant-row${form?` assistant-row--${form}`:''}`} key={message.id}>
-              {form&&<CamelliaCharacter form={form} expression={answered?EXPRESSION_FOR_REACTION[answered]:'listen'} size={32} className={message.id===lastAssistantId?'camellia-character--idle':undefined}/>}
-              <div className={`bubble assistant${form?` bubble--${form}`:''}`}>{form?<span className="message-model-label">{characterLabel(characterNameSetting,form)}</span>:<span className="message-model-label">{conversationModelName(message.assistantModel)}</span>}{message.text}</div>
-            </div>;
+            return <div className={`bubble assistant${form?` bubble--${form}`:''}`} key={message.id}><span className="message-model-label">{form?characterLabel(characterNameSetting,form):conversationModelName(message.assistantModel)}</span>{message.text}</div>;
           }
           const reactedBy=reactionForm(message.id);
           return <div className={`bubble ${message.role}`} key={message.id}>{message.text}{message.pending&&!sending&&!retrying&&<small className="meta">返答はまだ確定していません</small>}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}
-            {message.role==='user'&&message.reaction&&<span className="message-reaction"><CamelliaCharacter form={reactedBy} expression={EXPRESSION_FOR_REACTION[message.reaction]} size={24} label={`${characterLabel(characterNameSetting,reactedBy)}：${REACTION_LABEL[message.reaction]}`}/><span aria-hidden="true">{REACTION_EMOJI[message.reaction]}</span></span>}
+            {message.role==='user'&&message.reaction&&<span className="message-reaction"><span className="sr-only">{characterLabel(characterNameSetting,reactedBy)}のリアクション：{REACTION_LABEL[message.reaction]}</span><span aria-hidden="true">{REACTION_EMOJI[message.reaction]}</span></span>}
           </div>;
         })}
-        {(sending||retrying)&&<div className={`assistant-row assistant-row--${thinkingForm}`}><CamelliaCharacter form={thinkingForm} expression="think" size={32} className="camellia-character--idle"/><div className={`bubble assistant bubble--${thinkingForm} chat-loading`} aria-label="返答を受信中" aria-busy="true">{draftReply?<span className="stream-draft" aria-live="off">{draftReply}</span>:<output className="typing-dots"><span className="sr-only">返答を受信中</span><i/><i/><i/></output>}</div></div>}
+        {busy&&<div className={`bubble assistant bubble--${mascotForm} chat-loading`} aria-label="返答を受信中" aria-busy="true">{draftReply?<span className="stream-draft" aria-live="off">{draftReply}</span>:<output className="typing-dots"><span className="sr-only">返答を受信中</span><i/><i/><i/></output>}</div>}
         <div ref={messageEnd} aria-hidden="true"/>
       </div>
       <div className="conversation-followups">

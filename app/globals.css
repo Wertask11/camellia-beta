@@ -1289,18 +1289,25 @@ details {
 .chat .bubble.user .memory-message-button{color:#fbe8ee}
 .chat .bubble.user .memory-message-button:focus-visible{outline-color:#fff}
 .chat .bubble.user:has(.message-reaction){margin-bottom:14px}
-.assistant-row{display:flex;align-items:flex-end;gap:8px;justify-self:start;max-width:92%}
-.assistant-row .bubble{max-width:none;border-radius:16px 16px 16px 4px}
-.assistant-row--yura .bubble,.bubble--yura{background:#fbeef1;color:#342b30}
-.assistant-row--lactone .bubble,.bubble--lactone{background:#f6efe7;color:#342b30}
 .camellia-character{display:block;flex-shrink:0;user-select:none}
-.message-reaction{position:absolute;right:8px;bottom:-15px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 2px;border:1px solid #f0e2e4;border-radius:999px;background:#fffaf9;color:#342b30;font-size:13px;line-height:1;box-shadow:0 2px 6px #5f454518;animation:reaction-pop .32s cubic-bezier(.2,.9,.3,1.4)}
-.message-reaction .camellia-character{border-radius:50%}
 @keyframes reaction-pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
-/* YURA sways a little while she listens; Lactone stays still. */
-.camellia-character--yura.camellia-character--idle{transform-origin:50% 90%;animation:yura-sway 4s ease-in-out infinite alternate}
-@keyframes yura-sway{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
-@media(prefers-reduced-motion:reduce){.message-reaction,.camellia-character--yura.camellia-character--idle{animation:none}}
 .character-name-setting form{display:grid;gap:8px}.character-name-setting input{width:100%;font-size:16px;border:1px solid #e3b9c5;border-radius:12px}
 .character-name-preview{display:flex;gap:12px;margin-bottom:8px}.character-name-preview .camellia-character{border-radius:50%;padding:4px;box-sizing:border-box}
 .character-name-preview .camellia-character--yura{background:#f4d4dc}.character-name-preview .camellia-character--lactone{background:#ebdfd2}
+.chat .bubble.assistant{border-radius:16px 16px 16px 4px;justify-self:start}
+.chat .bubble.assistant.bubble--yura{background:#fbeef1;color:#342b30}
+.chat .bubble.assistant.bubble--lactone{background:#f6efe7;color:#342b30}
+/* The reaction: a small emoji on the corner of her message, popping in (as in companion apps). */
+.message-reaction{position:absolute;left:-6px;bottom:-14px;display:grid;place-items:center;width:28px;height:28px;border:1px solid #f0e2e4;border-radius:50%;background:#fffaf9;font-size:15px;line-height:1;box-shadow:0 2px 6px #5f454522;animation:reaction-pop .38s cubic-bezier(.2,.9,.3,1.5)}
+@keyframes reaction-pop{0%{transform:scale(.2) rotate(-25deg);opacity:0}70%{transform:scale(1.15) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+/* メリィ floats at the top of the conversation; messages scroll underneath. */
+.chat-mascot{position:sticky;top:0;z-index:2;justify-self:center;display:grid;justify-items:center;gap:2px;margin:-4px 0 4px;pointer-events:none}
+.chat-mascot-figure{filter:drop-shadow(0 6px 10px #5f454526);animation:mascot-float 3.2s ease-in-out infinite alternate,mascot-hop .42s cubic-bezier(.2,.9,.3,1.4)}
+.chat-mascot--yura .chat-mascot-figure .camellia-character{transform-origin:50% 90%;animation:yura-sway 4s ease-in-out infinite alternate}
+.chat-mascot--busy .chat-mascot-figure{animation:mascot-float 1.6s ease-in-out infinite alternate,mascot-hop .42s cubic-bezier(.2,.9,.3,1.4)}
+.chat-mascot-name{display:inline-flex;align-items:baseline;gap:2px;padding:3px 10px;border-radius:999px;background:#fffaf9e6;border:1px solid #f0e2e4;font-size:12px;font-weight:600;color:#342b30;box-shadow:0 1px 4px #5f454514}
+.chat-mascot-name small{font-size:11px;font-weight:500;color:#6f6268}
+@keyframes mascot-float{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+@keyframes mascot-hop{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes yura-sway{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){.message-reaction,.chat-mascot-figure,.chat-mascot--busy .chat-mascot-figure,.chat-mascot--yura .chat-mascot-figure .camellia-character{animation:none}}
