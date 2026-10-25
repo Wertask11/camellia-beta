@@ -10,6 +10,10 @@ export const REACTION_LABEL: Record<ConversationReaction, string> = { heart: '�
 export const REACTION_DELAY_MS = 350;
 /** How long the reaction shows on its own before メリィ starts thinking (the typing dots) or the reply appears. */
 export const REACTION_LEAD_MS = 1100;
+/** How long メリィ holds the same pose (and the emoji beside her): through the start of her thinking, not just a blink. */
+export const REACTION_POSE_MS = 3500;
+/** How long she shows that pose again after the reply. */
+export const REACTION_AFTER_REPLY_MS = 5000;
 export const isConversationReaction = (value: unknown): value is ConversationReaction =>
   typeof value === 'string' && (CONVERSATION_REACTIONS as readonly string[]).includes(value);
 

@@ -6,7 +6,7 @@ import { firstInSession } from '@/lib/analytics/once';
 import { ConversationModelSelector } from '@/components/ConversationModelSelector';
 import { conversationModelName, defaultConversationModel, isConversationModel } from '@/lib/conversation/models';
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
-import { REACTION_DELAY_MS, REACTION_EMOJI, REACTION_LABEL, REACTION_LEAD_MS, reactionFor, type ConversationReaction } from '@/lib/conversation/reactions';
+import { REACTION_AFTER_REPLY_MS, REACTION_DELAY_MS, REACTION_EMOJI, REACTION_LABEL, REACTION_LEAD_MS, REACTION_POSE_MS, reactionFor, type ConversationReaction } from '@/lib/conversation/reactions';
 import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel, characterName, type CharacterExpression } from '@/components/CamelliaCharacter';
 import { CharacterProfileSheet } from '@/components/CharacterProfileSheet';
 import {requestGemini,type ChatError} from '@/lib/conversation/client';
@@ -165,7 +165,7 @@ export function CamelliaScreen({
     reactTimers.current.forEach(clearTimeout);
     reactionHold.current=monotonicNow()+REACTION_DELAY_MS+REACTION_LEAD_MS;setReacting(true);
     reactTimers.current=[
-      setTimeout(()=>{if(!mounted.current)return;setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));flash(EXPRESSION_FOR_REACTION[reaction],REACTION_LEAD_MS,reaction);onTrack('conversation_reaction_shown',{reaction,model_id:model});},REACTION_DELAY_MS),
+      setTimeout(()=>{if(!mounted.current)return;setMessages(current=>current.map(message=>message.id===userId&&message.role==='user'?{...message,reaction}:message));flash(EXPRESSION_FOR_REACTION[reaction],REACTION_POSE_MS,reaction);onTrack('conversation_reaction_shown',{reaction,model_id:model});},REACTION_DELAY_MS),
       setTimeout(()=>{if(mounted.current)setReacting(false);},REACTION_DELAY_MS+REACTION_LEAD_MS),
     ];
   };
@@ -251,7 +251,7 @@ export function CamelliaScreen({
     setDraftReply('');
     setMessages((current) => [...current.filter(message=>message.id!==userId), userMessage, assistantMessage]);
     const { intent, topics } = savePair(clean, reply, provider,assistantModel,requestModel,userId,Boolean(failedCategory),reaction);
-    if(reaction)flash(EXPRESSION_FOR_REACTION[reaction],3200);
+    if(reaction)flash(EXPRESSION_FOR_REACTION[reaction],REACTION_AFTER_REPLY_MS);
     setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety || failedCategory ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
     if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);

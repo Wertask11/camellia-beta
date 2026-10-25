@@ -44,16 +44,18 @@ try {
   assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィ · YURA');
   assert.ok(await page.locator('.camellia > header .chat-mascot').count(), 'メリィ is in the header, not over the messages');
   if (shots) await page.screenshot({ path: `${shots}/reaction-before-reply.png` });
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-praise.svg', 'she holds the pose, not just a blink');
+  assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '👏', 'and the emoji stays beside her');
   await page.locator('.chat-loading').waitFor({ timeout: 3000 });
   assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィは考え中です', 'then she thinks');
   const mascot = page.locator('.chat-mascot img');
-  assert.equal(await mascot.getAttribute('src'), '/character/full/yura-think.svg');
   if (shots) await page.screenshot({ path: `${shots}/reaction-then-thinking.png` });
   assert.equal(await pill.textContent(), 'メリィ · YURAのリアクション：がんばったね👏', 'the emoji, with words for screen readers');
   await page.locator('.bubble.assistant:not(.chat-loading)').waitFor();
   assert.equal(await page.locator('.bubble.assistant .message-model-label').first().textContent(), 'メリィ · YURA');
   assert.equal(await mascot.getAttribute('src'), '/character/full/yura-praise.svg', 'after the reply her face matches the reaction');
-  await page.waitForFunction(() => document.querySelector('.chat-mascot img')?.getAttribute('src') === '/character/full/yura-listen.svg', null, { timeout: 6000 });
+  await page.waitForFunction(() => document.querySelector('.chat-mascot img')?.getAttribute('src') === '/character/full/yura-listen.svg', null, { timeout: 8000 });
   assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィ · YURA', 'then she goes back to listening');
 
   await box.fill('最近ずっとつらい');

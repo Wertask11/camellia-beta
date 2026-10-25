@@ -70,7 +70,7 @@ const server = await createServer({
           const reply = /つらい/.test(message) ? 'そうだったんだね。話してくれてありがとう。' : /できた|やった|やりき/.test(message) ? 'すごい、最後までやりきったんだね。' : 'それはうれしいね。';
           const send = value => res.write(`data: ${JSON.stringify(value)}\n\n`);
           send({ type: 'start' });
-          setTimeout(() => { send({ type: 'delta', text: reply.slice(0, 6) }); setTimeout(() => { send({ type: 'delta', text: reply }); send({ type: 'done', reply, provider: 'gemini', modelId }); res.end(); }, 2000); }, 150);
+          setTimeout(() => { send({ type: 'delta', text: reply.slice(0, 6) }); setTimeout(() => { send({ type: 'delta', text: reply }); send({ type: 'done', reply, provider: 'gemini', modelId }); res.end(); }, 3500); }, 150);
         });
       });
       s.middlewares.use((req, res, next) => {
