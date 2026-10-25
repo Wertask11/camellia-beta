@@ -369,6 +369,7 @@ export default function Page() {
       )}
       {tab === 'camellia' && (
         <ConversationWorkspace
+          onRenameCharacter={characterName=>store.updateProfile({characterName})}
           onRemember={store.remember}
           onTrack={store.track}
           treeContext={treeContext}

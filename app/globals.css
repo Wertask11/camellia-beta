@@ -1291,7 +1291,6 @@ details {
 .chat .bubble.user:has(.message-reaction){margin-bottom:14px}
 .camellia-character{display:block;flex-shrink:0;user-select:none}
 @keyframes reaction-pop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
-.character-name-setting form{display:grid;gap:8px}.character-name-setting input{width:100%;font-size:16px;border:1px solid #e3b9c5;border-radius:12px}
 .character-name-preview{display:flex;gap:12px;margin-bottom:8px}.character-name-preview .camellia-character{border-radius:50%;padding:4px;box-sizing:border-box}
 .character-name-preview .camellia-character--yura{background:#f4d4dc}.character-name-preview .camellia-character--lactone{background:#ebdfd2}
 .chat .bubble.assistant{border-radius:16px 16px 16px 4px;justify-self:start}
@@ -1301,7 +1300,9 @@ details {
 .message-reaction{position:absolute;left:-6px;bottom:-14px;display:grid;place-items:center;width:28px;height:28px;border:1px solid #f0e2e4;border-radius:50%;background:#fffaf9;font-size:15px;line-height:1;box-shadow:0 2px 6px #5f454522;animation:reaction-pop .38s cubic-bezier(.2,.9,.3,1.5)}
 @keyframes reaction-pop{0%{transform:scale(.2) rotate(-25deg);opacity:0}70%{transform:scale(1.15) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
 /* メリィ floats at the top of the conversation; messages scroll underneath. */
-.chat-mascot{position:sticky;top:0;z-index:2;justify-self:center;display:grid;justify-items:center;gap:2px;margin:-4px 0 4px;pointer-events:none}
+.chat-mascot{position:sticky;top:0;z-index:2;justify-self:center;margin:-4px 0 4px;pointer-events:none}
+.chat-mascot-button{pointer-events:auto;display:grid;justify-items:center;gap:2px;padding:0;border:0;background:transparent;cursor:pointer;border-radius:24px}
+.chat-mascot-button:focus-visible{outline:3px solid #aa547a;outline-offset:2px}
 .chat-mascot-figure{filter:drop-shadow(0 6px 10px #5f454526);animation:mascot-float 3.2s ease-in-out infinite alternate,mascot-hop .42s cubic-bezier(.2,.9,.3,1.4)}
 .chat-mascot--yura .chat-mascot-figure .camellia-character{transform-origin:50% 90%;animation:yura-sway 4s ease-in-out infinite alternate}
 .chat-mascot--busy .chat-mascot-figure{animation:mascot-float 1.6s ease-in-out infinite alternate,mascot-hop .42s cubic-bezier(.2,.9,.3,1.4)}
@@ -1311,3 +1312,16 @@ details {
 @keyframes mascot-hop{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
 @keyframes yura-sway{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
 @media(prefers-reduced-motion:reduce){.message-reaction,.chat-mascot-figure,.chat-mascot--busy .chat-mascot-figure,.chat-mascot--yura .chat-mascot-figure .camellia-character{animation:none}}
+.character-profile{position:fixed;inset:auto 0 0;margin:0 auto;width:min(460px,100%);max-width:100%;max-height:calc(100dvh - 24px);overflow-y:auto;border:0;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));text-align:center;background:#fffaf9;color:#342b30}
+.character-profile::backdrop{background:#342b3066}
+.character-profile .close{position:absolute;top:10px;left:10px;min-width:44px;min-height:44px;display:grid;place-items:center;border:0;background:transparent;color:#6f6268}
+.character-profile-portrait{position:relative;width:176px;height:176px;margin:8px auto 4px;border-radius:50%;display:grid;place-items:center}
+.character-profile-portrait--yura{background:#f4d4dc}.character-profile-portrait--lactone{background:#ebdfd2}
+.character-profile-edit{position:absolute;right:8px;bottom:10px;width:36px;height:36px;border-radius:50%;border:1px solid #f0e2e4;background:#fffaf9;color:#342b30;display:grid;place-items:center;box-shadow:0 2px 6px #5f454522}
+.character-profile-menu{position:absolute;right:-8px;bottom:-84px;z-index:3;display:grid;min-width:200px;padding:6px;border-radius:16px;background:#fff;box-shadow:0 10px 30px #5f454533;text-align:left}
+.character-profile-menu button{min-height:44px;padding:0 12px;border:0;background:transparent;border-radius:10px;font:inherit;font-size:14px;color:#342b30;text-align:left}
+.character-profile-menu button:hover,.character-profile-menu button:focus-visible{background:#fbeef1}
+.character-profile h2{margin:10px 0 0;font-size:24px}
+.character-profile-status{margin:2px 0 10px;font-size:13px;color:#6f6268}
+.character-profile-form{margin:0 0 12px;font-size:14px}.character-profile-form small{color:#6f6268}
+.character-name-editor{display:grid;gap:8px;text-align:left;margin:8px 0}.character-name-editor input{width:100%;font-size:16px;border:1px solid #e3b9c5;border-radius:12px}

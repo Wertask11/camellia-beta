@@ -270,6 +270,7 @@ export type AnalyticsEventName =
   | 'tree_reflection_add'
   | 'tree_archive'
   | 'conversation_reaction_shown'
+  | 'character_profile_open' | 'character_renamed'
   | 'invite_view' | 'invite_submit' | 'invite_accepted' | 'access_suspended_view' | 'member_invite_open' | 'member_invite_share';
 export interface AnalyticsEvent {
   id: string;

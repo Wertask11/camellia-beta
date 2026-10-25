@@ -8,6 +8,7 @@ import { conversationModelName, defaultConversationModel, isConversationModel } 
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
 import { REACTION_EMOJI, REACTION_LABEL, type ConversationReaction } from '@/lib/conversation/reactions';
 import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel, characterName, type CharacterExpression } from '@/components/CamelliaCharacter';
+import { CharacterProfileSheet } from '@/components/CharacterProfileSheet';
 import {requestGemini,type ChatError} from '@/lib/conversation/client';
 import {conversationPerformance,previewBatchTransport,afterConversationPaint,safeConversationTiming,type ConversationTiming} from '@/lib/conversation/performance';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
@@ -47,6 +48,7 @@ export function CamelliaScreen({
   onTrack,
   initialModel,
   onSelectModel,
+  onRenameCharacter,
 }: {
   conversationId?: string;
   state: CamelliaState;
@@ -63,6 +65,8 @@ export function CamelliaScreen({
   onTree: () => void;
   onRemember: (text: string) => void;
   onTrack: (name: AnalyticsEventName, properties?: Record<string, string | number | boolean>) => void;
+  /** Renaming Camellia's character from her profile (tap the floating character). */
+  onRenameCharacter?: (name: string | null) => void;
 }) {
   const currentTime = useCurrentTime(state.checkins);
   const starters = conversationStarters(state, currentTime, Boolean(treeContext));
@@ -77,6 +81,7 @@ export function CamelliaScreen({
   /* The floating character reacts for a moment (a nod when her message gets a reaction, a face after the reply),
      then goes back to thinking or listening. The key restarts the little hop animation. */
   const [moment,setMoment]=useState<{expression:CharacterExpression;key:number}>();
+  const [profileOpen,setProfileOpen]=useState(false);
   const momentTimer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),momentCount=useRef(0);
   const flash=(expression:CharacterExpression,ms:number)=>{clearTimeout(momentTimer.current);momentCount.current+=1;setMoment({expression,key:momentCount.current});momentTimer.current=setTimeout(()=>{if(mounted.current)setMoment(undefined);},ms);};
   useEffect(()=>()=>clearTimeout(momentTimer.current),[]);
@@ -287,13 +292,16 @@ export function CamelliaScreen({
       {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。記録を参照している間は、共通の話し方でお返しします。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
 
+      {profileOpen&&<CharacterProfileSheet name={characterNameSetting} form={mascotForm} busy={busy} canSwitch={!busy&&availability!=='disabled'&&!treeContext} onClose={()=>setProfileOpen(false)} onSwitch={chooseModel} onRename={name=>{onRenameCharacter?.(name);onTrack('character_renamed',{custom_name:name!==null});}}/>}
       <div ref={chatViewport} onScroll={()=>{const v=chatViewport.current;if(v)stickToEnd.current=v.scrollHeight-v.scrollTop-v.clientHeight<80;}} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
         {/* メリィ floats at the top of the conversation (like a companion app): she sways while listening,
             thinks while the reply comes, and reacts for a moment. Decorative: the messages themselves are announced. */}
-        <div className={`chat-mascot chat-mascot--${mascotForm}${busy?' chat-mascot--busy':''}`} aria-hidden="true">
-          <div className="chat-mascot-figure" key={moment?.key??mascotExpression}><CamelliaCharacter form={mascotForm} expression={mascotExpression} size={88}/></div>
-          <span className="chat-mascot-name">{characterName(characterNameSetting)}{busy?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
+        <div className={`chat-mascot chat-mascot--${mascotForm}${busy?' chat-mascot--busy':''}`}>
+          <button className="chat-mascot-button" onClick={()=>{setProfileOpen(true);onTrack('character_profile_open',{model_id:mascotForm});}} aria-label={`${characterName(characterNameSetting)}のプロフィールを開く`}>
+            <span className="chat-mascot-figure" key={moment?.key??mascotExpression} aria-hidden="true"><CamelliaCharacter form={mascotForm} expression={mascotExpression} size={88}/></span>
+            <span className="chat-mascot-name" aria-hidden="true">{characterName(characterNameSetting)}{busy?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
+          </button>
         </div>
         {messages.slice(-visibleCount).map((message) => {
           if(isModelSwitchMessage(message))return <div className="model-switch-marker" role="note" key={message.id}>{conversationModelName(message.to)}に切り替えました</div>;

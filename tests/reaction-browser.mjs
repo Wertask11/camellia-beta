@@ -63,6 +63,30 @@ try {
   await page.locator('.bubble.user .message-reaction').nth(1).waitFor();
   console.log('PASS the reaction lands on her message before the reply, matches メリィ\'s face, and is still there after reloading');
 
+  // Tap the floating character: her profile, then 「名前を編集」 and 「姿を変える」 from the pencil (as in companion apps).
+  await page.getByRole('button', { name: 'メリィのプロフィールを開く' }).click();
+  const sheet = page.locator('dialog.character-profile');
+  await sheet.waitFor();
+  assert.equal(await sheet.locator('h2').textContent(), 'メリィ');
+  if (shots) await page.screenshot({ path: `${shots}/character-profile.png` });
+  await sheet.getByRole('button', { name: 'キャラクターを編集' }).click();
+  await sheet.getByRole('menuitem', { name: /名前を編集/ }).click();
+  await sheet.getByLabel('この子の名前').fill('ことは');
+  await sheet.getByRole('button', { name: '名前を保存する' }).click();
+  assert.equal(await sheet.locator('h2').textContent(), 'ことは');
+  await sheet.getByRole('button', { name: 'キャラクターを編集' }).click();
+  await sheet.getByRole('menuitem', { name: /姿を変える（Lactone）/ }).click();
+  await sheet.locator('.character-profile-portrait--lactone').waitFor();
+  await sheet.getByRole('button', { name: '閉じる' }).click();
+  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'ことは · Lactone');
+  assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/lactone-listen.svg');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('camellia-prototype-v3')).profile.characterName), 'ことは');
+  await page.getByRole('button', { name: 'ことはのプロフィールを開く' }).click();
+  await sheet.getByRole('button', { name: 'キャラクターを編集' }).click();
+  await sheet.getByRole('menuitem', { name: /姿を変える（YURA）/ }).click();
+  await sheet.getByRole('button', { name: '閉じる' }).click();
+  console.log('PASS tapping the character opens her profile; she can be renamed and switch between YURA and Lactone there');
+
   await page.getByRole('button', { name: 'My', exact: true }).click();
   await page.getByText('Camelliaのキャラクター').click();
   await page.getByLabel('この子の名前').fill('つばきちゃん');
