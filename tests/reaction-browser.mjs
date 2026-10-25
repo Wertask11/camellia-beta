@@ -35,16 +35,20 @@ try {
   const box = page.getByLabel('Camelliaへのメッセージ', { exact: true });
   await box.fill('今日、プレゼンを最後までやりきれた');
   await page.getByRole('button', { name: '送信', exact: true }).click();
+  // Her message, then the reaction (and the same face and emoji on メリィ), and only then the thinking dots and the reply.
   const pill = page.locator('.bubble.user .message-reaction');
-  await pill.waitFor();
-  assert.equal(await page.locator('.bubble.assistant:not(.chat-loading)').count(), 0, 'the reaction is there before the reply');
-  await page.waitForTimeout(500);
-  assert.equal(await page.locator('.stream-draft').count() + await page.locator('.bubble.assistant:not(.chat-loading)').count(), 0, 'the reply text waits a moment after the reaction');
+  await pill.waitFor({ timeout: 1500 });
+  assert.equal(await page.locator('.chat-loading').count(), 0, 'メリィ is not thinking yet while the reaction has its moment');
+  assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '👏', 'メリィ shows the same reaction');
+  assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-praise.svg', 'with the same face');
+  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィ · YURA');
   assert.ok(await page.locator('.camellia > header .chat-mascot').count(), 'メリィ is in the header, not over the messages');
-  const mascot = page.locator('.chat-mascot img');
-  assert.match(await mascot.getAttribute('src'), /\/character\/full\/yura-(think|praise)\.svg$/, 'メリィ at the top, thinking (or nodding at the reaction)');
-  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィは考え中です');
   if (shots) await page.screenshot({ path: `${shots}/reaction-before-reply.png` });
+  await page.locator('.chat-loading').waitFor({ timeout: 3000 });
+  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィは考え中です', 'then she thinks');
+  const mascot = page.locator('.chat-mascot img');
+  assert.equal(await mascot.getAttribute('src'), '/character/full/yura-think.svg');
+  if (shots) await page.screenshot({ path: `${shots}/reaction-then-thinking.png` });
   assert.equal(await pill.textContent(), 'メリィ · YURAのリアクション：がんばったね👏', 'the emoji, with words for screen readers');
   await page.locator('.bubble.assistant:not(.chat-loading)').waitFor();
   assert.equal(await page.locator('.bubble.assistant .message-model-label').first().textContent(), 'メリィ · YURA');
@@ -54,8 +58,10 @@ try {
 
   await box.fill('最近ずっとつらい');
   await page.getByRole('button', { name: '送信', exact: true }).click();
-  await page.locator('.bubble.assistant:not(.chat-loading)').nth(1).waitFor();
+  await page.locator('.bubble.user .message-reaction').nth(1).waitFor({ timeout: 1500 });
   assert.ok((await page.locator('.bubble.user .message-reaction').nth(1).textContent()).includes('😭'), 'つらい gets 😭');
+  assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '😭');
+  await page.locator('.bubble.assistant:not(.chat-loading)').nth(1).waitFor();
   if (shots) await page.screenshot({ path: `${shots}/reaction-after-reply.png` });
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('camellia-prototype-v3')).aiConversations.flatMap(c => c.messages).filter(m => m.role === 'user').map(m => m.reaction));
   assert.deepEqual(stored, ['clap', 'cry'], 'reactions are kept with her messages');

@@ -1,65 +1,38 @@
-/** YURA / Lactone reactions (💓😀👏👍): chosen in the same generation, shown before the reply, never bright on a
- *  painful message, stored only on her own message, and only the reaction name reaches analytics. Local only. */
+/** YURA / Lactone reactions (💓😀👏👍😭): decided on the device from her words (never waiting for the model), never
+ *  bright on a painful message, stored only on her own message, and only the reaction name reaches analytics. Local only. */
 import assert from 'node:assert/strict';
 import {createServer} from 'vite';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const server=await createServer({configFile:false,root,resolve:{alias:{'@':root}},server:{middlewareMode:true},appType:'custom'});
 try{
- const {safeReaction,REACTION_EMOJI}=await server.ssrLoadModule('/lib/conversation/reactions.ts');
- const {parseConversationReply,CONVERSATION_RESPONSE_SCHEMA}=await server.ssrLoadModule('/lib/conversation/action-bridge.ts');
- const {partialReply,partialReaction,collectReplyStream,consumeChatStream}=await server.ssrLoadModule('/lib/conversation/stream.ts');
- const {createGeminiChatHandler}=await server.ssrLoadModule('/lib/conversation/gemini-server.ts');
+ const {reactionFor,REACTION_EMOJI}=await server.ssrLoadModule('/lib/conversation/reactions.ts');
+ const {parseConversationReply,CONVERSATION_RESPONSE_SCHEMA,ACTION_BRIDGE_INSTRUCTION}=await server.ssrLoadModule('/lib/conversation/action-bridge.ts');
+ const {partialReply,consumeChatStream}=await server.ssrLoadModule('/lib/conversation/stream.ts');
  const {validConversationEntry}=await server.ssrLoadModule('/lib/conversation/entries.ts');
  const analytics=await server.ssrLoadModule('/lib/analytics/posthog.ts');
 
  assert.deepEqual(Object.values(REACTION_EMOJI),['💓','😀','👏','👍','😭']);
- assert.equal(safeReaction('clap','今日はプレゼンを最後までやりきった'),'clap');
- assert.equal(safeReaction('none','明日の天気は？'),'heart','every message gets one; 💓 when the model gave none');
- assert.equal(safeReaction('party','楽しい'),'heart','only the five');
- for(const painful of ['母が亡くなった','仕事がつらい','眠れないし不安','失恋して最悪','しんどい'])for(const chosen of ['smile','heart','none'])assert.equal(safeReaction(chosen,painful),'cry',painful);
- assert.equal(safeReaction('cry','ちょっと疲れた'),'cry','the model may choose 😭 itself');
- assert.deepEqual(Object.keys(CONVERSATION_RESPONSE_SCHEMA.properties),['reaction','reply','actionId'],'the reaction is written first, so it can be shown first');
- console.log('PASS only 💓😀👏👍😭, and a painful message always gets 😭');
+ for(const [message,reaction] of [
+  ['母が亡くなった','cry'],['仕事がつらい','cry'],['眠れないし不安','cry'],['失恋して最悪','cry'],['しんどい','cry'],['頑張ったけど辛い','cry'],
+  ['今日はプレゼンを最後までやりきった','clap'],['模様替えつかれた〜！','clap'],['試験に合格した','clap'],
+  ['友だちと会えてうれしい','smile'],['カフェ楽しかった','smile'],
+  ['明日からジムに行ってみようと思う','thumbs'],['なるほど','thumbs'],
+  ['今日のCheckについて話したい','heart'],['明日の天気は？','heart'],
+ ])assert.equal(reactionFor(message),reaction,message);
+ assert.equal(reactionFor('ｼﾝﾄﾞｲ'.normalize('NFKC')),'heart','only the words she wrote');
+ console.log('PASS only 💓😀👏👍😭, chosen from her words; a painful message always gets 😭');
 
- assert.deepEqual(parseConversationReply('{"reaction":"thumbs","reply":"いい考えだね。","actionId":null}','この方法でやってみる'),{reply:'いい考えだね。',reaction:'thumbs'});
- assert.deepEqual(parseConversationReply('{"reaction":"none","reply":"そうなんだね。","actionId":null}','明日の予定'),{reply:'そうなんだね。',reaction:'heart'});
- assert.deepEqual(parseConversationReply('{"reply":"older shape still works","actionId":null}','x'),{reply:'older shape still works',reaction:'heart'});
- assert.equal(CONVERSATION_RESPONSE_SCHEMA.properties.reaction.enum.includes('none'),false,'the model must pick one');
- assert.equal(partialReaction('{"reaction":"cl'),undefined,'not before the value is complete');
- assert.equal(partialReaction('{"reaction":"clap","re'),'clap');
- assert.equal(partialReply('{"reaction":"clap","reply":"すごい、最後まで'),'すごい、最後まで','the reply preview still works after the reaction');
- assert.equal(partialReply('{"reply":"前の形"'),'前の形');
- const events=[];
- async function* chunks(){for(const text of ['{"reaction":"cla','p","reply":"すご','い！","actionId":null}'])yield {text};}
- await collectReplyStream(chunks(),text=>events.push(['text',text]),()=>{},new AbortController().signal,reaction=>events.push(['reaction',reaction]));
- assert.deepEqual(events[0],['reaction','clap'],'the reaction arrives before any reply text');
- assert.equal(events.filter(e=>e[0]==='reaction').length,1);
- console.log('PASS the reaction is read from the first chunks, ahead of the streamed reply');
-
+ assert.deepEqual(Object.keys(CONVERSATION_RESPONSE_SCHEMA.properties),['reply','actionId'],'the model no longer chooses the reaction');
+ assert.ok(!ACTION_BRIDGE_INSTRUCTION.includes('reaction'));
+ assert.deepEqual(parseConversationReply('{"reply":"いい考えだね。","actionId":null}','この方法でやってみる'),{reply:'いい考えだね。'});
+ assert.deepEqual(parseConversationReply('{"reaction":"clap","reply":"older shape still works","actionId":null}','x'),{reply:'older shape still works'});
+ assert.equal(partialReply('{"reply":"すごい、最後まで'),'すごい、最後まで');
  const sse=frames=>new Response(new ReadableStream({start(c){for(const f of frames)c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(f)}\n\n`));c.close();}}));
  const seen=[];
- const done=await consumeChatStream(sse([{type:'start'},{type:'reaction',reaction:'heart'},{type:'reaction',reaction:'<script>'},{type:'delta',text:'うん'},{type:'done',reply:'うん',provider:'gemini',reaction:'heart'}]),t=>seen.push(t),r=>seen.push(`reaction:${r}`));
- assert.deepEqual(seen,['reaction:heart','うん'],'an unknown reaction is ignored');
- assert.equal(done.reaction,'heart');
- console.log('PASS the client reads the reaction event and ignores anything else');
-
- const run=async(message,reaction='smile')=>{
-  const written=[];let status;
-  const handler=createGeminiChatHandler({env:{CAMELLIA_GEMINI_CHAT_ENABLED:'true',GEMINI_API_KEY:'local-only',VERCEL_ENV:'preview'},verifyToken:async()=>({uid:'synthetic'}),getTodayMood:async()=>undefined,
-   generate:async()=>{throw new Error('streaming expected');},
-   generateStream:async(_c,_p,controls)=>{controls.onFirstChunk();controls.onReaction?.(reaction);controls.onText('うん');return `{"reaction":"${reaction}","reply":"うん、聞いてるよ。","actionId":null}`;}});
-  await handler({method:'POST',headers:{authorization:'Bearer t',accept:'text/event-stream'},body:{message,modelId:'yura'}},{setHeader(){},status(s){status=s;return this;},flushHeaders(){},write(c){written.push(JSON.parse(c.replace(/^data: /,'')));},end(){},json(v){written.push({json:v});},once(){},off(){}});
-  return {status,written};
- };
- const happy=await run('今日は久しぶりに友だちと会えた');
- assert.deepEqual(happy.written.map(e=>e.type),['start','reaction','delta','done']);
- assert.equal(happy.written[1].reaction,'smile');assert.equal(happy.written.at(-1).reaction,'smile');
- const sad=await run('最近ずっとつらい');
- assert.equal(sad.written[1].reaction,'cry');assert.equal(sad.written.at(-1).reaction,'cry','the final answer follows the same rule');
- const urgent=await run('死にたい');
- assert.equal(urgent.written[0].json.safety,true);assert.equal(urgent.written[0].json.reaction,undefined,'no reaction on an urgent safety reply');
- console.log('PASS the server sends the reaction first, 😭 on painful messages, and none on safety replies');
+ const done=await consumeChatStream(sse([{type:'start'},{type:'reaction',reaction:'heart'},{type:'delta',text:'うん'},{type:'done',reply:'うん',provider:'gemini'}]),t=>seen.push(t));
+ assert.deepEqual(seen,['うん'],'an old reaction event is ignored');assert.equal(done.reply,'うん');
+ console.log('PASS the reply needs nothing from the model about the reaction');
 
  const at=new Date().toISOString();
  assert.equal(validConversationEntry({id:'u',role:'user',text:'x',createdAt:at,reaction:'clap'}),true);

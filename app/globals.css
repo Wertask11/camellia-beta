@@ -1309,10 +1309,15 @@ details {
 .chat-mascot--busy .chat-mascot-figure{animation:mascot-float 1.6s ease-in-out infinite alternate,mascot-hop .42s cubic-bezier(.2,.9,.3,1.4)}
 .chat-mascot-name{display:inline-flex;align-items:baseline;gap:2px;padding:3px 10px;border-radius:999px;background:#fffaf9e6;border:1px solid #f0e2e4;font-size:12px;font-weight:600;color:#342b30;box-shadow:0 1px 4px #5f454514}
 .chat-mascot-name small{font-size:11px;font-weight:500;color:#6f6268}
+/* The same emoji she put on the message pops beside メリィ; with 😭 she does not hop, she just sways gently. */
+.chat-mascot-figure{position:relative}
+.chat-mascot-emoji{position:absolute;left:-12px;top:2px;font-size:22px;line-height:1;filter:drop-shadow(0 2px 3px #5f454533);animation:mascot-emoji 1.1s ease-out both}
+.chat-mascot-figure:has(.chat-mascot-emoji--cry){animation:mascot-float 2.4s ease-in-out infinite alternate}
+@keyframes mascot-emoji{0%{opacity:0;transform:translateY(8px) scale(.6)}20%{opacity:1;transform:translateY(0) scale(1.15)}75%{opacity:1;transform:translateY(-4px) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(1)}}
 @keyframes mascot-float{from{transform:translateY(0)}to{transform:translateY(-5px)}}
 @keyframes mascot-hop{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
 @keyframes yura-sway{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
-@media(prefers-reduced-motion:reduce){.message-reaction,.chat-mascot-figure,.chat-mascot--busy .chat-mascot-figure,.chat-mascot--yura .chat-mascot-figure .camellia-character{animation:none}}
+@media(prefers-reduced-motion:reduce){.chat-mascot-emoji,.message-reaction,.chat-mascot-figure,.chat-mascot--busy .chat-mascot-figure,.chat-mascot--yura .chat-mascot-figure .camellia-character{animation:none}}
 .character-profile{position:fixed;inset:auto 0 0;margin:0 auto;width:min(460px,100%);max-width:100%;max-height:calc(100dvh - 24px);overflow-y:auto;border:0;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));text-align:center;background:#fffaf9;color:#342b30}
 .character-profile::backdrop{background:#342b3066}
 .character-profile .close{position:absolute;top:10px;left:10px;min-width:44px;min-height:44px;display:grid;place-items:center;border:0;background:transparent;color:#6f6268}

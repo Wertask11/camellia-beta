@@ -9,6 +9,8 @@ for(const key of ['window','document','HTMLElement','HTMLInputElement','HTMLDial
 dom.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};
 dom.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+// The reaction's moment before her reply (about 1.5s) is not what this test is about (tests/reaction-browser.mjs is): run it at once.
+const realSetTimeout=globalThis.setTimeout;globalThis.setTimeout=(fn,ms,...rest)=>realSetTimeout(fn,ms>=300&&ms<=1500?0:ms,...rest);
 const {createRoot}=await import('react-dom/client');
 const server=await createServer({configFile:false,root:process.cwd(),resolve:{alias:{'@':process.cwd()}},server:{middlewareMode:true,hmr:false},plugins:[{name:'synthetic-ui-dependencies',enforce:'pre',resolveId(id){if(id.includes('schoolpark/sync'))return '\0sync';if(id.includes('analytics/posthog'))return '\0analytics';if(id.includes('schoolpark/firebase'))return '\0auth';},load(id){if(id==='\0sync')return 'export const syncToSchoolPark=()=>{};export const deleteSyncedCamelliaData=async()=>{};export const prepareSchoolParkAccount=async s=>s;';if(id==='\0analytics')return 'export const forwardEvent=()=>false;export const resetAnalyticsIdentity=()=>{};';if(id==='\0auth')return 'export const schoolParkAuth={currentUser:{getIdToken:async()=>"synthetic-local-only"}};';}}]});
 const priorFetch=globalThis.fetch;let app;
