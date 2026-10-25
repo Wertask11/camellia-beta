@@ -8,11 +8,12 @@ import { ACTIONS } from '@/data/actions';
 import { generateInsights } from '@/lib/insight/engine';
 import { AccountSettings } from '@/components/AccountSettings';
 import { MemberInvite } from '@/components/MemberInvite';
+import { CharacterNameSetting } from '@/components/CharacterNameSetting';
 import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
 import type { CamelliaState } from '@/types';
 
-export function MyScreen({onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onTrack?:(name:'member_invite_open'|'member_invite_share',properties?:Record<string,string>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:'member_invite_open'|'member_invite_share',properties?:Record<string,string>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
@@ -38,6 +39,7 @@ export function MyScreen({onTrack,onCircles,onPlaces,state,devNight,onEditProfil
     {LIVE_DESTINATIONS.has('place')&&onPlaces&&<button className="secondary-button" onClick={onPlaces}>保存したPlaceを見る →</button>}
     <section className="insights"><p className="eyebrow">Camelliaがあなたについて気づいたこと</p><h2>これまでの記録からの気づき</h2>{insights.length?insights.map(i=><article className="insight-card" key={i.key}><p className="eyebrow">事実</p><p>{i.fact??i.text}</p><p className="eyebrow">仮説・受け取り方</p><p>{i.hypothesis??'この記録だけで理由は決められません。'}</p><small>{i.periodStart&&i.periodEnd?`${i.periodStart}〜${i.periodEnd} · `:''}{i.sampleSize}件の記録。因果関係を示すものではありません。</small><div><button onClick={()=>onInsight(i.key,'correct')}>合ってる</button><button onClick={()=>onInsight(i.key,'incorrect')}>ちょっと違う</button></div></article>):<div className="empty"><b>まだ分からないこともたくさんあります。</b><br/>少しずつ一緒に見つけていきましょう。</div>}</section>
     <details className="my-profile"><summary>プロフィール</summary><section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section></details>
+    {onRenameCharacter&&<CharacterNameSetting value={state.profile.characterName} onSave={onRenameCharacter}/>}
     <details className="account-records"><summary>アカウントと記録 <span>{sync.phase==='saved'?'保存済み':sync.phase==='error'?'確認が必要':sync.phase==='pending'?'保存中':'確認中'}</span></summary>
     <AccountSettings distinctId={state.profile.id}/>
     <MemberInvite onTrack={onTrack}/>

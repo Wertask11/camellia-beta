@@ -35,6 +35,9 @@
 | conversation_error | `screens/CamelliaScreen.tsx:186`<br>`screens/CamelliaScreen.tsx:225` | 許可した失敗カテゴリ。本文や例外文字列なし | provider, error_category, model_id | 実装経路あり / allowlist / 実着信あり（既存含む） | 指定4件で未使用 |
 | conversation_model_selected | `screens/CamelliaScreen.tsx:134` | 上部selectorで明示選択 | model_id | 実装経路あり / allowlist / 実着信あり（既存含む） | 指定4件で未使用 |
 | conversation_model_switched | `screens/CamelliaScreen.tsx:135` | 本文のあるthreadで別modelを明示選択 | model_id, from_model, to_model | 実装経路あり / allowlist / 実着信あり（既存含む） | 指定4件で未使用 |
+| conversation_reaction_shown | `screens/CamelliaScreen.tsx` | YURA／Lactone が彼女のメッセージに付けたリアクションが確定したとき（2026-10-25追加） | reaction（heart/smile/clap/thumbs）, model_id | 実装経路あり / allowlist / 未着信。メッセージ本文は送らない | 指定4件で未使用 |
+| character_profile_open | `screens/CamelliaScreen.tsx` | 会話の上のキャラクターをタップしてプロフィールを開いた（2026-10-25追加） | model_id | 実装経路あり / allowlist / 未着信 | 指定4件で未使用 |
+| character_renamed | `screens/CamelliaScreen.tsx` | プロフィールからキャラクターの名前を保存・初期名に戻した | custom_name（初期名以外か。名前そのものは送らない） | 実装経路あり / allowlist / 未着信 | 指定4件で未使用 |
 | account_link_started | `components/AccountSettings.tsx:44`<br>`components/AccountSettings.tsx:56` | ログイン方法の連携開始 | auth_method | 実装経路あり / allowlist / 今回の実着信は未検証 | 指定4件で未使用 |
 | account_link_success | `app/page.tsx:164`<br>`components/AccountSettings.tsx:63` | ログイン方法の連携成功 | auth_method | 実装経路あり / allowlist / 今回の実着信は未検証 | 指定4件で未使用 |
 | discover_view | `screens/DiscoverScreen.tsx:15` | Discoverへの訪問、マウント内1回 | なし | 実装経路あり / allowlist / 実着信あり（既存含む） | 指定4件で未使用 |

@@ -33,6 +33,11 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   conversation_response_received: ['provider', 'response_time_ms','model_id','transport',...PERFORMANCE_KEYS],
   conversation_error: ['provider', 'error_category','model_id',...PERFORMANCE_KEYS],
   conversation_model_selected: ['model_id'],
+  /** Which of the four reactions YURA / Lactone put on her message. Never the message. */
+  conversation_reaction_shown: ['reaction', 'model_id'],
+  /** Opening the character's profile, and renaming her. Never the name itself, only whether it is a custom one. */
+  character_profile_open: ['model_id'],
+  character_renamed: ['custom_name'],
   conversation_model_switched: ['model_id','from_model','to_model'],
   account_link_started: ['auth_method'],
   account_link_success: ['auth_method'],
@@ -295,12 +300,13 @@ const ENUMS: Record<string, readonly string[]> = {
   value: ['yes','some','no'], category: ['family','friend','love','work','learning','other'],
   result: ['accepted','already','not_found','used_up','expired','revoked','own','invalid','rate_limited','suspended','error'],
   invite_kind: ['operator','member'], share_method: ['share','copy'],
+  reaction: ['heart','smile','clap','thumbs'],
 };
 const COUNTS: Record<string, number> = { history_days: 36500, leafAgeDays: 36500, tagCount: 8 };
 function validProperty(key: string, value: unknown) {
   if (ENUMS[key]) return typeof value === 'string' && ENUMS[key].includes(value);
   if (key in COUNTS) return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= COUNTS[key];
-  if (['hasDetails','authenticated','needs_profile','from_link'].includes(key)) return typeof value === 'boolean';
+  if (['hasDetails','authenticated','needs_profile','from_link','custom_name'].includes(key)) return typeof value === 'boolean';
   // Same shape as a campaign label (attribution.ts): no prose, URLs, e-mail addresses or phone numbers.
   if (key === 'invite_channel') return typeof value === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(value) && !/\d{7}/.test(value);
   if (key === 'cardId') return TAROT_CARDS.some(card => card.id === value);

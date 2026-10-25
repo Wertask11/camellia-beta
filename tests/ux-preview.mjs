@@ -9,7 +9,7 @@ import { dirname, resolve } from 'node:path';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const state = `
 const listeners=new Set();
-export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:'synthetic-ux-user',isAnonymous:false}:null};
+export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})}:null};
 export function setUser(user){schoolParkAuth.currentUser=user;user?sessionStorage.setItem('ux-signed-in','1'):sessionStorage.removeItem('ux-signed-in');listeners.forEach(fn=>fn(user));}
 export function onAuthStateChanged(auth,fn){listeners.add(fn);queueMicrotask(()=>fn(auth.currentUser));return()=>listeners.delete(fn);}
 // Google login (added after this harness was written). Popups never open here; LINE is the synthetic login.
@@ -21,7 +21,7 @@ const mocks = {
   'firebase/auth': state,
   '@/lib/schoolpark/firebase': `export {schoolParkAuth} from 'firebase/auth';`,
   '@/lib/auth/camellia': `import{setUser}from'firebase/auth';
-export const startLineLogin=()=>setUser({uid:'synthetic-ux-user',isAnonymous:false});
+export const startLineLogin=()=>setUser({uid:'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})});
 export const startSchoolParkLogin=startLineLogin;
 export const finishAuthCallback=async()=>null;
 export class AuthFlowError extends Error{constructor(message,method,stage,reason,returned){super(message);Object.assign(this,{method,stage,reason,returned});}}
@@ -58,6 +58,22 @@ const server = await createServer({
     configureServer(s) {
       /* Synthetic invite/suspension answers (lib/auth/access.ts). Cookie ux-access=invite|suspended|open
          chooses the state; the code K7QM2XPA is accepted. Nothing leaves this machine. */
+      /* Synthetic conversation: the reaction first, then the reply in pieces (lib/conversation/stream.ts).
+         Nothing is sent to any provider. A message with つらい gets 💓 like the real server. */
+      s.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] !== '/api/camellia/chat') return next();
+        res.setHeader('Content-Type', req.method === 'GET' ? 'application/json' : 'text/event-stream');
+        if (req.method === 'GET') return res.end(JSON.stringify({ enabled: true }));
+        let raw = ''; req.on('data', chunk => { raw += chunk; });
+        req.on('end', () => {
+          const message = String(JSON.parse(raw || '{}').message ?? ''), modelId = JSON.parse(raw || '{}').modelId ?? 'yura';
+          const reaction = /つらい/.test(message) ? 'heart' : /できた|やった|やりき/.test(message) ? 'clap' : 'smile';
+          const reply = reaction === 'heart' ? 'そうだったんだね。話してくれてありがとう。' : reaction === 'clap' ? 'すごい、最後までやりきったんだね。' : 'それはうれしいね。';
+          const send = value => res.write(`data: ${JSON.stringify(value)}\n\n`);
+          send({ type: 'start' }); send({ type: 'reaction', reaction });
+          setTimeout(() => { send({ type: 'delta', text: reply.slice(0, 6) }); setTimeout(() => { send({ type: 'delta', text: reply }); send({ type: 'done', reply, provider: 'gemini', modelId, reaction }); res.end(); }, 400); }, 400);
+        });
+      });
       s.middlewares.use((req, res, next) => {
         if (!req.url?.startsWith('/__ux/camellia-auth/')) return next();
         const mode = /(?:^|; )ux-access=(\w+)/.exec(req.headers.cookie ?? '')?.[1] ?? 'open';

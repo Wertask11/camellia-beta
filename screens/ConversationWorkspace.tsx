@@ -3,7 +3,8 @@ import {useState,type ComponentProps} from 'react';
 import {ArrowLeft,MessageCircle,Plus} from 'lucide-react';
 import {CamelliaScreen} from './CamelliaScreen';
 import {conversationTitle,conversationModelSummary} from '@/lib/conversation/threads';
-import {defaultConversationModel,conversationModelName} from '@/lib/conversation/models';
+import {defaultConversationModel} from '@/lib/conversation/models';
+import {characterLabel} from '@/components/CamelliaCharacter';
 import type {useCamelliaStore} from '@/hooks/useCamelliaStore';
 type Base=ComponentProps<typeof CamelliaScreen>;
 type Store=ReturnType<typeof useCamelliaStore>;
@@ -26,13 +27,13 @@ export function ConversationWorkspace(props:Props){
    initialModel={selected?defaultConversationModel(selected.activeModel):defaultConversationModel(props.state.profile.lastConversationModel)}
    onSelectModel={(modelId,markerId)=>props.onSelectConversationModel?.(selectedId,modelId,markerId)}
    onPendingConversation={(message,model)=>props.onPendingConversation?.(message,selectedId,model)}
-   onSaveConversation={(u,a,intent,topics,provider,assistantModel,requestModel,userId,pending)=>props.onSaveConversation(u,a,intent,topics,provider,selectedId,assistantModel,requestModel,userId,pending)}
+   onSaveConversation={(u,a,intent,topics,provider,assistantModel,requestModel,userId,pending,reaction)=>props.onSaveConversation(u,a,intent,topics,provider,selectedId,assistantModel,requestModel,userId,pending,reaction)}
    onReplaceConversationAssistant={(u,a,provider,assistantModel)=>props.onReplaceConversationAssistant(u,a,provider,selectedId,assistantModel)}/>
  </section>;
  const filtered=conversations.filter(item=>conversationTitle(item).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
  return <main className="screen conversation-library"><header><div><p className="eyebrow">言葉にしたいことから、少しずつ</p><h1>Camelliaに話す</h1></div></header>
   {!conversations.length&&<p className="conversation-style-intro">Camelliaには、2つの話し方があります。<br/>YURA：話して、ほどく。<br/>Lactone：整えて、選ぶ。</p>}
-  <button className="conversation-new" onClick={newChat}><Plus size={20}/><span><strong>新しい会話を始める</strong><small>{conversationModelName(defaultConversationModel(props.state.profile.lastConversationModel))}で、まっさらな会話から。</small></span></button>
+  <button className="conversation-new" onClick={newChat}><Plus size={20}/><span><strong>新しい会話を始める</strong><small>{characterLabel(props.state.profile.characterName,defaultConversationModel(props.state.profile.lastConversationModel))}と、まっさらな会話から。</small></span></button>
   <section aria-labelledby="conversation-history"><h2 id="conversation-history">これまでの会話</h2>
    {conversations.length>0&&<label className="conversation-search">会話を探す<input type="search" value={search} onChange={event=>{setSearch(event.target.value);setVisibleCount(30);}} placeholder="最初に話した言葉で検索"/></label>}
    <div className="conversation-list">{filtered.slice(0,visibleCount).map(item=><button className="conversation-preview" key={item.id} onClick={()=>setSelectedId(item.id)}><MessageCircle size={20}/><span><strong>{conversationTitle(item)}</strong>{conversationModelSummary(item)&&<span className="conversation-model-badge">{conversationModelSummary(item)}</span>}<small>{item.messages.filter(message=>message.role==='user').length}回のやりとり · {new Date(item.updatedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</small></span><span aria-hidden="true">→</span></button>)}</div>
