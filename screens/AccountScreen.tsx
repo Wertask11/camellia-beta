@@ -8,10 +8,10 @@ import {
   type User,
 } from 'firebase/auth';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
-import { startLineLogin, startSchoolParkLogin } from '@/lib/auth/camellia';
+import { startLineLogin } from '@/lib/auth/camellia';
 import { welcomeTheme } from '@/lib/welcome/time';
 
-export type AuthMethod = 'line' | 'google' | 'schoolpark';
+export type AuthMethod = 'line' | 'google';
 
 function googleError(error: unknown) {
   const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
@@ -55,16 +55,10 @@ export function AccountScreen({
   const [user, setUser] = useState<User | null>(schoolParkAuth.currentUser?.isAnonymous ? null : schoolParkAuth.currentUser);
   const [error, setError] = useState('');
   const [connecting, setConnecting] = useState(false);
-  const [showSchoolParkInfo, setShowSchoolParkInfo] = useState(false);
   const authStarted = useRef(false);
-  const dialog = useRef<HTMLDialogElement>(null);
   const theme = welcomeTheme();
 
   useEffect(() => onAuthStateChanged(schoolParkAuth, (next) => setUser(next?.isAnonymous ? null : next)), []);
-  useEffect(() => {
-    if (showSchoolParkInfo && dialog.current && !dialog.current.open) dialog.current.showModal();
-    if (!showSchoolParkInfo && dialog.current?.open) dialog.current.close();
-  }, [showSchoolParkInfo]);
 
   const beginLine = () => {
     if (authStarted.current) return;
@@ -79,22 +73,6 @@ export function AccountScreen({
       setConnecting(false);
       onLoginFailure('line', 'provider_error', 'provider_open');
       setError('LINEログインを開始できませんでした。もう一度お試しください。');
-    }
-  };
-
-  const beginSchoolPark = () => {
-    if (authStarted.current) return;
-    authStarted.current = true;
-    setConnecting(true);
-    setError('');
-    onSelect('schoolpark');
-    try {
-      startSchoolParkLogin();
-    } catch {
-      authStarted.current = false;
-      setConnecting(false);
-      onLoginFailure('schoolpark', 'provider_error', 'provider_open');
-      setError('SchoolPark Passportにつながりませんでした。もう一度お試しください。');
     }
   };
 
@@ -138,15 +116,12 @@ export function AccountScreen({
         ) : (
           <>
             <p className="account-reason">昨日と今日の変化を振り返れるよう、<br />あなたの記録をアカウントにつなぎます。</p>
-            {returning && <p className="account-policy">続けるには、前に使ったLINEまたはSchoolPark Passportでログインしてください。この端末の記録は消えずに残っています。</p>}
+            {returning && <p className="account-policy">続けるには、前に使ったLINEまたはGoogleでログインしてください。この端末の記録は消えずに残っています。</p>}
             <button className="auth-primary auth-line" onClick={beginLine} disabled={connecting}>
               <span className="auth-brand-icon line-icon" aria-hidden="true">L</span>{connecting ? '認証画面へ移動しています…' : 'LINEで続ける'}
             </button>
             <button className="auth-primary auth-google" onClick={() => void beginGoogle()} disabled={connecting}>
               <span className="auth-brand-icon google-icon" aria-hidden="true">G</span>{connecting ? 'Googleに接続しています…' : 'Googleで続ける'}
-            </button>
-            <button className="schoolpark-help" onClick={() => setShowSchoolParkInfo(true)}>
-              SchoolParkを利用している方はこちら <span>→ 連携について</span>
             </button>
             <p className="account-policy account-eligibility">Camelliaは、18〜45歳の女性に限ったサービスです。</p>
             <p className="account-policy account-consent">ログインまたは登録することで、<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したものとみなします。</p>
@@ -155,17 +130,6 @@ export function AccountScreen({
         )}
         <p className="account-note">今日の記録を、明日のあなたへ。</p>
       </section>
-      {showSchoolParkInfo && (
-        <dialog ref={dialog} className="sheet schoolpark-info" aria-labelledby="schoolpark-info-title" onCancel={(event) => { event.preventDefault(); setShowSchoolParkInfo(false); }}>
-          <button className="close" onClick={() => setShowSchoolParkInfo(false)} aria-label="閉じる">×</button>
-          <p className="eyebrow">SchoolParkを利用している方へ</p>
-          <h2 id="schoolpark-info-title">Camelliaとの連携について</h2>
-          <p>LINEでログインしたあと、Myの「アカウントと記録」からSchoolPark Passportを連携できます。</p>
-          <p className="schoolpark-legacy-note">以前からSchoolPark PassportだけでCamelliaを利用している方は、新しく登録せず、こちらからお入りください。</p>
-          <button className="secondary-button schoolpark-legacy" onClick={beginSchoolPark} disabled={connecting}>{connecting ? '認証画面へ移動しています…' : '既存アカウントでログイン'}</button>
-          <button className="text-button" onClick={() => setShowSchoolParkInfo(false)}>閉じる</button>
-        </dialog>
-      )}
     </main>
   );
 }

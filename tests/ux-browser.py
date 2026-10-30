@@ -100,8 +100,11 @@ with sync_playwright() as p:
         expect(privacy_page.locator('body')).to_contain_text('Camellia')
         privacy_page.close()
         expect(page.locator('.account-consent')).to_be_visible()
-        expect(page.locator('.auth-choice').nth(1)).to_contain_text('SchoolParkを利用している方はこちら')
-        for auth in page.locator('.auth-choice').all():
+        expect(page.locator('.auth-primary')).to_have_count(2)
+        expect(page.get_by_role('button', name='LINEで続ける', exact=True)).to_be_visible()
+        expect(page.get_by_role('button', name='Googleで続ける', exact=True)).to_be_visible()
+        assert page.get_by_text('SchoolPark', exact=False).count() == 0
+        for auth in page.locator('.auth-primary').all():
             assert auth.bounding_box()['height'] >= 44
         assert len(context.pages) == 1 and page.url.rstrip('/') == origin, 'no forced navigation to Terms/Privacy'
         snapshot('login')
@@ -344,7 +347,7 @@ with sync_playwright() as p:
         button('ログアウト').click()
         expect(page.locator('.account-card')).to_contain_text('前に使ったLINE')
         assert stored()['checkins'] == before_logout
-        page.get_by_role('button', name='SchoolPark Passportで続ける').click()
+        page.get_by_role('button', name='LINEで続ける').click()
         page.locator('.bottom-nav').wait_for()
         button('Today').click()
         page.locator('.today--checked').wait_for()

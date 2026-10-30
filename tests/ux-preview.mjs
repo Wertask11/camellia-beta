@@ -13,7 +13,7 @@ export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')=
 export function setUser(user){schoolParkAuth.currentUser=user;user?sessionStorage.setItem('ux-signed-in','1'):sessionStorage.removeItem('ux-signed-in');listeners.forEach(fn=>fn(user));}
 export function onAuthStateChanged(auth,fn){listeners.add(fn);queueMicrotask(()=>fn(auth.currentUser));return()=>listeners.delete(fn);}
 // Google login (added after this harness was written). Popups never open here; LINE is the synthetic login.
-export class GoogleAuthProvider{static PROVIDER_ID='google.com';}
+export class GoogleAuthProvider{static PROVIDER_ID='google.com';setCustomParameters(){}}
 export async function signInWithPopup(){throw Object.assign(new Error('synthetic harness'),{code:'auth/popup-blocked'});}
 export const linkWithPopup=signInWithPopup;
 `;
@@ -44,7 +44,9 @@ export const setAnalyticsDeliveryAllowed=()=>{};`,
 };
 const server = await createServer({
   configFile: false, root,
-  resolve: { alias: { '@': root } },
+  cacheDir: root + '/node_modules/.vite-ux-preview',
+  resolve: { alias: { '@': root }, dedupe: ['react', 'react-dom'] },
+  optimizeDeps: { include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime', 'lucide-react'] },
   css: { postcss: { plugins: [tailwindcss()] } },
   plugins: [{
     name: 'isolated-ux-only', enforce: 'pre',

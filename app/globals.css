@@ -1036,20 +1036,12 @@ details {
 .linked-methods{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:6px}.linked-methods li{display:flex;justify-content:space-between;gap:12px;font-size:13px;flex-wrap:wrap}.linked-methods b{font-weight:600;color:var(--muted)}
 /* Keep the existing mobile column and petals; make the next useful step readable. */
 .auth-primary{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;margin:10px 0;padding:12px 48px;border:1px solid #e6d8dd;border-radius:999px;background:#fff;color:#3d3035;font:inherit;font-size:15px;font-weight:600;line-height:1.4;cursor:pointer;box-shadow:0 8px 22px #563b4810}
-.auth-primary:focus-visible,.schoolpark-help:focus-visible,.schoolpark-legacy:focus-visible{outline:3px solid #7653c0;outline-offset:3px}
+.auth-primary:focus-visible{outline:3px solid #7653c0;outline-offset:3px}
 .auth-primary:disabled{opacity:.65;cursor:wait}.auth-line{border-color:#b5dfc1}
 .auth-brand-icon{position:absolute;left:18px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;font:700 15px/1 Arial,sans-serif}
 .line-icon{background:#06c755;color:#fff;font-size:13px}.google-icon{background:#fff;color:#4285f4;border:1px solid #e8e8e8;font-size:17px}
-.schoolpark-help{width:100%;min-height:44px;margin:4px 0 2px;border:0;background:transparent;color:#67545b;font-size:12px;cursor:pointer}
-.schoolpark-help span{color:#9b3c59;font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.schoolpark-info{position:fixed;inset:auto 0 0;width:min(100%,440px);max-width:none;max-height:min(80dvh,640px);overflow-y:auto;margin:0 auto;padding:30px 24px 24px;border:0;border-radius:26px 26px 0 0;background:#fff;color:#3d3035}
-.schoolpark-info::backdrop{background:#25191c66}.schoolpark-info h2{margin:8px 0 14px;font:26px/1.4 Georgia,'Noto Serif JP',serif;font-weight:400}
-.schoolpark-info p{line-height:1.75;font-size:14px}.schoolpark-info .close{position:absolute;top:12px;right:14px}
-.schoolpark-legacy-note{margin-top:18px;padding-top:16px;border-top:1px solid #eadfe2;color:#66575d}
-.schoolpark-legacy{width:100%;min-height:48px;margin:8px 0 0}.schoolpark-info .text-button{display:block;margin:14px auto 0}
 .settings-link:disabled{opacity:.48;cursor:not-allowed}.account-provider-state,.account-link-limit{display:block;color:#6e5860;line-height:1.65}
-@media(max-width:430px){.account-card{padding:26px 18px 22px}.auth-primary{min-height:52px;margin:9px 0}.schoolpark-info{padding:28px 20px 22px}}
-@media(min-width:800px){.schoolpark-info{inset:50% auto auto 50%;transform:translate(-50%,-50%);border-radius:26px}}
+@media(max-width:430px){.account-card{padding:26px 18px 22px}.auth-primary{min-height:52px;margin:9px 0}}
 .welcome-prompt{margin-bottom:14px}
 .welcome h1{text-wrap:balance}
 .today header{gap:10px}
