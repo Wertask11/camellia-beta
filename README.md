@@ -4,7 +4,7 @@
 
 ## 実装済み
 
-- LINE Login / Google Login（Primary）、既存利用者向けSchoolPark Passport連携。本人確認なしのアカウント統合なし。
+- ログイン画面はLINE Login / Google Loginの2つ。既存SchoolPark Passport連携・記録復元は維持。本人確認なしのアカウント統合なし。
 - localStorage v3、既存SchoolPark Firestore同期・復元・削除、プロフィール、My Tree、明示保存Memory。
 - Today One Flow：Check → 今日のあなた → 過ごし方 → 今日の一枚 → 今日どうする？ → 明日のCamellia。
 - JST日次比較と月曜始まりの週比較（今週5日以上の記録がある場合のみ週表示）。原因を推測せず、任意入力がない項目は比較しません。

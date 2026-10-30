@@ -210,7 +210,7 @@ export default function Page() {
     return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p>
       <p role="alert">{empty?'このアカウントには、まだ記録がありません。この端末には、別のアカウントで使っていた記録があります。':conflict?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p>
       {empty?<>
-        <p>前に使ったLINEまたはSchoolPark Passportでログインし直すと、これまでの記録に戻れます。</p>
+        <p>前に使ったLINEまたはGoogleでログインし直すと、これまでの記録に戻れます。</p>
         <button className="primary" onClick={leave}>ログアウトして、前の方法でログインする</button>
         <button className="secondary-button" onClick={()=>resolve('adopt')}>この端末の記録を、このアカウントで使う</button>
         <button className="secondary-button" onClick={()=>resolve('fresh')}>このアカウントで、はじめから始める（この端末の記録は別に残す）</button>
