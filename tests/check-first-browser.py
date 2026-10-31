@@ -64,7 +64,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='記録を残して続ける', exact=True).click()
         page.locator('#today-plans').wait_for()
 
-    def saved(page, draft, expected=1):
+    def saved(page, draft, expected=1, completions=1):
         expect(page.locator('.today--checked')).to_be_visible()
         current = stored(page)
         assert len(current['checkins']) == expected
@@ -72,7 +72,7 @@ with sync_playwright() as p:
         assert page.evaluate(f"sessionStorage.getItem('{DRAFT}')") is None
         assert page.evaluate(f"localStorage.getItem('{BRIDGE}')") is None
         names = [event['name'] for event in trace(page)]
-        assert names.count('check_complete') == 1
+        assert names.count('check_complete') == completions
         assert names.count('guest_check_saved') == 1
         assert names.count('today_flow_resume') == 1
         assert names.index('daily_reflection_view') < names.index('save_prompt_view')
@@ -188,6 +188,25 @@ with sync_playwright() as p:
     assert not stored(page)['checkins']
     assert not errors, errors
     results.append({'case': 'H', 'logoutBetweenAccounts': 'PASS', 'boundDraftCleared': 'PASS'})
+    context.close()
+    # Choosing again replaces the unsaved preview, including its impression guards.
+    context, page, errors, _ = start()
+    before = check(page)
+    page.get_by_role('button', name='選び直す', exact=True).click()
+    page.locator('.moods button').nth(4).click()
+    page.get_by_role('button', name='今日の私を見てみる', exact=True).click()
+    page.get_by_role('button', name='Googleで記録を残す', exact=True).wait_for()
+    page.wait_for_function(f"JSON.parse(sessionStorage.getItem('{DRAFT}')).shown.includes('prompt')")
+    draft = page.evaluate(f"JSON.parse(sessionStorage.getItem('{DRAFT}'))")
+    assert draft['check']['id'] != before['check']['id']
+    assert draft['check']['mood'] == 1
+    assert [e['name'] for e in trace(page)].count('save_prompt_view') == 2
+    page.get_by_role('button', name='Googleで記録を残す', exact=True).click()
+    page.get_by_label('名前／ニックネーム').wait_for()
+    profile(page)
+    saved(page, draft, completions=2)
+    assert not errors, errors
+    results.append({'case': 'guest recheck', 'latestOnly': 'PASS', 'impressionsPerCheck': 'PASS'})
     context.close()
     # Registered access restrictions still apply before any adoption.
     for mode in ['invite', 'suspended', 'unavailable']:

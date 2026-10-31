@@ -81,6 +81,11 @@
       "boundDraftCleared": "PASS"
     },
     {
+      "case": "guest recheck",
+      "latestOnly": "PASS",
+      "impressionsPerCheck": "PASS"
+    },
+    {
       "case": "access gate",
       "mode": "invite",
       "noAdoption": "PASS"

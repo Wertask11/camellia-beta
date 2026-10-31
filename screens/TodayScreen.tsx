@@ -150,13 +150,13 @@ function TodayOneFlow({
   const reflectionViewSent = useRef('');
   useEffect(() => {
     if (!dailyReflection) return;
-    const key = `${dailyReflection.stage}:${dailyReflection.historyDays}`;
+    const key = `${dailyReflection.stage}:${dailyReflection.historyDays}${guestSavePrompt?`:${check?.id??''}`:''}`;
     if (reflectionViewSent.current === key) return;
     reflectionViewSent.current = key;
     onTrack('daily_reflection_view', { reflection_stage: dailyReflection.stage, history_days: dailyReflection.historyDays });
     if (guestSavePrompt) onTrack('save_prompt_view');
     if (dailyReflection.hasWeeklyInsight) onTrack('weekly_insight_view', { history_days: dailyReflection.historyDays });
-  }, [dailyReflection, onTrack, guestSavePrompt]);
+  }, [dailyReflection, onTrack, guestSavePrompt, check?.id]);
 
   const timeBand = getTimeBand(displayDate);
   const greeting = { 朝: 'おはよう', 昼: 'こんにちは', 夕方: '今日もおつかれさま', 夜: 'こんばんは' }[timeBand];
