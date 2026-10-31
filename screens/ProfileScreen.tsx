@@ -3,7 +3,7 @@ import { currentAge, MIN_AGE, MAX_AGE } from '@/lib/profile';
 import type { Profile } from '@/types';
 /** existing: someone who already used Camellia (β) and is asked once for what v1 requires; their records stay.
  * Consent to Camellia's Terms / Privacy is given at login (AccountScreen); saving here records agreedAt once. */
-export function ProfileScreen({profile,onSave,onBack,existing=false}:{profile:Profile;onSave:(patch:Partial<Profile>)=>void;onBack?:()=>void;existing?:boolean}) {
+export function ProfileScreen({profile,onSave,onBack,existing=false,hasGuestCheck=false}:{profile:Profile;onSave:(patch:Partial<Profile>)=>void;onBack?:()=>void;existing?:boolean;hasGuestCheck?:boolean}) {
   const [name,setName]=useState(profile.name),[birthDate,setBirthDate]=useState(profile.birthDate??''),[women,setWomen]=useState(profile.womanSelfDeclared??false);
   const [region,setRegion]=useState(profile.region??''),[lifestyle,setLifestyle]=useState(profile.lifestyle),[living,setLiving]=useState(profile.livingSituation??''),[sleep,setSleep]=useState(String(profile.usualSleep??'')),[concerns,setConcerns]=useState(profile.concerns??''),[purposes,setPurposes]=useState(profile.purposes??[]),[period,setPeriod]=useState(profile.periodEnabled),[minutes,setMinutes]=useState(String(profile.availableMinutes??''));
   const age=currentAge(birthDate),valid=Boolean(name.trim()&&age!==undefined&&age>=MIN_AGE&&age<=MAX_AGE&&women);
@@ -19,7 +19,9 @@ export function ProfileScreen({profile,onSave,onBack,existing=false}:{profile:Pr
       <label className="profile-check"><input type="checkbox" checked={women} onChange={e=>setWomen(e.target.checked)}/>私は女性です（自己申告）</label>
       <p className="meta">Camelliaは18〜45歳の女性に限ったサービスです。対象外と分かった場合は、<a href="/terms.html" target="_blank" rel="noreferrer">利用規約</a>にもとづいて利用を止めることがあります。</p>
       <p className="meta">記録はこの端末とFirestoreに保存され、運営が内容を確認することがあります。</p>
-      <details><summary>もう少し自分のことを添える（任意）</summary>
+      {!onBack&&<p className="meta">登録に必要なのは、この3つだけです。ほかの項目は、あとでMyのプロフィールから設定できます。</p>}
+      {!onBack&&hasGuestCheck&&<p className="meta">さっきのCheckは、そのまま引き継ぎます。</p>}
+      {onBack&&<details><summary>もう少し自分のことを添える（任意）</summary>
         <label>居住地域（都道府県程度）<input maxLength={20} value={region} onChange={e=>setRegion(e.target.value)}/></label>
         <label>職業／生活スタイル<input maxLength={60} value={lifestyle} onChange={e=>setLifestyle(e.target.value)}/></label>
         <label>同居状況<input maxLength={60} value={living} onChange={e=>setLiving(e.target.value)}/></label>
@@ -28,8 +30,8 @@ export function ProfileScreen({profile,onSave,onBack,existing=false}:{profile:Pr
         <label>今気になっていること<textarea maxLength={200} value={concerns} onChange={e=>setConcerns(e.target.value)}/></label>
         <fieldset><legend>使う目的（複数選択可）</legend>{['心を整えたい','身体を整えたい','生活を整えたい','自分を知りたい','人間関係','仕事','恋愛','その他'].map(value=><label className="profile-check" key={value}><input type="checkbox" checked={purposes.includes(value)} onChange={()=>setPurposes(items=>items.includes(value)?items.filter(x=>x!==value):[...items,value])}/>{value}</label>)}</fieldset>
         <label className="profile-check"><input type="checkbox" checked={period} onChange={e=>setPeriod(e.target.checked)}/>月経関連の記録を提案に使う</label>
-      </details>
-      <button className="primary" disabled={!valid} type="submit">{onBack?'変更を保存する':'今日の私をCheckする'}</button>
+      </details>}
+      <button className="primary" disabled={!valid} type="submit">{onBack?'変更を保存する':hasGuestCheck?'記録を残して続ける':'今日の私をCheckする'}</button>
     </form>
   </main>;
 }

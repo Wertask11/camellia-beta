@@ -1326,3 +1326,12 @@ details {
 .character-name-editor{display:grid;gap:8px;text-align:left;margin:8px 0}.character-name-editor input{width:100%;font-size:16px;border:1px solid #e3b9c5;border-radius:12px}
 /* The β label overlapped the new-conversation button in an open conversation; the toolbar already says where she is. */
 .app-shell:has(.conversation-workspace--open)>.beta-badge{display:none}
+
+/* Check-first reuses Today and the existing authentication buttons; no new navigation tab. */
+.welcome-login{display:block;min-height:44px;margin:8px auto;color:inherit}
+.guest-back{margin:16px 16px 0;min-height:44px}
+.guest-check-shell .today{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.guest-save-prompt{margin:20px 0}
+.guest-save-prompt .account-card{padding:24px 16px;box-shadow:none;border:1px solid var(--border);background:#fdf6f8}
+.guest-save-prompt h2{margin:0;font:clamp(20px,5.1vw,24px)/1.5 Georgia,serif;text-wrap:balance;color:var(--text)}
+.guest-save-prompt .account-note{margin-bottom:0}

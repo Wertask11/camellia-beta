@@ -1,0 +1,106 @@
+{
+  "results": [
+    {
+      "case": "A/F/I",
+      "width": 375,
+      "method": "LINE",
+      "guestCheck": "PASS",
+      "profile": "PASS",
+      "resume": "PASS",
+      "reloadOnce": "PASS",
+      "pageErrors": []
+    },
+    {
+      "case": "A/F/I",
+      "width": 390,
+      "method": "Google",
+      "guestCheck": "PASS",
+      "profile": "PASS",
+      "resume": "PASS",
+      "reloadOnce": "PASS",
+      "pageErrors": []
+    },
+    {
+      "case": "A/F/I",
+      "width": 412,
+      "method": "Google",
+      "guestCheck": "PASS",
+      "profile": "PASS",
+      "resume": "PASS",
+      "reloadOnce": "PASS",
+      "pageErrors": []
+    },
+    {
+      "case": "A/F/I",
+      "width": 768,
+      "method": "LINE",
+      "guestCheck": "PASS",
+      "profile": "PASS",
+      "resume": "PASS",
+      "reloadOnce": "PASS",
+      "pageErrors": []
+    },
+    {
+      "case": "A/F/I",
+      "width": 1280,
+      "method": "Google",
+      "guestCheck": "PASS",
+      "profile": "PASS",
+      "resume": "PASS",
+      "reloadOnce": "PASS",
+      "pageErrors": []
+    },
+    {
+      "case": "B",
+      "existingHistoryRetained": "PASS",
+      "noProfileRepeat": "PASS"
+    },
+    {
+      "case": "C",
+      "registeredTodayCheck": "PASS"
+    },
+    {
+      "case": "D",
+      "partialAbandon": "PASS"
+    },
+    {
+      "case": "E/G",
+      "mode": "cancel",
+      "noWrongSave": "PASS",
+      "retry": "PASS"
+    },
+    {
+      "case": "E/G",
+      "mode": "error",
+      "noWrongSave": "PASS",
+      "retry": "PASS"
+    },
+    {
+      "case": "H",
+      "logoutBetweenAccounts": "PASS",
+      "boundDraftCleared": "PASS"
+    },
+    {
+      "case": "access gate",
+      "mode": "invite",
+      "noAdoption": "PASS"
+    },
+    {
+      "case": "access gate",
+      "mode": "suspended",
+      "noAdoption": "PASS"
+    },
+    {
+      "case": "access gate",
+      "mode": "unavailable",
+      "noAdoption": "PASS"
+    },
+    {
+      "case": "local storage failure",
+      "draftRetained": "PASS",
+      "recovery": "PASS",
+      "oneSave": "PASS"
+    }
+  ],
+  "scope": "Synthetic local auth/access/sync; real browser and actual Page/store. Not real OAuth/Firestore acceptance."
+}

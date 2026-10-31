@@ -271,7 +271,8 @@ export type AnalyticsEventName =
   | 'tree_archive'
   | 'conversation_reaction_shown'
   | 'character_profile_open' | 'character_renamed'
-  | 'invite_view' | 'invite_submit' | 'invite_accepted' | 'access_suspended_view' | 'member_invite_open' | 'member_invite_share';
+  | 'invite_view' | 'invite_submit' | 'invite_accepted' | 'access_suspended_view' | 'member_invite_open' | 'member_invite_share'
+  | 'save_prompt_view' | 'guest_check_saved' | 'today_flow_resume';
 export interface AnalyticsEvent {
   id: string;
   name: AnalyticsEventName;
