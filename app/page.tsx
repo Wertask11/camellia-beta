@@ -136,7 +136,8 @@ export default function Page() {
      My からの編集は数えない。StrictMode の二重実行と再読み込みは sessionStorage で防ぐ。 */
   const accessFor=accountUser&&access?.uid===accountUser.uid?access.status:undefined;
   const accessBlocked=accessFor===undefined||Boolean(accessFor?.suspended||accessFor?.needsInvite);
-  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !accessBlocked && !editingProfile && !firstProfileComplete(store.state.profile));
+  const waitingForGuest = CHECK_FIRST_ONBOARDING && (guest?.phase==='pending'||(guest?.phase==='bound'&&(!accessFor||access?.verified!==true)));
+  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !accessBlocked && !waitingForGuest && !editingProfile && !firstProfileComplete(store.state.profile));
   useEffect(() => {
     if (!viewingPublicPlaceDemo() && showingFirstProfile && firstInSession('camellia-profile-view')) store.track('profile_view',guest?.phase==='bound'?guestEventProperties(guest):{});
   }, [showingFirstProfile, store.track, placeDemo, guest]);

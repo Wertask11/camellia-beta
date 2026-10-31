@@ -222,6 +222,7 @@ with sync_playwright() as p:
         else:
             page.get_by_role('heading', name='招待コードを入力してください' if mode == 'invite' else 'このアカウントの利用を止めています').wait_for()
         assert not stored(page)['checkins'], mode
+        assert not any(e['name'] == 'profile_view' for e in trace(page)), 'do not count a profile behind an access gate'
         assert page.evaluate(f"JSON.parse(sessionStorage.getItem('{DRAFT}')).check.id") == draft['check']['id']
         assert not errors, errors
         results.append({'case': 'access gate', 'mode': mode, 'noAdoption': 'PASS'})
