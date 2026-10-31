@@ -7,44 +7,70 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
+const checkFirst = process.env.CHECK_FIRST_FIXTURE === 'on';
+// Historical browser fixtures keep their original entry. The new journey opts in explicitly.
+process.env.VITE_CHECK_FIRST_ONBOARDING = checkFirst ? 'true' : 'off';
 const state = `
 const listeners=new Set();
-export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})}:null};
-export function setUser(user){schoolParkAuth.currentUser=user;user?sessionStorage.setItem('ux-signed-in','1'):sessionStorage.removeItem('ux-signed-in');listeners.forEach(fn=>fn(user));}
+export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:sessionStorage.getItem('ux-auth-uid')||'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})}:null};
+export function setUser(user){if(user)sessionStorage.setItem('ux-auth-uid',user.uid);else sessionStorage.removeItem('ux-auth-uid');schoolParkAuth.currentUser=user;user?sessionStorage.setItem('ux-signed-in','1'):sessionStorage.removeItem('ux-signed-in');listeners.forEach(fn=>fn(user));}
 export function onAuthStateChanged(auth,fn){listeners.add(fn);queueMicrotask(()=>fn(auth.currentUser));return()=>listeners.delete(fn);}
 // Google login (added after this harness was written). Popups never open here; LINE is the synthetic login.
 export class GoogleAuthProvider{static PROVIDER_ID='google.com';setCustomParameters(){}}
-export async function signInWithPopup(){throw Object.assign(new Error('synthetic harness'),{code:'auth/popup-blocked'});}
+export async function signInWithPopup(){
+ if(${checkFirst}){
+  const mode=sessionStorage.getItem('ux-auth-mode');
+  if(mode==='cancel')throw Object.assign(new Error('synthetic cancellation'),{code:'auth/popup-closed-by-user'});
+  if(mode==='error')throw Object.assign(new Error('synthetic network error'),{code:'auth/network-request-failed'});
+  const user={uid:sessionStorage.getItem('ux-login-uid')||'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'google.com',claims:{}})};setUser(user);return{user};
+ }
+ throw Object.assign(new Error('synthetic harness'),{code:'auth/popup-blocked'});
+}
 export const linkWithPopup=signInWithPopup;
+export const signOut=async()=>setUser(null);
+export const signInAnonymously=async()=>{throw new Error('unused synthetic anonymous login');};
+export const signInWithCustomToken=async()=>{throw new Error('unused synthetic token exchange');};
 `;
 const mocks = {
   'firebase/auth': state,
   '@/lib/schoolpark/firebase': `export {schoolParkAuth} from 'firebase/auth';`,
   '@/lib/auth/camellia': `import{setUser}from'firebase/auth';
-export const startLineLogin=()=>setUser({uid:'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})});
+import{bridgeGuestOAuth,cancelGuestLogin,clearGuestCheck,completeGuestOAuth,readGuestCheck}from'@/lib/onboarding/guest-check';
+export const startLineLogin=()=>{
+ const uid=sessionStorage.getItem('ux-login-uid')||'synthetic-ux-user';
+ if(${checkFirst}){
+  const state='synthetic-line-state-local-only';
+  if(sessionStorage.getItem('ux-auth-mode')==='cancel'){cancelGuestLogin();sessionStorage.setItem('ux-auth-return','cancel');location.assign('/');return;}
+  if(readGuestCheck())bridgeGuestOAuth(state);
+  setUser({uid,isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})});
+  if(readGuestCheck())completeGuestOAuth(state,uid);
+  sessionStorage.setItem('ux-auth-return','line');location.assign('/');return;
+ }
+ setUser({uid,isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})});
+};
 export const startSchoolParkLogin=startLineLogin;
-export const finishAuthCallback=async()=>null;
+export const finishAuthCallback=async()=>{const r=sessionStorage.getItem('ux-auth-return');sessionStorage.removeItem('ux-auth-return');if(r==='cancel')throw new AuthFlowError('LINE_CANCELLED','line','provider_return','user_cancelled',true);return r==='line'?{method:'line',linked:false}:null;};
 export class AuthFlowError extends Error{constructor(message,method,stage,reason,returned){super(message);Object.assign(this,{method,stage,reason,returned});}}
 export const ensureGuestSession=async()=>null;
-export const logoutCamellia=async()=>setUser(null);
+export const logoutCamellia=async()=>{clearGuestCheck();setUser(null);};
 export const getLinkedCamelliaMethods=async()=>({line:true,schoolpark:true});
 export const CAMELLIA_AUTH_API='/__ux/camellia-auth';
 export const authHeaders=async()=>({});`,
   '@/lib/schoolpark/sync': `const status={phase:'saved'};
 export const syncToSchoolPark=()=>{};
-export const prepareSchoolParkAccount=async s=>s;
+export const prepareSchoolParkAccount=async(s,uid)=>{const raw=sessionStorage.getItem('ux-account-state:'+uid);return raw?JSON.parse(raw):s;};
 export const deleteSyncedCamelliaData=async clear=>{clear();return{cloudDeleted:false}};
 export const getSyncStatus=()=>status;
 export const subscribeSyncStatus=()=>()=>{};
 export const flushSchoolParkSync=async()=>{};`,
   '@/lib/analytics/posthog': `export const resetAnalyticsIdentity=()=>{};
 export const forwardEvent=()=>true;
-export const captureAuthEvent=()=>true;
+export const captureAuthEvent=(name,properties)=>{if(${checkFirst})window.dispatchEvent(new CustomEvent('ux-auth-event',{detail:{name,properties}}));return true;};
 export const setAnalyticsDeliveryAllowed=()=>{};`,
 };
 const server = await createServer({
   configFile: false, root,
-  cacheDir: root + '/node_modules/.vite-ux-preview',
+  cacheDir: root + '/node_modules/.vite-ux-preview-' + (checkFirst ? 'check-first' : 'legacy'),
   resolve: { alias: { '@': root }, dedupe: ['react', 'react-dom'] },
   optimizeDeps: { include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime', 'lucide-react'] },
   css: { postcss: { plugins: [tailwindcss()] } },
@@ -95,7 +121,7 @@ const server = await createServer({
       });
     },
   }, react()],
-  server: { host: '127.0.0.1', port: 4173, strictPort: true },
+  server: { host: '127.0.0.1', port: 4173, strictPort: true, hmr: false },
 });
 await server.listen();
 console.log('Isolated UX harness ready on port 4173. Auth/sync/analytics are mocked; no production writes.');

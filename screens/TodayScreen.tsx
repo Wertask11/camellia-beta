@@ -1,6 +1,6 @@
 import { useCheckView } from '@/hooks/useCheckView';
 /* oxlint-disable next/no-img-element -- external editorial images are intentionally unoptimized in this prototype */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { ACTIONS } from '@/data/actions';
 import { getTimeBand } from '@/lib/recommendation';
@@ -19,6 +19,8 @@ import { TodayScreenClassic } from '@/screens/TodayScreenClassic';
 import type { AnalyticsEventName, CamelliaState, Checkin, FeedbackRating, Mood, Recommendation } from '@/types';
 
 type TodayProps = {
+  /** First-Check preview reuses the form/result; protected steps remain behind this save prompt. */
+  guestSavePrompt?: ReactNode;
   state: CamelliaState;
   recommendations: Recommendation[];
   forceNight?: boolean;
@@ -92,6 +94,7 @@ function TodayOneFlow({
   state, forceNight = false, onCheckView, onCheckStart, onCheckin, onOpenAction, onChoose,
   onIntent, onTalk, onFortune, onTree, onMy, onComplete, onFeedback, onProposals, onTrack,
   focusIntent = false, onIntentFocused,
+  guestSavePrompt,
 }: TodayProps) {
   const currentTime = useCurrentTime(state.checkins);
   useCheckView(onCheckView);
@@ -142,17 +145,18 @@ function TodayOneFlow({
   /* 2/3: one plan in front, two quiet ones. 何もしない lives only in 今日どうする？. */
   const plans = useMemo(() => todayPlans(state, displayDate), [state, displayDate]);
   useEffect(() => {
-    if (checked) onProposals(plans.map(r => r.action.id));
-  }, [plans, checked, onProposals]);
+    if (checked && !guestSavePrompt) onProposals(plans.map(r => r.action.id));
+  }, [plans, checked, onProposals, guestSavePrompt]);
   const reflectionViewSent = useRef('');
   useEffect(() => {
     if (!dailyReflection) return;
-    const key = `${dailyReflection.stage}:${dailyReflection.historyDays}`;
+    const key = `${dailyReflection.stage}:${dailyReflection.historyDays}${guestSavePrompt?`:${check?.id??''}`:''}`;
     if (reflectionViewSent.current === key) return;
     reflectionViewSent.current = key;
     onTrack('daily_reflection_view', { reflection_stage: dailyReflection.stage, history_days: dailyReflection.historyDays });
+    if (guestSavePrompt) onTrack('save_prompt_view');
     if (dailyReflection.hasWeeklyInsight) onTrack('weekly_insight_view', { history_days: dailyReflection.historyDays });
-  }, [dailyReflection, onTrack]);
+  }, [dailyReflection, onTrack, guestSavePrompt, check?.id]);
 
   const timeBand = getTimeBand(displayDate);
   const greeting = { 朝: 'おはよう', 昼: 'こんにちは', 夕方: '今日もおつかれさま', 夜: 'こんばんは' }[timeBand];
@@ -270,6 +274,7 @@ function TodayOneFlow({
           </>}
           {editingCheck && <button className="text-button" onClick={() => setEditingCheck(false)}>選び直さずに戻る</button>}
           <a className="check-privacy" href="/privacy.html" target="_blank" rel="noopener">記録の取り扱いについて（別タブ）</a>
+          {guestSavePrompt&&<p className="meta">登録前のCheckは一時的に保持し、時間がたつと消えます。アカウントに残すのはログイン後です。</p>}
         </section>
       )}
 
@@ -301,6 +306,7 @@ function TodayOneFlow({
           <span className="meta">Checkとこれまでの記録から。決めつけではありません。</span>
         </section>
 
+        {guestSavePrompt ? guestSavePrompt : <>
         <section className="flow-section" id="today-plans">
           <Step n={2} label="今日の過ごし方" state={chose ? 'done' : 'now'} />
           <p className="gentle-copy explain">今日のCheckを手がかりに、ひとつだけ。選ばなくても大丈夫。</p>
@@ -400,6 +406,7 @@ function TodayOneFlow({
           <p>{tomorrowCopy(dailyReflection.stage, dailyReflection.historyDays, ADAPTIVE_STAGE_UI)}</p>
           <button className="text-button" onClick={onTree}>今日、印象に残った人は？ My Treeに一言 →</button>
         </section>
+        </>}
       </>}
     </main>
   );

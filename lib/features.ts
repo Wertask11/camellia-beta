@@ -11,5 +11,7 @@ const on = (value: string | boolean | undefined) => !['off', 'false', '0'].inclu
 
 /** Today as one numbered flow: Check → 1/3 今日のあなた → 2/3 今日の過ごし方 → 3/3 今日の一枚 → 今日どうする？ → 明日のCamellia. */
 export const TODAY_ONE_FLOW = on(env.VITE_TODAY_ONE_FLOW);
+/** Roll back to Welcome → Login → Profile by setting VITE_CHECK_FIRST_ONBOARDING=off and rebuilding. */
+export const CHECK_FIRST_ONBOARDING = TODAY_ONE_FLOW && on(env.VITE_CHECK_FIRST_ONBOARDING);
 /** Copy that follows the person's own record stage (first_day / yesterday_compare / recent / weekly). Never age. */
 export const ADAPTIVE_STAGE_UI = on(env.VITE_ADAPTIVE_STAGE_UI);

@@ -2,6 +2,7 @@
 import { signInAnonymously, signInWithCustomToken, signOut } from 'firebase/auth';
 import { resetAnalyticsIdentity } from '@/lib/analytics/posthog';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
+import { bridgeGuestOAuth, cancelGuestLogin, clearGuestCheck, completeGuestOAuth } from '@/lib/onboarding/guest-check';
 export const CAMELLIA_AUTH_API='https://emu-realtime.onrender.com/api/camellia-auth';
 const API=CAMELLIA_AUTH_API,LINE_STATE='camellia-line-state',LINE_NONCE='camellia-line-nonce',LOGGED_OUT='camellia-session-logged-out',LINE_PENDING='camellia-line-login',LINE_TTL_MS=10*60*1000,AUTH_METHOD='camellia-auth-method';
 let guestSession:Promise<unknown>|null=null;
@@ -13,7 +14,7 @@ function randomValue(){const b=crypto.getRandomValues(new Uint8Array(24));return
 // A login return reloads the page; until the saved session is restored, currentUser is null and the server would
 // log into the method's own account instead of linking it to the signed-in one.
 export async function authHeaders():Promise<Record<string,string>>{await schoolParkAuth.authStateReady();const u=schoolParkAuth.currentUser;return u?{Authorization:`Bearer ${await u.getIdToken()}`}:{}}
-export function startLineLogin(){const id=(import.meta.env.VITE_LINE_CHANNEL_ID as string|undefined)||'2010802922';const state=randomValue(),nonce=randomValue();localStorage.setItem(LINE_PENDING,JSON.stringify({state,nonce,at:Date.now()}));localStorage.setItem(AUTH_METHOD,'line');const redirectUri=`${location.origin}/`,url=new URL('https://access.line.me/oauth2/v2.1/authorize');url.search=new URLSearchParams({response_type:'code',client_id:id,redirect_uri:redirectUri,state,nonce,scope:'profile openid'}).toString();location.assign(url.toString())}
+export function startLineLogin(){const id=(import.meta.env.VITE_LINE_CHANNEL_ID as string|undefined)||'2010802922';const state=randomValue(),nonce=randomValue();localStorage.setItem(LINE_PENDING,JSON.stringify({state,nonce,at:Date.now()}));localStorage.setItem(AUTH_METHOD,'line');if(bridgeGuestOAuth(state)===false){localStorage.removeItem(LINE_PENDING);localStorage.removeItem(AUTH_METHOD);throw new Error('GUEST_CHECK_STORAGE_UNAVAILABLE');}const redirectUri=`${location.origin}/`,url=new URL('https://access.line.me/oauth2/v2.1/authorize');url.search=new URLSearchParams({response_type:'code',client_id:id,redirect_uri:redirectUri,state,nonce,scope:'profile openid'}).toString();location.assign(url.toString())}
 export function startSchoolParkLogin(){localStorage.setItem(AUTH_METHOD,'schoolpark');location.assign(`https://schoolpark-emu.vercel.app/camellia-connect.html?return=${encodeURIComponent(`${location.origin}/`)}`)}
 async function exchange(path:string,body:object):Promise<{firebaseToken:string;linked?:boolean}>{const r=await fetch(`${API}/${path}`,{method:'POST',headers:{'Content-Type':'application/json',...(await authHeaders())},body:JSON.stringify(body)}),data=await r.json().catch(()=>({})) as {firebaseToken?:string;linked?:boolean;error?:string};if(!r.ok||!data.firebaseToken)throw new Error(data.error||'AUTH_FAILED');await signInWithCustomToken(schoolParkAuth,data.firebaseToken);localStorage.removeItem(LOGGED_OUT);return{firebaseToken:data.firebaseToken,linked:data.linked}}
 export async function ensureGuestSession(options:{explicit?:boolean}={}){await schoolParkAuth.authStateReady();if(schoolParkAuth.currentUser)return schoolParkAuth.currentUser;if(!options.explicit&&localStorage.getItem(LOGGED_OUT)==='1')return null;if(options.explicit)localStorage.removeItem(LOGGED_OUT);if(!guestSession)guestSession=signInAnonymously(schoolParkAuth).then(result=>result.user).finally(()=>{guestSession=null});return guestSession}
@@ -26,12 +27,14 @@ async function exchangeAuthCallback():Promise<{method:AuthMethod;linked?:boolean
  const method:AuthMethod=ticket?'schoolpark':pending==='schoolpark'?'schoolpark':'line';
  try{
   if(providerError)throw new AuthFlowError(providerError==='access_denied'?'LINE_CANCELLED':'LINE_AUTH_FAILED',method,'provider_return',providerError==='access_denied'?'user_cancelled':'provider_error',true);
-  if(ticket){const result=await exchange('passport/exchange',{ticket});return{method:'schoolpark',linked:result.linked};}
+  if(ticket){cancelGuestLogin();const result=await exchange('passport/exchange',{ticket});return{method:'schoolpark',linked:result.linked};}
   const line=pendingLineLogin(),expected=line?.state,nonce=line?.nonce;
   if(!code||!state||!expected||state!==expected||!nonce)throw new AuthFlowError('STATE_MISMATCH','line','callback','provider_error',true);
   const result=await exchange('line',{code,nonce,redirectUri:`${location.origin}/`});
+  const user=schoolParkAuth.currentUser;if(user&&!user.isAnonymous)completeGuestOAuth(state,user.uid);
   return{method:'line',linked:result.linked};
  }catch(error){
+  cancelGuestLogin();
   if(error instanceof AuthFlowError)throw error;
   const message=error instanceof Error?error.message:'AUTH_FAILED';
   const reason=message==='IDENTITY_LINKED_TO_OTHER'?'account_conflict':error instanceof TypeError||message.includes('NETWORK')?'network':'provider_error';
@@ -42,7 +45,7 @@ async function exchangeAuthCallback():Promise<{method:AuthMethod;linked?:boolean
   ['code','state','camellia_passport_ticket','error','error_description'].forEach(k=>url.searchParams.delete(k));history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
  }
 }
-export async function logoutCamellia(){localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth);resetAnalyticsIdentity({clearPending:false})}
+export async function logoutCamellia(){clearGuestCheck();localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth);resetAnalyticsIdentity({clearPending:false})}
 
 let callbackPromise: ReturnType<typeof exchangeAuthCallback> | null = null;
 export function finishAuthCallback(){return callbackPromise ??= exchangeAuthCallback();}

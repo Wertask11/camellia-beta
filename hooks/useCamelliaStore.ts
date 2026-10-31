@@ -13,6 +13,8 @@ import * as analyticsDelivery from '@/lib/analytics/posthog';
 import { forwardEvent } from '@/lib/analytics/posthog';
 import { deleteSyncedCamelliaData, prepareSchoolParkAccount, syncToSchoolPark, type AccountChoice } from '@/lib/schoolpark/sync';
 import { resetAnalyticsIdentity } from '@/lib/analytics/posthog';
+import { clearGuestCheck, guestCheckValue } from '@/lib/onboarding/guest-check';
+import { profileComplete } from '@/lib/profile';
 import type { ActionDefinition,AnalyticsEventName,CamelliaState,Checkin,ConversationIntent,ConversationTopic,DailyFortune,DismissReason,ConversationModelId,FeedbackRating,Insight,InsightFeedback,Mood,Profile,SaveTiming,TreeLeaf } from '@/types';
 export const STORAGE_KEY='camellia-prototype-v3'; const V2_KEY='camellia-prototype-v2'; const V1_KEY='camellia-prototype-v1';
 const stamp=()=>new Date().toISOString(); const uid=()=>globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random()}`;
@@ -73,16 +75,28 @@ export function useCamelliaStore(){
   return()=>{window.removeEventListener('focus',resume);window.removeEventListener('pointerdown',resume);window.removeEventListener('keydown',resume);document.removeEventListener('visibilitychange',resume);};
  },[ready,track,storageError,state.profile.id]);
  const viewCheck=useCallback(()=>track('check_view'),[track]);
- const startCheck=useCallback(()=>{
+ const startCheck=useCallback((properties:Record<string,string>={})=>{
   const {session,events}=sessionEvents();const now=analyticsTimestamp();
   setState(s=>{const last=[...s.analyticsEvents].reverse().find(e=>e.name==='check_start'||e.name==='check_complete');
    if(last?.name==='check_start'&&last.sessionId===session.id)return s;
-   return{...s,analyticsEvents:[...s.analyticsEvents,...events,{id:uid(),name:'check_start',properties:sessionAttribution(),createdAt:now,sessionId:session.id}]};});
+   return{...s,analyticsEvents:[...s.analyticsEvents,...events,{id:uid(),name:'check_start',properties:{...properties,...sessionAttribution()},createdAt:now,sessionId:session.id}]};});
   if(session.fresh)window.dispatchEvent(new Event(ANALYTICS_SESSION_CHANGED));
  },[sessionEvents]);
  const memory=(s:CamelliaState,actionId:string,event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback',extra:Record<string,unknown>={})=>({id:uid(),actionId,event,context:captureContext(s),createdAt:stamp(),...extra});
  const updateProfile=useCallback((p:Partial<Profile>)=>setState(s=>({...s,profile:{...s.profile,...p,updatedAt:stamp()}})),[]);const completeOnboarding=useCallback(()=>setState(s=>({...s,onboardingComplete:true})),[]);
  const addCheckin=useCallback((v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>{const now=stamp();setState(s=>({...s,checkins:[...s.checkins,{id:uid(),...v,createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'check_complete',sessionId:analyticsSession(deliveryOwner.current).id,properties:{...sessionAttribution(),hasDetails:Boolean(v.sleep!==undefined||v.body||v.stress||v.periodDays!==undefined)},createdAt:analyticsTimestamp()}]}))},[]);
+ // The guest already completed Check. Preserve its ID/time and never emit check_complete a second time.
+ const adoptGuestCheck=useCallback((value:Checkin,profileId:string,isCurrentAccount:()=>boolean,properties:Record<string,string>)=>{
+  const check=guestCheckValue(value);if(!check)return;
+  setState(s=>s.profile.id!==profileId||!profileComplete(s.profile)||!s.onboardingComplete||!isCurrentAccount()||s.checkins.some(c=>c.id===check.id)?s:{...s,checkins:[...s.checkins,check],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'guest_check_saved',properties:{...properties,...sessionAttribution(),storage:'device'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]});
+ },[]);
+ const hasPersistedCheck=useCallback((id:string,profileId:string)=>{
+  try{const stored=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');return stored?.profile?.id===profileId&&Array.isArray(stored.checkins)&&stored.checkins.some((c:{id?:unknown})=>c?.id===id);}catch{return false;}
+ },[]);
+ const resumeGuestCheck=useCallback((id:string,profileId:string,properties:Record<string,string>)=>setState(s=>{
+  const eventId=`guest-resume-${id}`;
+  return s.profile.id!==profileId||s.analyticsEvents.some(e=>e.id===eventId)?s:{...s,analyticsEvents:[...s.analyticsEvents,{id:eventId,name:'today_flow_resume',properties:{...properties,...sessionAttribution()},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]};
+ }),[]);
  const recordProposals=useCallback((ids:string[])=>setState(s=>{const today=new Date().toDateString();const add=ids.filter(id=>!s.contextualMemory.some(m=>m.actionId===id&&m.event==='proposed'&&new Date(m.createdAt).toDateString()===today)).map(id=>memory(s,id,'proposed'));return add.length?{...s,contextualMemory:[...s.contextualMemory,...add]}:s}),[]);
  const startAction=useCallback((a:ActionDefinition)=>{const now=stamp();setState(s=>({...s,actions:[...s.actions,{id:uid(),actionId:a.id,title:a.title,category:a.category,status:'started',startedAt:now,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,a.id,'started')]}))},[]);
  // Done right here (an in-place action): one record, started and completed together, so feedback can follow.
@@ -105,4 +119,4 @@ export function useCamelliaStore(){
  const remember=useCallback((text:string)=>setState(s=>{const clean=text.trim().slice(0,500);if(!clean)return s;const now=stamp();return{...s,personalMemories:[...(s.personalMemories??[]),{id:uid(),text:clean,createdAt:now,updatedAt:now,source:'explicit_conversation' as const}]}}),[]);
  const forget=useCallback((id:string)=>setState(s=>({...s,personalMemories:(s.personalMemories??[]).map(item=>item.id===id?{...item,text:'',status:'removed' as const,updatedAt:stamp()}:item)})),[]);
  const prepareAccount=useCallback(async(accountUid:string,choice:AccountChoice|false=false)=>{const restored=await prepareSchoolParkAccount(load(),accountUid,choice,emptyState());const safe=validateStoredState(restored,emptyState());if(safe.issues.length)throw new Error('REMOTE_ARCHIVE_INVALID');setState(safe.state)},[]);
- const reset=useCallback(async()=>{const result=await deleteSyncedCamelliaData(()=>{clearFortuneReflections();localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(V2_KEY);localStorage.removeItem(V1_KEY);localStorage.removeItem('camellia-sync-sent');localStorage.removeItem('camellia-sync-conflict');localStorage.removeItem('camellia-cache-owner');for(const key of Object.keys(localStorage))if(key.startsWith('camellia-sync-sent:')||key.startsWith('camellia-sync-conflict:')||key.startsWith('camellia-cloud-version:')||key.startsWith('camellia-local-backup:'))localStorage.removeItem(key);resetAnalyticsIdentity()});skipNextSync.current=true;setState(emptyState());return result},[]);return{state,ready,storageError,retryStorage,remember,forget,prepareAccount,updateProfile,completeOnboarding,addCheckin,recordProposals,startAction,doneAction,completeAction,skipAction,saveAction,addFeedback,addConversation,pendingConversation,replaceConversationAssistant,selectConversationModel,syncInsights,feedbackInsight,setFortune,addTreeLeaf,updateTreeLeaf,removeTreeLeaf,addTreeReflection,viewCheck,startCheck,track,reset}}
+ const reset=useCallback(async()=>{const result=await deleteSyncedCamelliaData(()=>{clearGuestCheck();clearFortuneReflections();localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(V2_KEY);localStorage.removeItem(V1_KEY);localStorage.removeItem('camellia-sync-sent');localStorage.removeItem('camellia-sync-conflict');localStorage.removeItem('camellia-cache-owner');for(const key of Object.keys(localStorage))if(key.startsWith('camellia-sync-sent:')||key.startsWith('camellia-sync-conflict:')||key.startsWith('camellia-cloud-version:')||key.startsWith('camellia-local-backup:'))localStorage.removeItem(key);resetAnalyticsIdentity()});skipNextSync.current=true;setState(emptyState());return result},[]);return{state,ready,storageError,retryStorage,remember,forget,prepareAccount,updateProfile,completeOnboarding,addCheckin,adoptGuestCheck,hasPersistedCheck,resumeGuestCheck,recordProposals,startAction,doneAction,completeAction,skipAction,saveAction,addFeedback,addConversation,pendingConversation,replaceConversationAssistant,selectConversationModel,syncInsights,feedbackInsight,setFortune,addTreeLeaf,updateTreeLeaf,removeTreeLeaf,addTreeReflection,viewCheck,startCheck,track,reset}}

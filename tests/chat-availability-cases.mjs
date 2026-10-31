@@ -31,6 +31,8 @@ try{
   await act(async()=>{app.render(createElement(CamelliaScreen,{state:emptyState(),recommendations:[],onSaveConversation:(...args)=>saved.push(args),onReplaceConversationAssistant:noop,onOpenAction:noop,onNavigate:noop,onClearTreeContext:noop,onTree:noop,onRemember:noop,onTrack:noop}));await new Promise(r=>setTimeout(r,25));});
   const starter=[...host.querySelectorAll('button')].find(b=>b.textContent==='今日あったことを話したい');assert.ok(starter);
   await act(async()=>{starter.click();await new Promise(r=>setTimeout(r,25));});
+  // Wait for the observable save, rather than assuming a loaded CI process finishes within 25ms.
+  for(let poll=0;!saved.length&&poll<100;poll++)await act(async()=>{await new Promise(r=>realSetTimeout(r,10));});
   assert.equal(posts,mode==='off'?0:1,mode+' must not silently disable on probe failure');
   assert.equal(saved[0][4],mode==='off'?'fallback':'gemini');
   if(mode!=='off')assert.ok(host.textContent.includes('仕事のミスがまだ気になっている'));

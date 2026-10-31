@@ -32,7 +32,7 @@ try{
  const pause=()=>new Promise(resolve=>setTimeout(resolve,20));
  // A reply in progress (her reaction's moment, then the reply) keeps the buttons disabled for a few timer turns.
  const find=name=>[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===name||b.textContent.includes(name));
- const click=async(name)=>{let button=find(name);for(let n=0;n<50&&button?.disabled;n++){await act(pause);button=find(name);}assert.ok(button,name);assert.equal(button.disabled,false,name);await act(async()=>{button.click();await pause();});};
+ const click=async(name)=>{let button=find(name);for(let n=0;n<50&&button?.disabled;n++){await act(pause);button=find(name);}assert.ok(button,name);assert.equal(button.disabled,false,name);await act(async()=>{button.click();await pause();});for(let n=0;n<100&&host.querySelector('.model-selector-trigger:disabled');n++)await act(pause);assert.equal(Boolean(host.querySelector('.model-selector-trigger:disabled')),false,'reply must finish before the next assertion');};
  const choose=async(model)=>{const trigger=host.querySelector('.model-selector-trigger');assert.ok(trigger);await act(async()=>{trigger.click();await pause();});const option=[...host.querySelectorAll('[role="menuitemradio"]')].find(b=>b.textContent.startsWith(model));assert.ok(option);await act(async()=>{option.click();await pause();});};
  const mount=async()=>{app=createRoot(host);await act(async()=>{app.render(createElement(Harness));await pause();});await act(pause);};
  const send=()=>click('今日あったことを話したい');

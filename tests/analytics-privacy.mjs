@@ -9,6 +9,11 @@ const server = await createServer({
   appType: 'custom',
 });
 const analytics = await server.ssrLoadModule('/lib/analytics/posthog.ts');
+const onboardingSession=crypto.randomUUID();
+const onboardingSafe=analytics.sanitizeEventProperties({id:'guest-test',name:'guest_check_saved',createdAt:new Date().toISOString(),properties:{entry_flow:'check_first',entry_session:onboardingSession,storage:'device',mood:1,sleep:3,uid:'private-uid',text:'private-check-text'}},{profile:{id:'local-test'},analyticsEvents:[]});
+if(onboardingSafe.entry_flow!=='check_first'||onboardingSafe.entry_session!==onboardingSession||onboardingSafe.storage!=='device'||['mood','sleep','uid','text'].some(key=>key in onboardingSafe))throw new Error('guest analytics privacy');
+const invalidEntry=analytics.sanitizeAuthEventProperties('login_success',{method:'google',entry_flow:'arbitrary',entry_session:'not-a-session-uid',text:'private'});
+if('entry_flow'in invalidEntry||'entry_session'in invalidEntry||'text'in invalidEntry)throw new Error('invalid onboarding metadata');
 const event = {
   id: 'e',
   name: 'daily_reflection_view',

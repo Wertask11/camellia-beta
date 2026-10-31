@@ -42,15 +42,19 @@ export function AccountScreen({
   onLoginFailure,
   returning = false,
   notice = '',
+  purpose = 'login',
+  embedded = false,
 }: {
   onContinue: () => void;
   onBack?: () => void;
   onSelect: (method: AuthMethod) => void;
   onAuthReturned: (method: AuthMethod) => void;
-  onLoginSuccess: (method: AuthMethod) => void;
+  onLoginSuccess: (method: AuthMethod, uid?: string) => void;
   onLoginFailure: (method: AuthMethod, reason: string, stage: string) => void;
   returning?: boolean;
   notice?: string;
+  purpose?: 'login' | 'save-check';
+  embedded?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(schoolParkAuth.currentUser?.isAnonymous ? null : schoolParkAuth.currentUser);
   const [error, setError] = useState('');
@@ -68,11 +72,11 @@ export function AccountScreen({
     onSelect('line');
     try {
       startLineLogin();
-    } catch {
+    } catch (cause) {
       authStarted.current = false;
       setConnecting(false);
       onLoginFailure('line', 'provider_error', 'provider_open');
-      setError('LINEログインを開始できませんでした。もう一度お試しください。');
+      setError(cause instanceof Error&&cause.message==='GUEST_CHECK_STORAGE_UNAVAILABLE'?'この端末ではLINEへの移動中にCheckを保持できません。Googleで記録を残すか、ブラウザの保存設定を確認してください。':'LINEログインを開始できませんでした。もう一度お試しください。');
     }
   };
 
@@ -87,7 +91,7 @@ export function AccountScreen({
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(schoolParkAuth, provider);
       onAuthReturned('google');
-      onLoginSuccess('google');
+      onLoginSuccess('google', result.user.uid);
       setUser(result.user);
     } catch (cause) {
       const failure = googleError(cause);
@@ -101,13 +105,16 @@ export function AccountScreen({
     }
   };
 
+  const Container = embedded ? 'section' : 'main';
+  const Heading = embedded ? 'h2' : 'h1';
+  const savingCheck = purpose === 'save-check';
   return (
-    <main className={`account-screen welcome--${theme.period}`}>
+    <Container className={embedded?'guest-save-prompt':`account-screen welcome--${theme.period}`} aria-label={savingCheck?'今日の記録を残す':undefined}>
       {onBack && <button className="account-back" onClick={onBack} aria-label="前へ戻る">←</button>}
       <section className="account-card">
         <div className="account-flower" aria-hidden="true">✿</div>
         <p className="welcome-brand">Camellia</p>
-        <h1>{user || returning ? 'おかえりなさい。' : <>今日の記録を、<br />明日のあなたへ。</>}</h1>
+        <Heading>{savingCheck?<>今日のあなたを、<br/>明日のあなたにつなげよう。</>:user || returning ? 'おかえりなさい。' : <>今日の記録を、<br />明日のあなたへ。</>}</Heading>
         {user ? (
           <>
             <div className="account-status"><span>✓</span><div><b>アカウント接続済み</b><small>今日のあなたの続きを、ここから。</small></div></div>
@@ -115,13 +122,13 @@ export function AccountScreen({
           </>
         ) : (
           <>
-            <p className="account-reason">昨日と今日の変化を振り返れるよう、<br />あなたの記録をアカウントにつなぎます。</p>
-            {returning && <p className="account-policy">続けるには、前に使ったLINEまたはGoogleでログインしてください。この端末の記録は消えずに残っています。</p>}
+            <p className="account-reason">{savingCheck?<>記録を残すと、昨日との違いや、あなたに合った過ごし方を少しずつ振り返れるようになります。</>:<>昨日と今日の変化を振り返れるよう、<br />あなたの記録をアカウントにつなぎます。</>}</p>
+            {returning && !savingCheck && <p className="account-policy">続けるには、前に使ったLINEまたはGoogleでログインしてください。この端末の記録は消えずに残っています。</p>}
             <button className="auth-primary auth-line" onClick={beginLine} disabled={connecting}>
-              <span className="auth-brand-icon line-icon" aria-hidden="true">L</span>{connecting ? '認証画面へ移動しています…' : 'LINEで続ける'}
+              <span className="auth-brand-icon line-icon" aria-hidden="true">L</span>{connecting ? '認証画面へ移動しています…' : savingCheck?'LINEで記録を残す':'LINEで続ける'}
             </button>
             <button className="auth-primary auth-google" onClick={() => void beginGoogle()} disabled={connecting}>
-              <span className="auth-brand-icon google-icon" aria-hidden="true">G</span>{connecting ? 'Googleに接続しています…' : 'Googleで続ける'}
+              <span className="auth-brand-icon google-icon" aria-hidden="true">G</span>{connecting ? 'Googleに接続しています…' : savingCheck?'Googleで記録を残す':'Googleで続ける'}
             </button>
             <p className="account-policy account-consent">ログインまたは登録することで、<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したものとみなします。</p>
             {(notice || error) && <p className="auth-error" role="alert">{notice || error}</p>}
@@ -129,6 +136,6 @@ export function AccountScreen({
         )}
         <p className="account-note">今日の記録を、明日のあなたへ。</p>
       </section>
-    </main>
+    </Container>
   );
 }
