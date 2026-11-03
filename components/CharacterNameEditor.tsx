@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { CHARACTER_NAME_MAX, DEFAULT_CHARACTER_NAME, characterNameLength, cleanCharacterName } from '@/components/CamelliaCharacter';
 
-/* Naming Camellia's character: 1–12 characters, empty goes back to メリィ. Used in My and on her profile. */
+/* Naming Camellia's character: 1–12 characters, empty goes back to Camellia. Used in My and on her profile. */
 export function CharacterNameEditor({ value, onSave, onCancel, autoFocus }: { value: string | null | undefined; onSave: (name: string | null) => void; onCancel?: () => void; autoFocus?: boolean }) {
   const [draft, setDraft] = useState(value ?? '');
   const cleaned = cleanCharacterName(draft);

@@ -309,7 +309,7 @@ function TodayOneFlow({
         </section>
 
         {guestSavePrompt ? guestSavePrompt : <>
-        {CHOICE_ACTION_FLOW&&<section className="today-choice-next"><h2>だから、今日は何をする？</h2><div className="quick-inputs"><button onClick={onTalk}>メリィと、どうしたいか話す</button><button onClick={()=>onIntent('探す')}>Discoverで選ぶ →</button>{onPlace&&<button onClick={onPlace}>Placeで場所・体験を見る →</button>}</div></section>}
+        {CHOICE_ACTION_FLOW&&<section className="today-choice-next"><h2>だから、今日は何をする？</h2><div className="quick-inputs"><button onClick={onTalk}>Camelliaと、どうしたいか話す</button><button onClick={()=>onIntent('探す')}>Discoverで選ぶ →</button>{onPlace&&<button onClick={onPlace}>Placeで場所・体験を見る →</button>}</div></section>}
         <section className="flow-section" id="today-plans">
           <Step n={2} label="今日の過ごし方" state={chose ? 'done' : 'now'} />
           <p className="gentle-copy explain">今日のCheckを手がかりに、ひとつだけ。選ばなくても大丈夫。</p>

@@ -15,9 +15,9 @@ with sync_playwright() as p:
   page.goto(ORIGIN)
   page.get_by_role('button',name='今日のわたしをCheckする',exact=True).click()
   page.locator('.moods button').nth(2).click();page.get_by_role('button',name='今日の私を見てみる',exact=True).click()
-  page.get_by_role('button',name='メリィと、どうしたいか話す',exact=True).wait_for()
+  page.get_by_role('button',name='Camelliaと、どうしたいか話す',exact=True).wait_for()
   assert not page.get_by_role('button',name='Googleで記録を残す',exact=True).count()
-  page.get_by_role('button',name='メリィと、どうしたいか話す',exact=True).click()
+  page.get_by_role('button',name='Camelliaと、どうしたいか話す',exact=True).click()
   page.get_by_label('Camelliaへのメッセージ').fill('今日は何かしたい')
   page.get_by_role('button',name='送信',exact=True).click();page.locator('.bubble.assistant').wait_for()
   assert not any('/api/camellia/chat' in r for r in requests),'Guest chat must never call Gemini'
@@ -76,7 +76,7 @@ with sync_playwright() as p:
  ctx=browser.new_context(viewport={'width':390,'height':900},timezone_id='Asia/Tokyo')
  ctx.route('**/*',lambda r:r.continue_() if r.request.url.startswith(ORIGIN+'/') else r.abort())
  page=ctx.new_page();page.set_default_timeout(20000);requests=[];page.on('request',lambda r:requests.append(r.url))
- page.goto(ORIGIN);page.get_by_role('button',name='今日のわたしをCheckする',exact=True).click();page.locator('.moods button').nth(2).click();page.get_by_role('button',name='今日の私を見てみる',exact=True).click();page.get_by_role('button',name='メリィと、どうしたいか話す',exact=True).click()
+ page.goto(ORIGIN);page.get_by_role('button',name='今日のわたしをCheckする',exact=True).click();page.locator('.moods button').nth(2).click();page.get_by_role('button',name='今日の私を見てみる',exact=True).click();page.get_by_role('button',name='Camelliaと、どうしたいか話す',exact=True).click()
  cases=['死にたい','私はうつ病ですか？','薬をやめたい','暴力を受けている','虐待されている','息ができない']
  for model in ['YURA','Lactone']:
   page.locator('.model-selector-trigger').click();page.get_by_role('menuitemradio').filter(has_text=model).click()
