@@ -45,6 +45,8 @@ export type DismissReason =
   | 'other';
 export type SaveTiming = 'later_today' | 'holiday' | 'when_free' | 'save_only';
 export interface Profile {
+  /** Explicit opt-in to local Place context ranking. Defaults off. */
+  placePersonalization?: boolean;
   lastConversationModel?: ConversationModelId;
   /** The name she gave Camellia's character; null or absent means the default メリィ. */
   characterName?: string | null;
@@ -228,6 +230,9 @@ export type ReflectionStage =
   | 'recent'
   | 'weekly';
 export type AnalyticsEventName =
+  | 'discover_action_selected' | 'place_recommendation_view' | 'place_selected' | 'my_view'
+  | 'partner_share_view' | 'partner_share_created' | 'partner_share_sent' | 'partner_share_revoked' | 'partner_share_open'
+  | 'plus_offer_view' | 'plus_start' | 'plus_complete'
   | 'place_view' | 'place_save' | 'place_external_open' | 'place_booking_open' | 'place_map_open'
   | 'session_start'
   | 'welcome_view'
@@ -284,6 +289,7 @@ export interface AnalyticsEvent {
   deliverySuppressed?: 'dnt' | 'opt_out' | 'expired' | 'invalid_event' | 'restored';
 }
 export interface CamelliaState {
+  placeChoices?: import('@/lib/journey/model').PlaceChoice[];
   version: 3;
   profile: Profile;
   checkins: Checkin[];

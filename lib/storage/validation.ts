@@ -1,6 +1,7 @@
 import type { AIConversation, CamelliaState } from '@/types';
 import {decodeConversation,validStoredSwitches} from '@/lib/conversation/persistence';
 import { validConversationEntry } from '@/lib/conversation/entries';
+import {validPlaceChoice} from '@/lib/journey/model';
 
 type Row = Record<string, unknown>;
 const object = (v: unknown): v is Row => Boolean(v && typeof v === 'object' && !Array.isArray(v));
@@ -14,6 +15,7 @@ const record = (v: unknown): v is Row => object(v) && text(v.id) && date(v.creat
 const message = (v: unknown) => validConversationEntry(v) && object(v) && optional(v,'topics',strings);
 const reflection = (v: unknown) => record(v) && text(v.text);
 const checks: Record<string, (v: unknown) => boolean> = {
+  placeChoices:validPlaceChoice,
   checkins: v => record(v) && oneOf(v.mood,[1,2,3,4,5]) && optional(v,'sleep',x=>typeof x==='number'&&Number.isFinite(x)) && optional(v,'body',x=>oneOf(x,['良い','普通','疲れ気味','悪い'])) && optional(v,'stress',x=>oneOf(x,['低い','普通','やや高い','高い'])),
   actions: v => record(v) && text(v.actionId) && text(v.title) && category(v.category) && oneOf(v.status,['started','completed','skipped']),
   actionFeedback: v => record(v) && text(v.actionRecordId) && text(v.actionId) && oneOf(v.rating,['great','okay','same','bad']),
