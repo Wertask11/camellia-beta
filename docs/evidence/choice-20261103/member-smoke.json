@@ -1,0 +1,9 @@
+{
+  "scope": "Local real Chromium, synthetic existing account",
+  "actionToPlaceIntent": "PASS",
+  "explicitConsentDefaultOff": "PASS",
+  "consentPersists": "PASS",
+  "myBrowseAllPlaces": "PASS",
+  "existingLibrary": "PASS",
+  "pageErrors": []
+}

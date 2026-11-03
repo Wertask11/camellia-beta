@@ -18,8 +18,10 @@ Camellia Plusは月500円の案内と保護されたサーバーのプラン判�
 - lint、typecheck、48/48 unit suites、buildが成功。
 - Firestore emulator: 既存40件、Check-first、Commerce権限・保存・期限・取り消し・所有者削除／再作成の境界が成功。実決済・実共有の公開成功を示すものではない。
 - 実Chromiumの375／390／412／768／1280: Guest Check→メリィ→Discover→行動保存→Placeデモ→My→明示保存→合成認証→プロフィール→My→refresh。元Checkと選択内容の一度だけの保存、会話の除外、ログイン前の保護API呼び出しなし、横overflowなし。
+- 合成の既存アカウントで行動→Placeの希望引き継ぎ、同意の初期OFFと再表示時の保持、Myから全Place閲覧、既存Conversation Libraryが成功。
 - native dialogのキーボードfocus、Escape、共有プレビューからPlus案内を開いて閉じる操作。支払・送信ボタンが無効でAPIを呼ばない。
 - Guest YURA/Lactoneそれぞれ自傷／診断／薬中止／暴力／虐待／緊急症状の6境界で共通Safety、外部AI呼び出しなし。
+- rollbackの旧Check-firstブラウザ検証も成功。既存記録の復元、別アカウント分離、招待／停止、ログイン取消、保存失敗時の復旧を確認。
 - ブラウザ合成認証は実際のLINE/Google・実端末同期の確認とは区別する。
 
 ## PostHog
@@ -32,7 +34,9 @@ Project 594848に本番host限定の基本ファネル `5JIQ1IT0`、会話経由
 
 ## Preview／Productionの検証
 
-固定Previewを使用し、LINEのcallback URLを増やさない。実アカウント確認およびProduction公開画面監査の結果は、反映後の記録へ追記する。このファイルのローカルPASSだけでProduction PASSとは判定しない。
+固定Previewは https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/ を更新。LINEのcallback URLを増やさない。基盤PR: https://github.com/Wertask11/camellia-beta/pull/59 、体験PR: https://github.com/Wertask11/camellia-beta/pull/60 。
+
+実アカウントでの保存確認を本人へ依頼済み。こちらでは本人のLINE/Googleログインを代行できないため、その確認結果は未受領。Productionへのmerge・公開画面監査・新イベントの本番着信確認はまだ行っていない。このファイルのローカルPASSやVercel Previewビルド成功だけでProduction PASSとは判定しない。決済・共有の送信は確認対象にせず、今回も停止状態を維持する。
 
 ## 残る外部条件と公開判断
 
@@ -44,3 +48,63 @@ Project 594848に本番host限定の基本ファネル `5JIQ1IT0`、会話経由
 - 機能rollbackは `VITE_CHOICE_ACTION_FLOW=off` で従来のCheck-first UIへ戻せる。保存済み任意fieldを一括削除しない。
 
 正式リリース全体の完了ではなく、選択導線とプレビュー限定の公開候補として評価する。
+
+## 変更ファイル一覧（基盤＋画面）
+
+- `.env.example`
+- `api/camellia/membership.ts`
+- `api/camellia/place.ts`
+- `api/camellia/share.ts`
+- `app/globals.css`
+- `app/layout.tsx`
+- `app/page.tsx`
+- `components/ActionSheet.tsx`
+- `components/BottomNav.tsx`
+- `components/PartnerShareDialog.tsx`
+- `components/PlanCard.tsx`
+- `components/PlusOffer.tsx`
+- `docs/choice-place-audit-20261103.md`
+- `docs/choice-place-release-20261103.md`
+- `docs/evidence/choice-20261103/browser.json`
+- `docs/evidence/choice-20261103/member-smoke.json`
+- `docs/evidence/choice-20261103/posthog-configuration.json`
+- `docs/evidence/choice-20261103/rollback.json`
+- `hooks/useCamelliaStore.ts`
+- `lib/analytics/posthog.ts`
+- `lib/features.ts`
+- `lib/journey/model.ts`
+- `lib/membership/client.ts`
+- `lib/membership/model.ts`
+- `lib/membership/server.ts`
+- `lib/onboarding/guest-check.ts`
+- `lib/partner/client.ts`
+- `lib/partner/model.ts`
+- `lib/partner/service.ts`
+- `lib/place/model.ts`
+- `lib/place/recommendation.ts`
+- `lib/schoolpark/map.ts`
+- `lib/schoolpark/restore.ts`
+- `lib/server/shared-limit.ts`
+- `lib/storage/validation.ts`
+- `public/privacy.html`
+- `public/terms.html`
+- `screens/AccountScreen.tsx`
+- `screens/CamelliaScreen.tsx`
+- `screens/ConversationWorkspace.tsx`
+- `screens/DiscoverScreen.tsx`
+- `screens/GuestExperience.tsx`
+- `screens/MyScreen.tsx`
+- `screens/PartnerShareScreen.tsx`
+- `screens/PlaceScreen.tsx`
+- `screens/PrivacyScreen.tsx`
+- `screens/TodayScreen.tsx`
+- `screens/WelcomeScreen.tsx`
+- `tests/choice-flow-browser.py`
+- `tests/choice-journey-cases.mjs`
+- `tests/commerce-cases.mjs`
+- `tests/commerce-firestore.mjs`
+- `tests/place-cases.mjs`
+- `tests/run-firestore.mjs`
+- `tests/run-unit.mjs`
+- `tests/ux-preview.mjs`
+- `types/index.ts`
