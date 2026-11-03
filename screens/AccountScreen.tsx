@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { startLineLogin } from '@/lib/auth/camellia';
+import { CHOICE_ACTION_FLOW } from '@/lib/features';
 import { welcomeTheme } from '@/lib/welcome/time';
 
 export type AuthMethod = 'line' | 'google';
@@ -113,8 +114,8 @@ export function AccountScreen({
       {onBack && <button className="account-back" onClick={onBack} aria-label="前へ戻る">←</button>}
       <section className="account-card">
         <div className="account-flower" aria-hidden="true">✿</div>
-        <p className="welcome-brand">Camellia</p>
-        <Heading>{savingCheck?<>今日のあなたを、<br/>明日のあなたにつなげよう。</>:user || returning ? 'おかえりなさい。' : <>今日の記録を、<br />明日のあなたへ。</>}</Heading>
+        <p className="welcome-brand">{CHOICE_ACTION_FLOW?'Camellia ID · 無料':'Camellia'}</p>
+        <Heading>{savingCheck?CHOICE_ACTION_FLOW?<>今日のあなたを<br/>残しておきませんか？</>:<>今日のあなたを、<br/>明日のあなたにつなげよう。</>:user || returning ? 'おかえりなさい。' : <>今日の記録を、<br />明日のあなたへ。</>}</Heading>
         {user ? (
           <>
             <div className="account-status"><span>✓</span><div><b>アカウント接続済み</b><small>今日のあなたの続きを、ここから。</small></div></div>
@@ -122,7 +123,7 @@ export function AccountScreen({
           </>
         ) : (
           <>
-            <p className="account-reason">{savingCheck?<>記録を残すと、昨日との違いや、あなたに合った過ごし方を少しずつ振り返れるようになります。</>:<>昨日と今日の変化を振り返れるよう、<br />あなたの記録をアカウントにつなぎます。</>}</p>
+            <p className="account-reason">{savingCheck?<>記録を残すと、明日のTodayやMyから、選んだこと・やってみたことを振り返れます。</>:<>昨日と今日の変化を振り返れるよう、<br />あなたの記録をアカウントにつなぎます。</>}</p>
             {returning && !savingCheck && <p className="account-policy">続けるには、前に使ったLINEまたはGoogleでログインしてください。この端末の記録は消えずに残っています。</p>}
             <button className="auth-primary auth-line" onClick={beginLine} disabled={connecting}>
               <span className="auth-brand-icon line-icon" aria-hidden="true">L</span>{connecting ? '認証画面へ移動しています…' : savingCheck?'LINEで記録を残す':'LINEで続ける'}

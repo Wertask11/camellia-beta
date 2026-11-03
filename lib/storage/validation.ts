@@ -41,7 +41,7 @@ export function validateStoredState(raw: unknown, base: CamelliaState, legacy = 
   const p = raw.profile;
   if (object(p) && text(p.id) && text(p.name) && strings(p.interests)
     && ['age','birthDate','lifestyle','priority','region','livingSituation','concerns','agreedAt','agreedVersion','createdAt','updatedAt'].every(k=>optional(p,k,text))
-    && optional(p,'purposes',strings) && optional(p,'lastConversationModel',text) && optional(p,'periodEnabled',x=>typeof x==='boolean')) {
+    && optional(p,'purposes',strings) && optional(p,'lastConversationModel',text) && optional(p,'periodEnabled',x=>typeof x==='boolean') && optional(p,'placePersonalization',x=>typeof x==='boolean')) {
     state.profile = { ...base.profile, ...p } as CamelliaState['profile'];
   } else issues.push('profile');
   for (const [field, check] of Object.entries(checks)) {

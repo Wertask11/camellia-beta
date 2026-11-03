@@ -1,0 +1,48 @@
+{
+  "projectId": 594848,
+  "registeredDefinitions": [
+    "place_view",
+    "discover_action_selected",
+    "place_recommendation_view",
+    "place_selected",
+    "my_view",
+    "partner_share_view",
+    "partner_share_created",
+    "partner_share_sent",
+    "partner_share_revoked",
+    "partner_share_open",
+    "plus_offer_view",
+    "plus_start",
+    "plus_complete"
+  ],
+  "definitionsVerified": false,
+  "insights": [
+    {
+      "key": "core",
+      "id": 13614411,
+      "shortId": "5JIQ1IT0",
+      "url": "https://us.posthog.com/project/594848/insights/5JIQ1IT0"
+    },
+    {
+      "key": "melly",
+      "id": 13614412,
+      "shortId": "R7o5494t",
+      "url": "https://us.posthog.com/project/594848/insights/R7o5494t"
+    },
+    {
+      "key": "plus",
+      "id": 13614413,
+      "shortId": "UaXOQMRw",
+      "url": "https://us.posthog.com/project/594848/insights/UaXOQMRw"
+    }
+  ],
+  "productionHost": "camellia-beta.vercel.app",
+  "initialDateFrom": "2026-11-03",
+  "notes": [
+    "Definitions and saved configurations do not prove delivery of real events.",
+    "Sharing and payment success events remain disabled in this release.",
+    "Native funnels count people; returning-account identity restoration may need entry_session reconciliation.",
+    "Demo Place choices are not bookings or visits.",
+    "Set date_from to the actual Production release time after deployment."
+  ]
+}

@@ -1335,3 +1335,22 @@ details {
 .guest-save-prompt .account-card{padding:24px 16px;box-shadow:none;border:1px solid var(--border);background:#fdf6f8}
 .guest-save-prompt h2{margin:0;font:clamp(20px,5.1vw,24px)/1.5 Georgia,serif;text-wrap:balance;color:var(--text)}
 .guest-save-prompt .account-note{margin-bottom:0}
+.choice-bridge{display:grid;gap:10px;margin:20px 0;padding:20px;border:1px solid #eddae0;border-radius:22px;background:#fff9fb}
+.choice-bridge h2,.choice-bridge p{margin:0}.choice-bridge button{min-height:44px;white-space:normal}
+.choice-bridge .primary,.choice-bridge .secondary-button{width:100%}
+.guest-next>p,.privacy-choice small{font-size:13px;color:#75646b;line-height:1.7}
+.discover-place-hero{display:grid;gap:12px;padding:24px 20px;margin:20px 0;border-radius:24px;background:linear-gradient(140deg,#fff2f5,#f7f4ec);border:1px solid #efdee0}
+.discover-place-hero h2,.discover-place-hero p{margin:0}.discover-place-hero h2{font-size:23px;line-height:1.5}.discover-place-hero small{color:#75646b;line-height:1.6}
+.circle-secondary{margin:12px 0 20px;width:100%;text-align:left}.place-intents{margin:20px 0}.place-intents .quick-inputs{display:flex;flex-wrap:wrap;gap:8px}
+.place-intents button[aria-pressed=true]{background:#f8dce5;border-color:#a93459;color:#8e2548}
+.privacy-choice{display:grid;grid-template-columns:22px 1fr;gap:8px;margin:18px 0;padding:16px;background:#fcf7f9;border-radius:16px;font-size:14px;line-height:1.7}.privacy-choice small{grid-column:2}
+.privacy-choice input{width:18px;height:18px;margin-top:4px}
+.my-choice-summary{margin:16px 0 24px}.my-choice-summary p{line-height:1.7}.guest-my .history-row small{display:block}
+.guest-check-shell .screen{padding-bottom:110px}.guest-check-shell .today{padding-bottom:110px}.guest-my .account-card{margin:16px 0 24px}
+.guest-my .account-card h2{font-size:23px;line-height:1.5}.guest-my .panel{margin:20px 0}
+.commerce-dialog{position:fixed;inset:0;margin:auto;width:min(440px,calc(100% - 28px));max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;border:1px solid #ecd9e0;border-radius:24px;padding:28px 22px;background:#fffcfd;color:#342b30;box-shadow:0 20px 80px #4c253133}
+.commerce-dialog::backdrop{background:#38273055}.commerce-dialog h2{font-size:27px;line-height:1.5;margin:12px 0}.commerce-dialog h3{font-size:17px;margin:16px 0 8px}
+.commerce-dialog p,.commerce-dialog li{font-size:14px;line-height:1.8}.commerce-dialog label{display:grid;gap:7px;font-size:14px;margin:16px 0}.commerce-dialog input:not([type=checkbox]),.commerce-dialog select{width:100%;min-height:44px;font-size:16px;border:1px solid #dec7d0;border-radius:12px;padding:8px;background:white;color:inherit}
+.commerce-dialog .privacy-choice{display:grid;grid-template-columns:22px 1fr}.commerce-dialog .primary,.commerce-dialog .secondary-button{width:100%;margin:8px 0;white-space:normal;min-height:44px}.commerce-dialog .close{position:absolute;top:8px;right:8px;min-width:44px;min-height:44px;background:transparent;border:0;font-size:26px}
+.commerce-dialog .plus-price{font-size:25px;color:#9d3155;font-weight:600}.commerce-dialog section{margin:18px 0}.share-preview{padding:18px;border:1px solid #ebd6df;border-radius:18px;background:#fff5f8;overflow-wrap:anywhere}.share-preview strong{display:block;font-size:13px;color:#8b3452;line-height:1.7}
+.commerce-dialog output{display:block;font-size:14px;line-height:1.7}.plan-card h2{font-size:21px}.partner-public{padding-top:40px}.today-choice-next{margin:22px 0}.today-choice-next h2{font-size:21px}.today-choice-next .quick-inputs{display:flex;flex-wrap:wrap;gap:8px}

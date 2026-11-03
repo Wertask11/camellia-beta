@@ -1,6 +1,7 @@
 'use client';
 import {useState,type ComponentProps} from 'react';
 import {ArrowLeft,MessageCircle,Plus} from 'lucide-react';
+import {CHOICE_ACTION_FLOW} from '@/lib/features';
 import {CamelliaScreen} from './CamelliaScreen';
 import {conversationTitle,conversationModelSummary} from '@/lib/conversation/threads';
 import {defaultConversationModel} from '@/lib/conversation/models';
@@ -31,7 +32,7 @@ export function ConversationWorkspace(props:Props){
    onReplaceConversationAssistant={(u,a,provider,assistantModel)=>props.onReplaceConversationAssistant(u,a,provider,selectedId,assistantModel)}/>
  </section>;
  const filtered=conversations.filter(item=>conversationTitle(item).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
- return <main className="screen conversation-library"><header><div><p className="eyebrow">言葉にしたいことから、少しずつ</p><h1>Camelliaに話す</h1></div></header>
+ return <main className="screen conversation-library"><header><div><p className="eyebrow">言葉にしたいことから、少しずつ</p><h1>{CHOICE_ACTION_FLOW?'メリィに話す':'Camelliaに話す'}</h1></div></header>
   {!conversations.length&&<p className="conversation-style-intro">Camelliaには、2つの話し方があります。<br/>YURA：話して、ほどく。<br/>Lactone：整えて、選ぶ。</p>}
   <button className="conversation-new" onClick={newChat}><Plus size={20}/><span><strong>新しい会話を始める</strong><small>{characterLabel(props.state.profile.characterName,defaultConversationModel(props.state.profile.lastConversationModel))}と、まっさらな会話から。</small></span></button>
   <section aria-labelledby="conversation-history"><h2 id="conversation-history">これまでの会話</h2>
