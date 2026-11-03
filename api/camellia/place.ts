@@ -1,5 +1,8 @@
 import { adminConfigured, serverAdmin } from '../../lib/server/admin.js';
 import { PlaceError, PlaceService } from '../../lib/place/service.js';
+import {requireEligibleUser,EligibilityError} from '../../lib/server/eligibility.js';
+import {memberStatus} from '../../lib/membership/server.js';
+import {rankPlaces,type PlaceIntent} from '../../lib/place/recommendation.js';
 type Request = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -84,6 +87,15 @@ export default async function place(req: Request, res: Response) {
         : {};
     if (Buffer.byteLength(JSON.stringify(body)) > 12000)
       throw new PlaceError(413, 'INVALID_PLACE');
+    if(body.operation==='recommendation'){
+      if(Object.keys(body).some(k=>!['operation','intents','area'].includes(k))||!Array.isArray(body.intents)||body.intents.length>3||body.intents.some(x=>!['quiet','rest','try','move','together'].includes(String(x)))||body.area!==undefined&&(typeof body.area!=='string'||body.area.length>40))throw new PlaceError(400,'INVALID_PLACE');
+      const header=req.headers.authorization;const user=await requireEligibleUser(typeof header==='string'?header.slice(7):'',{db,auth});
+      if((await memberStatus(db,user.uid)).plan!=='plus')return res.status(403).json({error:'PLUS_REQUIRED'});
+      const catalog=[];let cursor: string|undefined;
+      for(let page=0;page<3;page++){const result=await service.list(cursor);catalog.push(...result.places);cursor=result.nextCursor;if(!cursor)break;}
+      const places=rankPlaces(catalog.filter(p=>!body.area||p.area===body.area),body.intents as PlaceIntent[]).slice(0,12);
+      return res.status(200).json({places:await service.withSaved(places,user.uid),personalized:true});
+    }
     if (body.operation === 'bookmark')
       return res
         .status(200)
@@ -92,6 +104,7 @@ export default async function place(req: Request, res: Response) {
       .status(200)
       .json(await service.change(identity!, body.operation, body));
   } catch (error) {
+    if(error instanceof EligibilityError)return res.status(error.status).json({error:error.code});
     if (error instanceof PlaceError)
       return res.status(error.status).json({ error: error.code });
     console.error('camellia_place_failed', { category: 'storage_or_server' });

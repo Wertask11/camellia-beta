@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'vite';
+import {Window} from 'happy-dom';
+const window=new Window({url:'http://localhost/'});for(const key of ['window','document','Event','sessionStorage','localStorage'])globalThis[key]=key==='window'?window:window[key];
+const server=await createServer({configFile:false,root:process.cwd(),resolve:{alias:{'@':process.cwd()}},server:{middlewareMode:true,hmr:false},plugins:[{name:'pure-journey',enforce:'pre',resolveId(id){if(id.includes('analytics/posthog'))return '\0analytics';if(id.includes('schoolpark/sync'))return '\0sync';},load(id){if(id==='\0analytics')return 'export const forwardEvent=()=>false;export const resetAnalyticsIdentity=()=>{};export const setAnalyticsDeliveryAllowed=()=>{};';if(id==='\0sync')return 'export const syncToSchoolPark=()=>{};export const prepareSchoolParkAccount=async s=>s;export const deleteSyncedCamelliaData=async()=>{};';}}]});
+try{
+ const {safeJourney}=await server.ssrLoadModule('/lib/journey/model.ts');
+ const {emptyState}=await server.ssrLoadModule('/hooks/useCamelliaStore.ts');
+ const {mapCamelliaState}=await server.ssrLoadModule('/lib/schoolpark/map.ts');
+ const {restoreArchive}=await server.ssrLoadModule('/lib/schoolpark/restore.ts');
+ const {localPlaceIntents,rankPlaces}=await server.ssrLoadModule('/lib/place/recommendation.ts');
+ const {PLACE_DEMO_DATA}=await server.ssrLoadModule('/data/place-demo.ts');
+ const {ACTIONS}=await server.ssrLoadModule('/data/actions.ts');
+ const guest=await server.ssrLoadModule('/lib/onboarding/guest-check.ts');
+ const at=new Date().toISOString(),action=ACTIONS[0],choice={id:crypto.randomUUID(),actionId:action.id,title:'PRIVATE injected text',category:'bad',status:'started',createdAt:at,updatedAt:at};
+ const clean=safeJourney({actions:[choice,null,{...choice,id:'bad'}],text:'PRIVATE',conversation:'PRIVATE'});
+ assert.equal(clean.actions.length,1);assert.equal(clean.actions[0].title,action.title);assert.equal(clean.actions[0].category,action.category);assert.ok(!JSON.stringify(clean).includes('PRIVATE'));
+ assert.equal(safeJourney({actions:[choice]},Date.now()+31*60000).actions.length,0);
+ guest.createGuestCheck({mood:3});guest.updateGuestJourney({actions:clean.actions,placeChoices:[{id:crypto.randomUUID(),slug:'demo-cafe',title:'掲載イメージ',demo:true,createdAt:at,updatedAt:at}]});
+ const draft=guest.readGuestCheck();guest.armGuestLogin('line');guest.bridgeGuestOAuth('safe-unit-oauth-state');
+ const bridge=JSON.parse(localStorage.getItem(guest.GUEST_OAUTH_KEY));assert.equal(bridge.draft.actions.length,1);assert.equal(bridge.draft.placeChoices.length,1);
+ assert.equal(guest.completeGuestOAuth('safe-unit-oauth-state','account-A'),true);assert.equal(guest.guestForAccount('account-B'),undefined);
+ const state=emptyState();state.actions=clean.actions;state.placeChoices=draft.placeChoices;
+ const restored=restoreArchive(mapCamelliaState(state).filter(x=>x.path.startsWith('imports/')).map(x=>x.data),emptyState());
+ assert.deepEqual(restored.placeChoices,state.placeChoices);assert.deepEqual(restored.actions,state.actions);
+ state.checkins=[{id:crypto.randomUUID(),mood:1,createdAt:at,updatedAt:at}];state.treeLeaves=[{name:'PRIVATE'}];
+ assert.deepEqual(localPlaceIntents(state),['rest','quiet']);
+ const ranked=rankPlaces(PLACE_DEMO_DATA,['quiet']);assert.ok(ranked[0].recommendedFor.includes('quiet'));
+ assert.deepEqual(rankPlaces(PLACE_DEMO_DATA.map(p=>({...p,sponsored:!p.sponsored})),['quiet']).map(p=>p.slug),ranked.map(p=>p.slug),'payment does not alter rank');
+ console.log('PASS safe catalog-only guest choices, bounded expiry, OAuth binding, additive archive round-trip, private-data-free local intents, sponsorship-independent ranking.');
+}finally{await server.close();await window.happyDOM.close();}

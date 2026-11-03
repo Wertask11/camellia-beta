@@ -18,6 +18,7 @@ export function createSharedRateLimiter(
   db: Firestore,
   env: Record<string, string | undefined> = process.env,
   now = Date.now,
+  namespace:'rate_windows'|'partner_rate_windows'='rate_windows',
 ) {
   const config = rateLimitConfig(env);
   return {
@@ -26,8 +27,8 @@ export function createSharedRateLimiter(
         window = Math.floor(time / config.windowMs);
       const userKey = createHash('sha256').update(uid).digest('hex');
       const refs = [
-        db.doc(`${SERVER_ROOT}/rate_windows/user-${userKey}-${window}`),
-        db.doc(`${SERVER_ROOT}/rate_windows/global-${window}`),
+        db.doc(`${SERVER_ROOT}/${namespace}/user-${userKey}-${window}`),
+        db.doc(`${SERVER_ROOT}/${namespace}/global-${window}`),
       ];
       return db.runTransaction(async (tx) => {
         const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));

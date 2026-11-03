@@ -1,6 +1,7 @@
 import type { Checkin, Mood } from '@/types';
 import { checkInputError } from '@/lib/check';
 import { jstDate } from '@/lib/fortune/engine';
+import {safeJourney,type JourneyChoices} from '@/lib/journey/model';
 
 export const GUEST_CHECK_KEY = 'camellia-guest-check-v1';
 export const GUEST_OAUTH_KEY = 'camellia-guest-check-oauth-v1';
@@ -8,7 +9,7 @@ export const GUEST_CHECK_CHANGED = 'camellia-guest-check-changed';
 export const GUEST_TTL_MS = 30 * 60_000;
 export const GUEST_OAUTH_TTL_MS = 10 * 60_000;
 type Method = 'line' | 'google';
-export type GuestCheck = {
+export type GuestCheck = JourneyChoices & {
   version: 1;
   check: Checkin;
   expiresAt: number;
@@ -54,7 +55,7 @@ export function parseGuestCheck(value: unknown, now = Date.now()): GuestCheck | 
     ...(v.method === 'line' || v.method === 'google' ? { method: v.method } : {}),
     ...(uuid(v.attempt) ? { attempt: v.attempt } : {}), ...(owner(v.ownerUid) ? { ownerUid: v.ownerUid } : {}),
     ...(uuid(v.entrySession) ? { entrySession: v.entrySession } : {}),
-    shown: Array.isArray(v.shown) ? v.shown.filter((x): x is string => ['result', 'prompt'].includes(String(x))).slice(0, 2) : [] };
+    shown: Array.isArray(v.shown) ? v.shown.filter((x): x is string => ['result', 'prompt'].includes(String(x))).slice(0, 2) : [],...safeJourney(v,now) };
 }
 function write(value: GuestCheck | undefined) {
   memory = value; loaded = true;
@@ -67,7 +68,7 @@ function readBridge(now = Date.now()): { state: string; draft: GuestCheck; expir
   try {
     const raw = localStorage.getItem(GUEST_OAUTH_KEY);
     if (!raw) return;
-    if (raw.length > 3500) { removeBridge(); return; }
+    if (raw.length > 16000) { removeBridge(); return; }
     const v = JSON.parse(raw), draft = parseGuestCheck(v.draft, now);
     if (!draft || draft.phase !== 'pending' || draft.method !== 'line' || typeof v.state !== 'string' ||
         !/^[A-Za-z0-9_-]{16,128}$/.test(v.state) || typeof v.expiresAt !== 'number' ||
@@ -79,7 +80,7 @@ export function readGuestCheck(now = Date.now()): GuestCheck | undefined {
   readBridge(now); // expire a stranded OAuth bridge on the next visit
   if (!loaded && typeof sessionStorage !== 'undefined') {
     loaded = true;
-    try { const raw = sessionStorage.getItem(GUEST_CHECK_KEY); memory = raw && raw.length <= 3500 ? parseGuestCheck(JSON.parse(raw), now) : undefined; if(raw&&!memory)sessionStorage.removeItem(GUEST_CHECK_KEY); }
+    try { const raw = sessionStorage.getItem(GUEST_CHECK_KEY); memory = raw && raw.length <= 16000 ? parseGuestCheck(JSON.parse(raw), now) : undefined; if(raw&&!memory)sessionStorage.removeItem(GUEST_CHECK_KEY); }
     catch { storageUnavailable = true; }
   }
   if (memory && !parseGuestCheck(memory, now)) { write(undefined); return; }
@@ -91,10 +92,12 @@ export function createGuestCheck(input: { mood: Mood } & Partial<Checkin>, entry
   const check = guestCheckValue({ ...input, id: crypto.randomUUID(), createdAt: at, updatedAt: at }, now);
   if (!check) throw new Error('INVALID_GUEST_CHECK');
   removeBridge();
-  const draft: GuestCheck = { version: 1, check, phase: 'preview', expiresAt: now + GUEST_TTL_MS,
+  const draft: GuestCheck = { ...safeJourney(readGuestCheck(now),now),version: 1, check, phase: 'preview', expiresAt: now + GUEST_TTL_MS,
     ...(uuid(entrySession) ? { entrySession } : {}), shown: [] };
   write(draft); return draft;
 }
+/** Public catalog selections only. Conversation remains in component memory, never in the OAuth bridge. */
+export function updateGuestJourney(choices:JourneyChoices){const draft=readGuestCheck();if(!draft||draft.phase!=='preview')return;write({...draft,...safeJourney({...draft,...choices})});}
 export function clearGuestCheck() { removeBridge(); write(undefined); }
 export function markGuestShown(stage: 'result' | 'prompt') {
   const draft = readGuestCheck();

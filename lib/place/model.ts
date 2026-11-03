@@ -17,6 +17,7 @@ export const PLACE_INTENTS = {
   rest: 'ゆっくり過ごす',
   try: '新しいことに触れる',
   move: '軽く動く',
+  together: '誰かと過ごす',
 } as const;
 export type PlaceStatus = 'draft' | 'review' | 'published' | 'suspended';
 export type Place = {

@@ -14,7 +14,10 @@ import type {
 } from '@/types';
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
-  place_view:['place_id'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
+  discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
+  partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
+  plus_offer_view:['source'],plus_start:['source'],plus_complete:['currency','amount'],
+  place_view:['place_id','catalog'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
   circle_view: ['circle_id', 'days_since_join'], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
   session_start: [],
   welcome_view: ['period', 'entry_flow', 'entry_session'],
@@ -74,6 +77,10 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   member_invite_share: ['share_method'],
 };
 let initialized = false;
+// Same existing random session across the pre-login journey; never alias two accounts or include content.
+for(const event of ['conversation_open','conversation_message_sent','discover_view','discover_action_selected','place_view','place_recommendation_view','place_selected','my_view','partner_share_view','plus_offer_view'] as const){
+  SAFE_PROPERTIES[event]=[...SAFE_PROPERTIES[event],'entry_flow','entry_session'];
+}
 let identifiedId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
 /** SDK-added URL metadata must not include auth callback query/hash, including nested metadata. */
@@ -298,6 +305,7 @@ export function captureAuthEvent(
 }
 
 const ENUMS: Record<string, readonly string[]> = {
+  catalog:['demo','published'],share_kind:['feeling','action','place'],share_result:['sent','copied','cancelled','failed'],source:['place','partner','my'],currency:['JPY'],
   entry_flow: ['check_first', 'login_first'], storage: ['device'],
   period: ['morning','day','evening','night'], method: AUTH_METHODS, auth_method: AUTH_METHODS,
   auth_flow: AUTH_FLOWS, stage: AUTH_STAGES, reason: AUTH_REASONS,
@@ -309,6 +317,8 @@ const ENUMS: Record<string, readonly string[]> = {
 };
 const COUNTS: Record<string, number> = { history_days: 36500, leafAgeDays: 36500, tagCount: 8 };
 function validProperty(key: string, value: unknown) {
+  if(key==='personalized')return typeof value==='boolean';
+  if(key==='amount')return value===500;
   // Reuse the existing random per-tab analytics session across a verified onboarding handoff; never a UID or Check ID.
   if (key === 'entry_session') return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   if (ENUMS[key]) return typeof value === 'string' && ENUMS[key].includes(value);

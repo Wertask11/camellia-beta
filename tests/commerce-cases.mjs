@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'vite';
+let createCalls=0;
+const server=await createServer({configFile:false,root:process.cwd(),resolve:{alias:{'@':process.cwd()}},server:{middlewareMode:true,hmr:false},plugins:[{name:'commerce-isolated',enforce:'pre',resolveId(id){if(id.endsWith('/server/admin.js'))return '\0admin';if(id.endsWith('/server/eligibility.js'))return '\0eligible';if(id.endsWith('/server/shared-limit.js'))return '\0limit';if(id.endsWith('/membership/server.js'))return '\0membership';},load(id){if(id==='\0admin')return 'export const SERVER_ROOT="camellia_admin/release_phase1";export const adminConfigured=()=>true;export const serverAdmin=()=>({db:{},auth:{verifyIdToken:async token=>{if(token!=="valid")throw new Error();return{uid:"unit-user",firebase:{sign_in_provider:"custom"}};}}});';if(id==='\0eligible')return 'export class EligibilityError extends Error{constructor(code){super(code);this.code=code;this.status=401;}}export const requireEligibleUser=async token=>{if(token!=="valid")throw new EligibilityError("LOGIN_REQUIRED");return{uid:"unit-user"};};';if(id==='\0limit')return 'export const createSharedRateLimiter=()=>({take:async()=>true});';if(id==='\0membership')return 'export const memberStatus=async()=>({plan:"free",trial:false,paid:false,checkoutReady:false,sharingReady:false,priceYen:500});export const subscriptionPath=uid=>"camellia_users/"+uid+"/admin/subscription";export const shareQuotaPath=uid=>"camellia_users/"+uid+"/admin/partner_share_quota";';}}]});
+try{
+ const {membershipFromRecord}=await server.ssrLoadModule('/lib/membership/model.ts');
+ const now=Date.now(),expiresAt=new Date(now+86400000).toISOString();
+ assert.equal(membershipFromRecord(undefined).plan,'free');
+ for(const bad of [{plan:'plus',expiresAt},{plan:'plus',expiresAt,status:'active',source:'client'},{plan:'plus',expiresAt,status:'active',source:'verified_payment',amount:500,currency:'JPY'}])assert.equal(membershipFromRecord(bad,now).plan,'free');
+ assert.equal(membershipFromRecord({plan:'plus',expiresAt,status:'active',source:'verified_payment',paymentReceipt:'unit-receipt',amount:500,currency:'JPY'},now).paid,true);
+ assert.equal(membershipFromRecord({plan:'plus',expiresAt:new Date(now-1).toISOString(),status:'active',source:'verified_payment',paymentReceipt:'unit-receipt',amount:500,currency:'JPY'},now).plan,'free');
+ const trial=membershipFromRecord({plan:'plus',expiresAt,status:'trialing',source:'operator_trial'},now);assert.equal(trial.plan,'plus');assert.equal(trial.paid,false);assert.equal(trial.checkoutReady,false);
+ const {validateShare}=await server.ssrLoadModule('/lib/partner/model.ts');
+ const valid={kind:'feeling',feelingId:'alone',recipient:'partner',timing:'today',days:1,consent:true};
+ assert.equal(validateShare(valid).feelingId,'alone');
+ for(const more of [{consent:false},{days:999},{recipient:'anyone'},{message:'PRIVATE'},{check:{mood:1}},{uid:'PRIVATE'},{feelingId:'diagnosis'}])assert.throws(()=>validateShare({...valid,...more}));
+ const {default:handler}=await server.ssrLoadModule('/api/camellia/share.ts');
+ const {PartnerShareService}=await server.ssrLoadModule('/lib/partner/service.ts');
+ const original=PartnerShareService.prototype.create;PartnerShareService.prototype.create=async()=>{createCalls++;throw new Error('Must never issue shares during preview-only release');};
+ const call=async(method,body,token)=>{let status,value;await handler({method,body,headers:token?{authorization:`Bearer ${token}`} :{}},{setHeader(){},status(code){status=code;return{json(v){value=v;}};}});return{status,value};};
+ assert.equal((await call('GET',{})).status,405);
+ assert.equal((await call('POST',{operation:'create',...valid})).value.error,'BILLING_NOT_READY');
+ assert.equal((await call('POST',{operation:'create',...valid},'valid')).value.error,'BILLING_NOT_READY');
+ assert.equal(createCalls,0,'No URL is created, even for a valid authenticated request');
+ assert.equal((await call('POST',{operation:'read',token:'bad'})).status,404);
+ PartnerShareService.prototype.create=original;
+ const {default:member}=await server.ssrLoadModule('/api/camellia/membership.ts');let answer,code;
+ await member({method:'POST',headers:{authorization:'Bearer valid'}},{setHeader(){},status(n){code=n;return{json(v){answer=v;}};}});assert.equal(code,503);assert.equal(answer.error,'BILLING_NOT_READY');
+ console.log('PASS verified-only membership, expiry and trial distinction, catalog-only explicit share input, preview-only API creates zero links, unavailable checkout never claims payment.');
+}finally{await server.close();}

@@ -13,5 +13,7 @@ const on = (value: string | boolean | undefined) => !['off', 'false', '0'].inclu
 export const TODAY_ONE_FLOW = on(env.VITE_TODAY_ONE_FLOW);
 /** Roll back to Welcome → Login → Profile by setting VITE_CHECK_FIRST_ONBOARDING=off and rebuilding. */
 export const CHECK_FIRST_ONBOARDING = TODAY_ONE_FLOW && on(env.VITE_CHECK_FIRST_ONBOARDING);
+/** Choice / Place release. OFF restores the previous Check-first entry without removing records. */
+export const CHOICE_ACTION_FLOW = on(env.VITE_CHOICE_ACTION_FLOW);
 /** Copy that follows the person's own record stage (first_day / yesterday_compare / recent / weekly). Never age. */
 export const ADAPTIVE_STAGE_UI = on(env.VITE_ADAPTIVE_STAGE_UI);
