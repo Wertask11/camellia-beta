@@ -3,8 +3,16 @@
 import { useEffect, useState } from 'react';
 import { placeRequest } from '@/lib/place/client';
 import { PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
-import type { AnalyticsEventName } from '@/types';
+import {CHOICE_ACTION_FLOW} from '@/lib/features';
+import {localPlaceIntents,rankPlaces,type PlaceIntent} from '@/lib/place/recommendation';
+import type { AnalyticsEventName,CamelliaState } from '@/types';
 type Props = {
+  initialIntent?:PlaceIntent;
+  onOpenPlus?:()=>void;
+  contextState?:CamelliaState;
+  onSelectPlace?:(place:Place,demo:boolean)=>void;
+  onSharePlace?:(place:Place,demo:boolean)=>void;
+  onPersonalization?:(enabled:boolean)=>void;
   demoPlaces?: Place[];
   onBack: () => void;
   onTrack: (
@@ -15,6 +23,8 @@ type Props = {
   savedOnly?: boolean;
 };
 export function PlaceScreen({
+  initialIntent,
+  contextState,onSelectPlace,onSharePlace,onPersonalization,onOpenPlus,
   demoPlaces,
   onBack,
   onTrack,
@@ -22,6 +32,7 @@ export function PlaceScreen({
   savedOnly = false,
 }: Props) {
   const isDemo = Boolean(demoPlaces);
+  const [personalized,setPersonalized]=useState(contextState?.profile.placePersonalization===true);
   const [places, setPlaces] = useState<Place[]>([]),
     [selected, setSelected] = useState<Place>(),
     [cursor, setCursor] = useState<string>(),
@@ -29,7 +40,7 @@ export function PlaceScreen({
     [busy, setBusy] = useState(false),
     [category, setCategory] = useState(''),
     [area, setArea] = useState(''),
-    [intent, setIntent] = useState(''),
+    [intent, setIntent] = useState<string>(initialIntent??''),
     [operator, setOperator] = useState(false),
     [operatorMode, setOperatorMode] = useState(false);
   const load = async (next?: string, manage = false) => {
@@ -103,20 +114,21 @@ export function PlaceScreen({
   };
   const open = (place: Place) => {
     setSelected(place);
-    if (!operatorMode && !isDemo)
-      onTrack('place_view', { place_id: place.slug });
+    if (!operatorMode && (CHOICE_ACTION_FLOW||!isDemo))
+      onTrack('place_view', { place_id: place.slug,catalog:isDemo?'demo':'published' });
     const url = new URL(location.href);
     url.searchParams.set('open', isDemo ? 'place-demo' : 'place');
     url.searchParams.set('place', place.slug);
     history.replaceState({}, '', url.pathname + url.search);
   };
-  const filtered = places.filter(
+  const filtered = rankPlaces(places.filter(
     (place) =>
       (!savedOnly || place.saved === true) &&
       (!category || place.category === category) &&
       (!area || place.area === area) &&
       (!intent || place.recommendedFor.includes(intent)),
-  );
+  ),[...(intent?[intent as PlaceIntent]:[]),...(personalized&&contextState?localPlaceIntents(contextState):[])]);
+  useEffect(()=>{onTrack('place_recommendation_view',{catalog:isDemo?'demo':'published',personalized});},[isDemo,personalized,onTrack]);
   const reason = (place: Place) =>
     intent && place.recommendedFor.includes(intent)
       ? `「${PLACE_INTENTS[intent as keyof typeof PLACE_INTENTS]}」という希望に合う場所です。`
@@ -206,6 +218,8 @@ export function PlaceScreen({
         </p>
       )}
       {busy && <output>…</output>}
+      {!selected&&<section className="place-intents"><h2>今日は、どんな時間にしたい？</h2><p className="meta">場所から選ぶ、今日の小さな一歩。</p><div className="quick-inputs">{Object.entries(PLACE_INTENTS).map(([key,label])=><button key={key} aria-pressed={intent===key} onClick={()=>setIntent(intent===key?'':key)}>{label}</button>)}</div>{contextState&&<label className="privacy-choice"><input type="checkbox" checked={personalized} onChange={e=>{setPersonalized(e.target.checked);onPersonalization?.(e.target.checked);}}/>今日のCheckと選んだ行動を、候補の並び替えに使う<small>この端末内で処理します。会話・月経・My Treeは使わず、店舗へ渡しません。</small></label>}</section>}
+      {onOpenPlus&&<button className="text-button" onClick={onOpenPlus}>Plusで広がるPlaceの体験を見る · 月500円</button>}
       {operator && (
         <details>
           <summary>運営の掲載確認</summary>
@@ -238,6 +252,7 @@ export function PlaceScreen({
           ))}
           <p>{selected.description}</p>
           <p>{reason(selected)}</p>
+          {!operatorMode&&onSelectPlace&&<div className="choice-bridge"><button className="primary" onClick={()=>{onTrack('place_selected',{place_id:selected.slug,catalog:isDemo?'demo':'published'});onSelectPlace(selected,isDemo);}}>{isDemo?'こんな体験をしてみたい':'ここへ行ってみたい'}</button>{onSharePlace&&<button className="secondary-button" onClick={()=>onSharePlace(selected,isDemo)}>パートナーに伝える</button>}{isDemo&&<p className="meta">選ぶのは体験イメージです。予約や実在店舗への申し込みにはなりません。</p>}</div>}
           <dl>
             <dt>エリア</dt>
             <dd>

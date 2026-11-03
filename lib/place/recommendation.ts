@@ -1,7 +1,9 @@
-import type {CamelliaState} from '@/types';
+import type {CamelliaState,ActionDefinition} from '@/types';
 import type {Place} from './model';
 export type PlaceIntent='quiet'|'rest'|'try'|'move'|'together';
 export const PLACE_PREFERENCES:Record<PlaceIntent,string>={quiet:'静かに過ごしたい',rest:'ゆっくり過ごしたい',try:'新しいことをしたい',move:'身体を動かしたい',together:'誰かと過ごしたい'};
+/** Explicit action → Place link, based only on a public catalog category. */
+export function actionPlaceIntent(action:ActionDefinition):PlaceIntent{return action.category==='BODY'?'move':action.category==='CONNECT'?'together':action.category==='REST'||action.category==='BEAUTY'?'quiet':'try';}
 /** Local inference only after explicit consent. Never includes medical fields, conversation, names or Tree. */
 export function localPlaceIntents(state:CamelliaState):PlaceIntent[]{
  const result:PlaceIntent[]=[];

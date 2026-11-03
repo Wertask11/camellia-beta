@@ -1,9 +1,10 @@
+import {PlanCard} from '@/components/PlanCard';
 import {serializeConversationState} from '@/lib/conversation/persistence';
 import { PersonalDeleteDialog } from '@/components/PersonalDeleteDialog';
-import { useState,useSyncExternalStore } from 'react';
+import { useState,useSyncExternalStore,useEffect,useRef } from 'react';
 import {getSyncStatus,subscribeSyncStatus,flushSchoolParkSync} from '@/lib/schoolpark/sync';
 import {buildDailyReflection,currentWeekChecks,dailyCheckins} from '@/lib/reflection/engine';
-import {LIVE_DESTINATIONS} from '@/lib/features';
+import {CHOICE_ACTION_FLOW,LIVE_DESTINATIONS} from '@/lib/features';
 import { ACTIONS } from '@/data/actions';
 import { generateInsights } from '@/lib/insight/engine';
 import { AccountSettings } from '@/components/AccountSettings';
@@ -11,12 +12,13 @@ import { MemberInvite } from '@/components/MemberInvite';
 import { CharacterNameSetting } from '@/components/CharacterNameSetting';
 import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
-import type { CamelliaState } from '@/types';
+import type { AnalyticsEventName,CamelliaState } from '@/types';
 
-export function MyScreen({onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:'member_invite_open'|'member_invite_share',properties?:Record<string,string>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onExplorePlaces,onShareFeeling,onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onExplorePlaces?:()=>void;onShareFeeling?:()=>void;onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
+  const viewed=useRef(false);useEffect(()=>{if(CHOICE_ACTION_FLOW&&!viewed.current){viewed.current=true;onTrack?.('my_view');}},[onTrack]);
   const completed=state.actions.filter(action=>action.status==='completed').slice(-5).reverse();
   const exportPersonal=()=>{const {analyticsEvents: _events,...personal}=state;const url=URL.createObjectURL(new Blob([JSON.stringify({scope:'この端末のCamellia個人記録。Circle本文とPlaceのサーバー保存記録は含みません。',...serializeConversationState(personal)},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-personal-records.json';link.click();URL.revokeObjectURL(url);};
   const sync=useSyncExternalStore(subscribeSyncStatus,getSyncStatus,getSyncStatus);
@@ -31,6 +33,9 @@ export function MyScreen({onRenameCharacter,onTrack,onCircles,onPlaces,state,dev
   const [deleteResult,setDeleteResult]=useState('');
   const deleteData=async()=>{setDeleting(true);setDeleteError('');setDeleteResult('');try{const result=await onReset();setDeleteResult(result&&typeof result==='object'&&'cloudDeleted'in result&&result.cloudDeleted?'端末内と同期先のCamelliaデータを削除しました。PostHogへ送信済みの操作イベントは削除されていません。':'端末内のCamelliaデータを削除しました。ログイン中の同期先データはありません。PostHogへ送信済みの操作イベントは削除されていません。')}catch(error){const code=error instanceof Error?error.message:'';setDeleteError(code==='SIGN_IN_TO_DELETE_SYNCED_DATA'?'以前同期した記録があります。同期したCamelliaアカウントにログインしてから削除してください。':code==='OTHER_SCHOOLPARK_ACCOUNTS_HAVE_SYNCED_DATA'?'この端末の記録は別のCamelliaアカウントにも同期されています。そのアカウントへ切り替えて削除してください。':'同期データを削除できませんでした。端末内データは削除していません。通信を確認して、もう一度お試しください。');setDeleting(false);return}setDeleting(false);setConfirmDelete(false)};
   return <main className="screen my"><header><div><p className="eyebrow">私が積み重なっていく場所</p><h1>My Camellia</h1></div></header>
+    {CHOICE_ACTION_FLOW&&<section className="my-choice-summary"><p>自分で選んだこと、やってみたことが、次の私につながる。</p><p className="meta">Camellia IDは無料。LINE・Googleにつながる、あなたの記録の場所です。</p>{Boolean(state.placeChoices?.length)&&<section className="panel"><h2>行ってみたい場所・体験</h2>{state.placeChoices?.slice(-8).reverse().map(p=><p key={p.id}>{p.title}{p.demo?<small> · デモの体験イメージ</small>:null}</p>)}<button className="text-button" onClick={onExplorePlaces??onPlaces}>Placeを見にいく →</button></section>}</section>}
+    {CHOICE_ACTION_FLOW&&onTrack&&<PlanCard onTrack={onTrack}/>}
+    {CHOICE_ACTION_FLOW&&onShareFeeling&&<button className="secondary-button" onClick={onShareFeeling}>伝えたい気持ちを選ぶ · 共有プレビュー</button>}
     {/* Only a problem gets a line at the top; the details stay in 「アカウントと記録」. */}
     {sync.phase==='error'&&<div className="my-alert" role="alert"><p>この端末の記録は残っています。もう一度確認すると、アカウントにも保存されます。</p><button className="text-button" onClick={()=>void flushSchoolParkSync()}>もう一度確認する</button></div>}
     <section className="panel my-recent"><h2>最近の私</h2>{reflection?<><p>{reflection.messages[0]}</p><p>{reflection.messages[1]}</p></>:<p>今日のCheckから、自分の記録が少しずつ積み重なります。</p>}<h3>今週の振り返り</h3><p>今週（月曜から）は{week.length}日分のCheckがあります。{week.length<5?'まだ分からないこともあります。':'入力した日々を、今の実感と照らしてみましょう。'}</p></section>

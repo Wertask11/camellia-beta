@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import { firstInSession } from '@/lib/analytics/once';
+import { CHOICE_ACTION_FLOW } from '@/lib/features';
 import { ConversationModelSelector } from '@/components/ConversationModelSelector';
 import { conversationModelName, defaultConversationModel, isConversationModel } from '@/lib/conversation/models';
 import { isModelSwitchMessage } from '@/lib/conversation/entries';
@@ -33,6 +34,8 @@ function redactKnownNamesForState(value: string, state: CamelliaState) {
 }
 
 export function CamelliaScreen({
+  guestMode=false,
+  onShareFeeling,
   conversationId,
   state,
   recommendations,
@@ -50,6 +53,8 @@ export function CamelliaScreen({
   onSelectModel,
   onRenameCharacter,
 }: {
+  guestMode?:boolean;
+  onShareFeeling?:()=>void;
   conversationId?: string;
   state: CamelliaState;
   recommendations: Recommendation[];
@@ -96,7 +101,7 @@ export function CamelliaScreen({
   const [memoryCandidate, setMemoryCandidate] = useState('');
   const [last, setLast] = useState<ReturnType<typeof respond>>();
   const [lastSafety, setLastSafety] = useState(false);
-  const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled' | 'unavailable'>('checking');
+  const [availability, setAvailability] = useState<'checking' | 'enabled' | 'disabled' | 'unavailable'>(guestMode?'disabled':'checking');
   const messageEnd = useRef<HTMLDivElement>(null);
   useEffect(()=>{if(stickToEnd.current)messageEnd.current?.scrollIntoView?.({block:'end',behavior:'auto'});},[messages,draftReply]);
   const requestInFlight = useRef(false);
@@ -105,6 +110,7 @@ export function CamelliaScreen({
   const [retryState, setRetryState] = useState<RetryState | null>(()=>recovered?{originalMessage:recovered.text,userId:recovered.id,message:redactKnownNamesForState(recovered.text,state),history:geminiHistory(messages.slice(0,messages.indexOf(recovered))).map(({role,text})=>({role,text:redactKnownNamesForState(text,state)})),modelId:defaultConversationModel(recovered.requestModel??activeModel)}:null);
   const [chatError, setChatError] = useState<ChatError | null>(recovered?'provider_error':null);
   useEffect(() => {
+    if(guestMode)return;
     void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
       .then(async (response): Promise<{ enabled?: boolean; dataPolicy?: string }> => {
         if (!response.ok) throw new Error('STATUS_UNAVAILABLE');
@@ -118,7 +124,7 @@ export function CamelliaScreen({
       // A failed status probe does not mean the server feature flag is OFF.
       // POST is authoritative and still enforces the flag before external transmission.
       .catch(() => setAvailability('unavailable'));
-  }, []);
+  }, [guestMode]);
 
   useEffect(() => {
     if (availability === 'checking' || !firstInSession('camellia-conversation-open')) return;
@@ -195,7 +201,7 @@ export function CamelliaScreen({
     const sample={start:pressedAt,model:activeModel} as NonNullable<typeof measurement.current>;sample.epoch=wallClockNow()-(monotonicNow()-sample.start);measurement.current=sample;
     const requestModel=activeModel;
     const urgentReply = immediateSafetyReply(clean);
-    const useGemini = availability !== 'disabled' && !treeContext;
+    const useGemini = !guestMode && availability !== 'disabled' && !treeContext;
     // Gemini never uses the private local Memory/Tree processor; avoid building its full context.
     const local:ReturnType<typeof respond> = useGemini ? {text:'',intent:classifyIntent(clean),topics:classifyTopics(clean),showAction:false,action:undefined,choices:[],showCircle:false} : respond(state,recommendations,clean,messages,treeContext);
     requestInFlight.current = true;
@@ -212,11 +218,12 @@ export function CamelliaScreen({
     onTrack('conversation_message_sent', { provider: useGemini && !urgentReply ? 'gemini' : 'fallback', model_id: requestModel });
     const started = wallClockNow();
     let reply = urgentReply ?? local.text;
+    if(guestMode&&!urgentReply&&requestModel==='lactone'&&local.intent!=='LISTEN')reply='いま考えたいことを、一つずつに分けてみよう。今日やりたいことと、後でもよいことなら、どちらから整理したい？';
     let provider: Provider = 'fallback';
     let safety = Boolean(urgentReply);
     let responseTimeMs: number | undefined;
     let failedCategory: ChatError | null = null;
-    let assistantModel:ConversationModelId|null=null;
+    let assistantModel:ConversationModelId|null=guestMode&&!urgentReply?requestModel:null;
 
     if (useGemini && !urgentReply) {
       try {
@@ -254,7 +261,7 @@ export function CamelliaScreen({
     if(reaction)flash(EXPRESSION_FOR_REACTION[reaction],REACTION_AFTER_REPLY_MS);
     setLast({ ...local, text: reply, intent, topics, ...(provider === 'gemini' || safety || failedCategory ? { choices: [], showAction: false, showCircle: false } : {}) });
     setLastSafety(safety);
-    if (/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
+    if (!guestMode&&/覚えておいて|覚えてて/.test(clean)) setMemoryCandidate(clean);
     if (provider === 'gemini' || safety) {
       sample.end??=monotonicNow()-sample.start;reportPerformance({provider,model_id:requestModel,...(responseTimeMs!==undefined?{response_time_ms:responseTimeMs}:{})},sample);
     }
@@ -321,7 +328,7 @@ export function CamelliaScreen({
 
   return (
     <main className="screen camellia">
-      <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>Camellia</h1><ConversationModelSelector value={activeModel} onSelect={chooseModel} disabled={sending||retrying||availability==='disabled'||Boolean(treeContext)}/></div>{/* メリィ lives at the top of the conversation, next to the title, so she never covers a message: she bobs
+      <header><div><p className="eyebrow">答えを急がないパートナー</p><h1>{CHOICE_ACTION_FLOW?characterName(characterNameSetting):'Camellia'}</h1><ConversationModelSelector value={activeModel} onSelect={chooseModel} disabled={sending||retrying||(!guestMode&&availability==='disabled')||Boolean(treeContext)}/></div>{/* メリィ lives at the top of the conversation, next to the title, so she never covers a message: she bobs
           (YURA also sways), thinks while the reply comes, and reacts for a moment. Tap her for her profile. */}
         <div className={`chat-mascot chat-mascot--${mascotForm}${thinking?' chat-mascot--busy':''}`}>
           <button className="chat-mascot-button" onClick={()=>{setProfileOpen(true);onTrack('character_profile_open',{model_id:mascotForm});}} aria-label={`${characterName(characterNameSetting)}のプロフィールを開く`}>
@@ -329,11 +336,11 @@ export function CamelliaScreen({
             <span className="chat-mascot-name" aria-hidden="true">{characterName(characterNameSetting)}{thinking?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
           </button>
         </div></header>
-      {availability==='disabled'&&!treeContext&&<output className="meta">今は共通の返答でお話ししています。</output>}
+      {guestMode?<output className="meta">登録前は端末内のお試し会話です。外部AIへ送信せず、会話は記録に残りません。</output>:availability==='disabled'&&!treeContext&&<output className="meta">今は共通の返答でお話ししています。</output>}
       {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。記録を参照している間は、共通の話し方でお返しします。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
 
-      {profileOpen&&<CharacterProfileSheet name={characterNameSetting} form={mascotForm} busy={busy} canSwitch={!busy&&availability!=='disabled'&&!treeContext} onClose={()=>setProfileOpen(false)} onSwitch={chooseModel} onRename={name=>{onRenameCharacter?.(name);onTrack('character_renamed',{custom_name:name!==null});}}/>}
+      {profileOpen&&<CharacterProfileSheet name={characterNameSetting} form={mascotForm} busy={busy} canSwitch={!busy&&(guestMode||availability!=='disabled')&&!treeContext} onClose={()=>setProfileOpen(false)} onSwitch={chooseModel} onRename={name=>{onRenameCharacter?.(name);onTrack('character_renamed',{custom_name:name!==null});}}/>}
       <div ref={chatViewport} onScroll={()=>{const v=chatViewport.current;if(v)stickToEnd.current=v.scrollHeight-v.scrollTop-v.clientHeight<80;}} className="chat" role="log" aria-label="Camelliaとの会話" aria-live="polite" aria-relevant="additions">
         {messages.length>visibleCount&&<button className="text-button" onClick={()=>{const viewport=chatViewport.current;const previousHeight=viewport?.scrollHeight??0;setVisibleCount(count=>count+40);requestAnimationFrame(()=>{if(viewport)viewport.scrollTop+=viewport.scrollHeight-previousHeight;});}}>前の会話を読む</button>}
         {messages.slice(-visibleCount).map((message) => {
@@ -343,7 +350,7 @@ export function CamelliaScreen({
             return <div className={`bubble assistant${form?` bubble--${form}`:''}`} key={message.id}><span className="message-model-label">{form?characterLabel(characterNameSetting,form):conversationModelName(message.assistantModel)}</span>{message.text}</div>;
           }
           const reactedBy=reactionForm(message.id);
-          return <div className={`bubble ${message.role}`} key={message.id}>{message.text}{message.pending&&!sending&&!retrying&&<small className="meta">返答はまだ確定していません</small>}{message.role==='user'&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}
+          return <div className={`bubble ${message.role}`} key={message.id}>{message.text}{message.pending&&!sending&&!retrying&&<small className="meta">返答はまだ確定していません</small>}{message.role==='user'&&!guestMode&&<button className="memory-message-button" onClick={()=>setMemoryCandidate(message.text)}>この一言を残す</button>}
             {message.role==='user'&&message.reaction&&<span className="message-reaction"><span className="sr-only">{characterLabel(characterNameSetting,reactedBy)}のリアクション：{REACTION_LABEL[message.reaction]}</span><span aria-hidden="true">{REACTION_EMOJI[message.reaction]}</span></span>}
           </div>;
         })}
@@ -361,6 +368,7 @@ export function CamelliaScreen({
       {memoryCandidate && <section className="panel"><h2>自分のために、この一言を残しておく？</h2><p>{memoryCandidate}</p><p className="meta">Myから確認・削除できます。会話のすべてをMemoryにはしません。</p><button className="secondary-button" onClick={() => { onRemember(memoryCandidate); setMemoryCandidate(''); }}>この一言を覚えておく</button><button className="text-button" onClick={() => setMemoryCandidate('')}>今は保存しない</button></section>}
       </div>
       <div className="conversation-entry">
+        {CHOICE_ACTION_FLOW&&messages.some(m=>m.role==='assistant')&&!lastSafety&&<div className="choice-bridge"><p>話してみて、今日はどうしたい？</p><button className="secondary-button" onClick={()=>onNavigate('discover')}>したいことをDiscoverで探す →</button><button className="text-button" onClick={()=>onNavigate('place')}>今の希望からPlaceを見る</button>{onShareFeeling&&<button className="text-button" onClick={onShareFeeling}>この気持ちを伝える</button>}</div>}
         <p className="meta">話し始めに迷ったら、ここから。</p>
         <div className="quick-inputs" aria-label="会話のきっかけ">{starters.map((starter) => <button type="button" key={starter.id} disabled={sending || retrying || availability === 'checking'} onClick={() => { onTrack('conversation_starter_selected', { starter_id: starter.id }); void send(starter.text); }}>{starter.text}</button>)}</div>
         {check && <p className="today-check-chip">今日のCheck：<span aria-hidden="true">{moodMeta(check.mood).emoji}</span> {moodMeta(check.mood).label}</p>}

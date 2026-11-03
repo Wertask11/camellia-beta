@@ -10,7 +10,7 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { checkInputError } from '@/lib/check';
 import { generateInsightCandidates, selectDisplayableInsight } from '@/lib/insight/candidates';
 import { drawFortune, jstDate } from '@/lib/fortune/engine';
-import { ADAPTIVE_STAGE_UI, TODAY_ONE_FLOW } from '@/lib/features';
+import { ADAPTIVE_STAGE_UI, TODAY_ONE_FLOW,CHOICE_ACTION_FLOW } from '@/lib/features';
 import {
   BODY_CHIPS, IN_PLACE_STEPS, MOODS, SLEEP_CHIPS, STRESS_CHIPS, actionTitle, checkSummaryLine,
   choseSomethingToday, jstTime, moodMeta, reflectionHeading, splitActiveActions, todayCheck, todayPlans, tomorrowCopy,
@@ -19,6 +19,7 @@ import { TodayScreenClassic } from '@/screens/TodayScreenClassic';
 import type { AnalyticsEventName, CamelliaState, Checkin, FeedbackRating, Mood, Recommendation } from '@/types';
 
 type TodayProps = {
+  onPlace?:()=>void;
   /** First-Check preview reuses the form/result; protected steps remain behind this save prompt. */
   guestSavePrompt?: ReactNode;
   state: CamelliaState;
@@ -95,6 +96,7 @@ function TodayOneFlow({
   onIntent, onTalk, onFortune, onTree, onMy, onComplete, onFeedback, onProposals, onTrack,
   focusIntent = false, onIntentFocused,
   guestSavePrompt,
+  onPlace,
 }: TodayProps) {
   const currentTime = useCurrentTime(state.checkins);
   useCheckView(onCheckView);
@@ -307,6 +309,7 @@ function TodayOneFlow({
         </section>
 
         {guestSavePrompt ? guestSavePrompt : <>
+        {CHOICE_ACTION_FLOW&&<section className="today-choice-next"><h2>だから、今日は何をする？</h2><div className="quick-inputs"><button onClick={onTalk}>メリィと、どうしたいか話す</button><button onClick={()=>onIntent('探す')}>Discoverで選ぶ →</button>{onPlace&&<button onClick={onPlace}>Placeで場所・体験を見る →</button>}</div></section>}
         <section className="flow-section" id="today-plans">
           <Step n={2} label="今日の過ごし方" state={chose ? 'done' : 'now'} />
           <p className="gentle-copy explain">今日のCheckを手がかりに、ひとつだけ。選ばなくても大丈夫。</p>

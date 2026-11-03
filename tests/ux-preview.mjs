@@ -10,6 +10,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const checkFirst = process.env.CHECK_FIRST_FIXTURE === 'on';
 // Historical browser fixtures keep their original entry. The new journey opts in explicitly.
 process.env.VITE_CHECK_FIRST_ONBOARDING = checkFirst ? 'true' : 'off';
+process.env.VITE_CHOICE_ACTION_FLOW = process.env.CHOICE_FLOW_FIXTURE === 'on' ? 'true' : 'off';
 const state = `
 const listeners=new Set();
 export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:sessionStorage.getItem('ux-auth-uid')||'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})}:null};
@@ -88,6 +89,11 @@ const server = await createServer({
          chooses the state; the code K7QM2XPA is accepted. Nothing leaves this machine. */
       /* Synthetic conversation: the reply in pieces (lib/conversation/stream.ts), starting quickly so the tests can
          see the reaction on her message hold it back. Nothing is sent to any provider. */
+      s.middlewares.use((req,res,next)=>{
+        if(req.url==='/api/camellia/membership'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({plan:'free',paid:false,trial:false,checkoutReady:false,sharingReady:false,priceYen:500}));return;}
+        if(req.url==='/api/camellia/share'){res.statusCode=404;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:'SHARE_NOT_FOUND'}));return;}
+        next();
+      });
       s.middlewares.use((req, res, next) => {
         if (req.url?.split('?')[0] !== '/api/camellia/chat') return next();
         res.setHeader('Content-Type', req.method === 'GET' ? 'application/json' : 'text/event-stream');

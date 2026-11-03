@@ -1,6 +1,6 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback,useEffect, useMemo, useRef, useState } from 'react';
 import { StorageRecovery } from '@/components/StorageRecovery';
 import { ActionSheet } from '@/components/ActionSheet';
 import { BottomNav, type MainTab } from '@/components/BottomNav';
@@ -20,9 +20,14 @@ import { TreeScreen } from '@/screens/TreeScreen';
 import { readCircleIntent, clearCircleIntent, setCircleUrl, clearCircleUrl } from '@/lib/circle/links';
 import {PLACE_DEMO_DATA} from '@/data/place-demo';
 import {PlaceScreen} from '@/screens/PlaceScreen';
+import {actionPlaceIntent,type PlaceIntent} from '@/lib/place/recommendation';
 import {validSlug} from '@/lib/place/model';
 import { CircleScreen } from '@/screens/CircleScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
+import { PartnerShareDialog,type ShareDraft } from '@/components/PartnerShareDialog';
+import { PlusOffer } from '@/components/PlusOffer';
+import { PartnerShareScreen } from '@/screens/PartnerShareScreen';
+import { GuestExperience } from '@/screens/GuestExperience';
 import { TodayScreen } from '@/screens/TodayScreen';
 import { applyLessExplain, readLessExplain } from '@/lib/today/display';
 import { firstInSession } from '@/lib/analytics/once';
@@ -34,10 +39,10 @@ import { welcomeTheme } from '@/lib/welcome/time';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
 import { AuthFlowError, finishAuthCallback, logoutCamellia } from '@/lib/auth/camellia';
 import { captureAuthEvent } from '@/lib/analytics/posthog';
-import { CHECK_FIRST_ONBOARDING, LIVE_DESTINATIONS } from '@/lib/features';
+import { CHECK_FIRST_ONBOARDING, CHOICE_ACTION_FLOW, LIVE_DESTINATIONS } from '@/lib/features';
 import { currentAnalyticsSession } from '@/lib/analytics/session';
 import { armGuestLogin, cancelGuestLogin, clearGuestCheck, completeGuestGoogle, createGuestCheck, finishGuestTransfer, GUEST_CHECK_CHANGED, guestEventProperties, guestForAccount, guestStorageIsUnavailable, markGuestShown, readGuestCheck, type GuestCheck } from '@/lib/onboarding/guest-check';
-import type { Category, Recommendation, TreeLeaf } from '@/types';
+import type { AnalyticsEventName, Category, Recommendation, TreeLeaf } from '@/types';
 
 /* ログインの戻り（LINE / SchoolPark）で起きたことを、その人に分かる言葉にする。
    記録の食い違い（accountError）とは別物。止めるのはログインだけで、記録には触れない。 */
@@ -69,6 +74,8 @@ export default function Page() {
     const timer=setInterval(read,15000);
     return()=>{window.removeEventListener(GUEST_CHECK_CHANGED,read);clearInterval(timer);};
   },[]);
+  const recordGuestEvent=store.track;
+  const trackGuest=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>{if(name==='daily_reflection_view'&&!markGuestShown('result'))return;if(name==='save_prompt_view'&&!markGuestShown('prompt'))return;recordGuestEvent(name,{...properties,...guestEventProperties()});},[recordGuestEvent]);
   const guestCheck=guest?.check;
   const previewState=useMemo(()=>{const initial=emptyState();return {...initial,checkins:guestCheck?[guestCheck]:[]};},[guestCheck]);
   const [accountUser,setAccountUser]=useState<User|null>(null);
@@ -86,15 +93,20 @@ export default function Page() {
   useEffect(()=>{captureInviteFromUrl();},[]);
   const callbackHandled=useRef(false);
   const [tab, setTab] = useState<MainTab>('today');
+  const [shareDraft,setShareDraft]=useState<ShareDraft>();
+  const [plusSource,setPlusSource]=useState<'place'|'partner'|'my'>();
+  const [publicShareToken,setPublicShareToken]=useState<string|null>(null);
+  useEffect(()=>{let active=true;queueMicrotask(()=>{const url=new URL(location.href);if(active&&url.searchParams.get('open')==='partner-share')setPublicShareToken(url.hash.slice(1));});return()=>{active=false;};},[]);
   const [category, setCategory] = useState<Category>();
   const [chosen, setChosen] = useState<Recommendation>();
+  const [selectionSource,setSelectionSource]=useState('today');
   const [secondary, setSecondary] = useState<'circle' | 'place'>();
   const [circleEntry,setCircleEntry]=useState<{id?:string;joinedOnly?:boolean}>();
   useEffect(()=>{let active=true;queueMicrotask(()=>{const intent=readCircleIntent();if(active&&intent){setCircleEntry(intent);setSecondary('circle');}});return()=>{active=false;};},[]);
   useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))clearCircleIntent();},[accountReady,accountUser,store.state.profile]);
   const [placeDemo,setPlaceDemo]=useState<{slug?:string}|null>(null);
   useEffect(()=>{let active=true;queueMicrotask(()=>{if(!active)return;const url=new URL(location.href);if((url.searchParams.get('open')==='place-demo'||(url.searchParams.get('open')==='place'&&!LIVE_DESTINATIONS.has('place')))){const slug=url.searchParams.get('place');setPlaceDemo({slug:validSlug(slug)?slug:undefined});}});return()=>{active=false;};},[]);
-  const [placeEntry,setPlaceEntry]=useState<{slug?:string;savedOnly?:boolean}>();
+  const [placeEntry,setPlaceEntry]=useState<{slug?:string;savedOnly?:boolean;intent?:PlaceIntent}>();
   useEffect(()=>{let active=true;queueMicrotask(()=>{try{const url=new URL(location.href);let pending;if(url.searchParams.get('open')==='place'&&LIVE_DESTINATIONS.has('place')){const slug=url.searchParams.get('place');pending={slug:validSlug(slug)?slug:undefined,at:Date.now()};localStorage.setItem('camellia-pending-place',JSON.stringify(pending));}else pending=JSON.parse(localStorage.getItem('camellia-pending-place')||'null');if(active&&pending&&Date.now()-pending.at<1800000){setPlaceEntry({slug:pending.slug});setSecondary('place');}}catch{/* Root navigation works without saved destination. */}});return()=>{active=false;};},[]);
   useEffect(()=>{if(accountReady&&accountUser&&profileComplete(store.state.profile))try{localStorage.removeItem('camellia-pending-place');}catch{/* No effect on personal records. */}},[accountReady,accountUser,store.state.profile]);
   const [privacy, setPrivacy] = useState(false);
@@ -227,13 +239,13 @@ export default function Page() {
     if(!draft||guestResume.current===draft.check.id)return;
     const profileId=store.state.profile.id,accountUid=accountUser.uid,properties=guestEventProperties(draft);
     if(!store.state.checkins.some(check=>check.id===draft.check.id)){
-      store.adoptGuestCheck(draft.check,profileId,()=>schoolParkAuth.currentUser?.uid===accountUid&&guestForAccount(accountUid)?.check.id===draft.check.id,properties);return;
+      store.adoptGuestCheck(draft.check,profileId,()=>schoolParkAuth.currentUser?.uid===accountUid&&guestForAccount(accountUid)?.check.id===draft.check.id,properties,draft);return;
     }
     if(!store.hasPersistedCheck(draft.check.id,profileId))return;
     if(schoolParkAuth.currentUser?.uid!==accountUid||!finishGuestTransfer(draft.check.id,accountUid))return;
     guestResume.current=draft.check.id;
     store.resumeGuestCheck(draft.check.id,profileId,properties);
-    queueMicrotask(()=>{if(schoolParkAuth.currentUser?.uid===accountUid){setEntry('app');setTab('today');}});
+    queueMicrotask(()=>{if(schoolParkAuth.currentUser?.uid===accountUid){setEntry('app');setTab(CHOICE_ACTION_FLOW&&((draft.actions?.length??0)+(draft.savedActions?.length??0)+(draft.placeChoices?.length??0)>0)?'my':'today');}});
   },[accountUser,accountReady,accountError,access,accessFor,accessBlocked,guest,store.state,store.storageError,store.adoptGuestCheck,store.hasPersistedCheck,store.resumeGuestCheck]);
   const onLoginSelect=(method:'line'|'google')=>{if(guestVisible&&guest)armGuestLogin(method);setAuthNotice('');captureAuthEvent('auth_method_selected',{method,auth_method:method,...(guestVisible&&guest?guestEventProperties():{})},store.state.profile.id);};
   const onAuthReturned=(method:'line'|'google')=>{popupAuthReturned.current=method;};
@@ -243,7 +255,9 @@ export default function Page() {
   };
   const onLoginFailure=(method:'line'|'google',reason:string,stage:string)=>{const draft=readGuestCheck(),properties=draft?guestEventProperties(draft):{};if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup',...properties},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage,...properties},store.state.profile.id);if(draft)cancelGuestLogin();};
   const authHandlers={onSelect:onLoginSelect,onAuthReturned,onLoginSuccess,onLoginFailure,onContinue:()=>setEntry('app')};
-  if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
+  const dialogs=<>{shareDraft&&<PartnerShareDialog draft={shareDraft} onClose={()=>setShareDraft(undefined)} onTrack={store.track}/>} {plusSource&&<PlusOffer source={plusSource} onClose={()=>setPlusSource(undefined)} onTrack={store.track}/>}</>;
+  if(publicShareToken!==null)return <div className="app-shell"><PartnerShareScreen token={publicShareToken} onTrack={store.track} onBack={()=>{setPublicShareToken(null);history.replaceState({},'',location.pathname);}}/></div>;
+  if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={CHOICE_ACTION_FLOW?store.track:ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
   if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage}/>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accountError&&accountUser){
@@ -267,6 +281,7 @@ export default function Page() {
     </main>;
   }
   if(showWelcome)return <WelcomeScreen checkFirst={CHECK_FIRST_ONBOARDING} onLogin={()=>{clearGuestCheck();setEntry('account');}} onContinue={()=>{store.track('welcome_continue',{period:welcomeTheme().period,entry_flow:CHECK_FIRST_ONBOARDING?'check_first':'login_first',...(CHECK_FIRST_ONBOARDING&&currentAnalyticsSession()?{entry_session:currentAnalyticsSession()}:{} )});setEntry(CHECK_FIRST_ONBOARDING?'guest':'account');}}/>;
+  if(guestVisible&&CHOICE_ACTION_FLOW)return <div className="app-shell guest-check-shell"><GuestExperience draft={guest} savePrompt={<><AccountScreen {...authHandlers} purpose="save-check" embedded notice={authNotice}/>{guestStorageIsUnavailable()&&<p role="alert">この端末では一時保存を使えません。移動すると体験を引き継げない場合があります。</p>}</>} onCheckView={()=>store.track('check_view',guestEventProperties())} onCheckStart={()=>store.startCheck(guestEventProperties())} onCheckin={value=>{const draft=createGuestCheck(value,currentAnalyticsSession());store.track('check_complete',{...guestEventProperties(draft),hasDetails:Boolean(value.sleep!==undefined||value.body||value.stress)});}} onTrack={trackGuest}/></div>;
   if(guestVisible)return <div className="app-shell guest-check-shell"><button className="back guest-back" onClick={()=>{clearGuestCheck();setAuthNotice('');setEntry('welcome');}}>← 戻る</button>
     <TodayScreen state={previewState} recommendations={[]} onCheckView={()=>store.track('check_view',{entry_flow:'check_first',...(currentAnalyticsSession()?{entry_session:currentAnalyticsSession()}:{})})} onCheckStart={()=>store.startCheck({entry_flow:'check_first',...(currentAnalyticsSession()?{entry_session:currentAnalyticsSession()}:{})})}
       onCheckin={value=>{const draft=createGuestCheck(value,currentAnalyticsSession());store.track('check_complete',{...guestEventProperties(draft),hasDetails:Boolean(value.sleep!==undefined||value.body||value.stress)});}}
@@ -285,7 +300,8 @@ export default function Page() {
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.ownerUid===accountUser.uid&&(!accessFor||access?.verified!==true))return <main className="screen"><h1>今日の記録を残す前に</h1><output>利用できることを確認しています。時間がかかる場合は、通信を確かめてお試しください。Checkは一時的に保持しています。</output><button className="primary" onClick={()=>{const uid=accountUser.uid;setAccess(undefined);void Promise.race([fetchAccess(),new Promise<null>(resolve=>setTimeout(()=>resolve(null),5000))]).then(status=>{if(schoolParkAuth.currentUser?.uid===uid)setAccess({uid,status,verified:Boolean(status)});});}}>もう一度確認する</button><button className="text-button" onClick={logoutToAccount}>ログアウトする</button></main>;
   if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} hasGuestCheck={guest?.phase==='bound'&&guest.ownerUid===accountUser.uid} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!firstProfileComplete(store.state.profile))store.track('profile_complete',guest?.phase==='bound'?guestEventProperties(guest):{});store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.ownerUid===accountUser.uid&&!store.state.checkins.some(check=>check.id===guest.check.id))return <output className="loading">今日の記録を引き継いでいます…</output>;
-  const openAction = (r: Recommendation) => {
+  const openAction = (r: Recommendation,source='today') => {
+    setSelectionSource(source);
     if (r.action.opens === 'camellia') {
       setFeature(undefined);
       setTab('camellia');
@@ -321,7 +337,8 @@ export default function Page() {
   if (secondary)
     return (
       <div className="app-shell">
-        {secondary === 'place' ? <PlaceScreen demoPlaces={LIVE_DESTINATIONS.has('place')?undefined:PLACE_DEMO_DATA} initialSlug={placeEntry?.slug} savedOnly={placeEntry?.savedOnly} onTrack={store.track} onBack={()=>{setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/> : secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen initialCircleId={circleEntry?.id} initialJoinedOnly={circleEntry?.joinedOnly} onCircleChange={setCircleUrl} onBack={()=>{setSecondary(undefined);setCircleEntry(undefined);clearCircleUrl();}} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>{setSecondary(undefined);clearCircleUrl();}}/>}
+        {dialogs}
+        {secondary === 'place' ? <PlaceScreen initialIntent={placeEntry?.intent} onOpenPlus={CHOICE_ACTION_FLOW?()=>setPlusSource('place'):undefined} onSharePlace={CHOICE_ACTION_FLOW?(place,demo)=>setShareDraft({kind:'place',placeSlug:place.slug,placeTitle:place.name,demo}):undefined} contextState={CHOICE_ACTION_FLOW?store.state:undefined} onPersonalization={enabled=>store.updateProfile({placePersonalization:enabled})} onSelectPlace={CHOICE_ACTION_FLOW?(place,demo)=>{store.choosePlace({slug:place.slug,title:place.name,demo});setSecondary(undefined);setTab('my');const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}:undefined} demoPlaces={LIVE_DESTINATIONS.has('place')?undefined:PLACE_DEMO_DATA} initialSlug={placeEntry?.slug} savedOnly={placeEntry?.savedOnly} onTrack={store.track} onBack={()=>{setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/> : secondary === 'circle' && LIVE_DESTINATIONS.has('circle') ? <CircleScreen initialCircleId={circleEntry?.id} initialJoinedOnly={circleEntry?.joinedOnly} onCircleChange={setCircleUrl} onBack={()=>{setSecondary(undefined);setCircleEntry(undefined);clearCircleUrl();}} onTrack={store.track}/> : <SecondaryScreen kind={secondary} onBack={()=>{setSecondary(undefined);clearCircleUrl();}}/>}
       </div>
     );
   if (privacy)
@@ -349,11 +366,13 @@ export default function Page() {
             action={chosen.action}
             onClose={() => setChosen(undefined)}
             onStart={() => {
-              store.startAction(chosen.action);
+              if(CHOICE_ACTION_FLOW&&selectionSource==='discover')store.track('discover_action_selected',{actionId:chosen.action.id});
+            store.startAction(chosen.action);
               setChosen(undefined);
             }}
             onSave={(timing) => {
-              store.saveAction(chosen.action, timing);
+              if(CHOICE_ACTION_FLOW&&selectionSource==='discover')store.track('discover_action_selected',{actionId:chosen.action.id});
+            store.saveAction(chosen.action, timing);
               setChosen(undefined);
             }}
             onSkip={(reason) => {
@@ -361,7 +380,8 @@ export default function Page() {
               setChosen(undefined);
             }}
             onDone={() => {
-              store.doneAction(chosen.action);
+              if(CHOICE_ACTION_FLOW&&selectionSource==='discover')store.track('discover_action_selected',{actionId:chosen.action.id});
+            store.doneAction(chosen.action);
               setChosen(undefined);
             }}
           />
@@ -406,6 +426,7 @@ export default function Page() {
           onMy={() => setTab('my')}
           onIntent={intent}
           onTalk={() => setTab('camellia')}
+          onPlace={CHOICE_ACTION_FLOW?()=>{setPlaceEntry(undefined);setSecondary('place');}:undefined}
           focusIntent={returnToIntent}
           onIntentFocused={() => setReturnToIntent(false)}
           onFortune={() => {
@@ -424,6 +445,7 @@ export default function Page() {
       )}
       {tab === 'camellia' && (
         <ConversationWorkspace
+          onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined}
           onRenameCharacter={characterName=>store.updateProfile({characterName})}
           onRemember={store.remember}
           onTrack={store.track}
@@ -436,7 +458,7 @@ export default function Page() {
           onPendingConversation={store.pendingConversation}
           onReplaceConversationAssistant={store.replaceConversationAssistant}
           onSelectConversationModel={store.selectConversationModel}
-          onOpenAction={openAction}
+          onOpenAction={r=>openAction(r,'melly')}
           onNavigate={(x) => {
             if (x === 'discover') setTab('discover');
             else setSecondary(x);
@@ -449,12 +471,12 @@ export default function Page() {
           state={store.state}
           category={category}
           onCategory={setCategory}
-          onOpenAction={openAction}
+          onOpenAction={r=>openAction(r,'discover')}
           onOpenSecondary={setSecondary}
         />
       )}
       {tab === 'my' && (
-        <MyScreen onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
+        <MyScreen onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}
@@ -470,16 +492,21 @@ export default function Page() {
           onComplete={store.completeAction}
         />
       )}
+      {dialogs}
       <BottomNav active={tab} onChange={setTab} />
       {chosen && (
         <ActionSheet
+          onShare={CHOICE_ACTION_FLOW?()=>{setShareDraft({kind:'action',actionId:chosen.action.id});setChosen(undefined);}:undefined}
+          onPlace={CHOICE_ACTION_FLOW?()=>{setPlaceEntry({intent:actionPlaceIntent(chosen.action)});setChosen(undefined);setSecondary('place');}:undefined}
           action={chosen.action}
           onClose={() => setChosen(undefined)}
           onStart={() => {
+            if(CHOICE_ACTION_FLOW&&selectionSource==='discover')store.track('discover_action_selected',{actionId:chosen.action.id});
             store.startAction(chosen.action);
             setChosen(undefined);
           }}
           onSave={(timing) => {
+            if(CHOICE_ACTION_FLOW&&selectionSource==='discover')store.track('discover_action_selected',{actionId:chosen.action.id});
             store.saveAction(chosen.action, timing);
             setChosen(undefined);
           }}
@@ -488,6 +515,7 @@ export default function Page() {
             setChosen(undefined);
           }}
           onDone={() => {
+            if(CHOICE_ACTION_FLOW&&selectionSource==='discover')store.track('discover_action_selected',{actionId:chosen.action.id});
             store.doneAction(chosen.action);
             setChosen(undefined);
           }}

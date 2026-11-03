@@ -2,7 +2,7 @@ import {ACTIONS} from '@/data/actions';
 import type {ActionRecord, SavedAction} from '@/types';
 export type PlaceChoice={id:string;slug:string;title:string;demo:boolean;createdAt:string;updatedAt:string};
 export type JourneyChoices={actions?:ActionRecord[];savedActions?:SavedAction[];placeChoices?:PlaceChoice[]};
-const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(v);
+const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const date=(v:unknown):v is string=>typeof v==='string'&&Number.isFinite(Date.parse(v));
 export function safeJourney(value:unknown,now=Date.now()):JourneyChoices{
  const v=value&&typeof value==='object'?value as Record<string,unknown>:{};

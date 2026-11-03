@@ -1,0 +1,77 @@
+[
+  {
+    "width": 375,
+    "guestCheckMellyDiscoverPlaceMy": "PASS",
+    "saveOnlyOnIdentity": "PASS",
+    "selectedChoicesRestoredOnce": "PASS",
+    "syntheticAuthMethod": "LINE",
+    "noChatBridge": "PASS",
+    "noGuestProviderRequest": "PASS",
+    "sharingAndPlusPreviewOnly": "PASS",
+    "nativeDialogsEscapeFocus": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "guestCheckMellyDiscoverPlaceMy": "PASS",
+    "saveOnlyOnIdentity": "PASS",
+    "selectedChoicesRestoredOnce": "PASS",
+    "syntheticAuthMethod": "Google",
+    "noChatBridge": "PASS",
+    "noGuestProviderRequest": "PASS",
+    "sharingAndPlusPreviewOnly": "PASS",
+    "nativeDialogsEscapeFocus": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "guestCheckMellyDiscoverPlaceMy": "PASS",
+    "saveOnlyOnIdentity": "PASS",
+    "selectedChoicesRestoredOnce": "PASS",
+    "syntheticAuthMethod": "Google",
+    "noChatBridge": "PASS",
+    "noGuestProviderRequest": "PASS",
+    "sharingAndPlusPreviewOnly": "PASS",
+    "nativeDialogsEscapeFocus": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "guestCheckMellyDiscoverPlaceMy": "PASS",
+    "saveOnlyOnIdentity": "PASS",
+    "selectedChoicesRestoredOnce": "PASS",
+    "syntheticAuthMethod": "LINE",
+    "noChatBridge": "PASS",
+    "noGuestProviderRequest": "PASS",
+    "sharingAndPlusPreviewOnly": "PASS",
+    "nativeDialogsEscapeFocus": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "guestCheckMellyDiscoverPlaceMy": "PASS",
+    "saveOnlyOnIdentity": "PASS",
+    "selectedChoicesRestoredOnce": "PASS",
+    "syntheticAuthMethod": "Google",
+    "noChatBridge": "PASS",
+    "noGuestProviderRequest": "PASS",
+    "sharingAndPlusPreviewOnly": "PASS",
+    "nativeDialogsEscapeFocus": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "case": "guest Safety",
+    "styles": [
+      "yura",
+      "lactone"
+    ],
+    "boundariesPerStyle": 6,
+    "commonSafety": "PASS",
+    "providerRequest": "NONE"
+  }
+]
