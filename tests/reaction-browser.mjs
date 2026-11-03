@@ -1,5 +1,5 @@
 /** Real Chromium against tests/ux-preview.mjs (synthetic auth and a synthetic conversation; every non-local
- *  request is blocked). The reaction lands on her message before the reply, メリィ shows as YURA / Lactone,
+ *  request is blocked). The reaction lands on her message before the reply, Camellia shows as YURA / Lactone,
  *  and a renamed character shows everywhere. Usage: node tests/reaction-browser.mjs [screenshot-dir] */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -35,35 +35,35 @@ try {
   const box = page.getByLabel('Camelliaへのメッセージ', { exact: true });
   await box.fill('今日、プレゼンを最後までやりきれた');
   await page.getByRole('button', { name: '送信', exact: true }).click();
-  // Her message, then the reaction (and the same face and emoji on メリィ), and only then the thinking dots and the reply.
+  // Her message, then the reaction (and the same face and emoji on Camellia), and only then the thinking dots and the reply.
   const pill = page.locator('.bubble.user .message-reaction');
   await pill.waitFor({ timeout: 1500 });
-  assert.equal(await page.locator('.chat-loading').count(), 0, 'メリィ is not thinking yet while the reaction has its moment');
-  assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '👏', 'メリィ shows the same reaction');
+  assert.equal(await page.locator('.chat-loading').count(), 0, 'Camellia is not thinking yet while the reaction has its moment');
+  assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '👏', 'Camellia shows the same reaction');
   assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-praise.svg', 'with the same face');
-  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィ · YURA');
-  assert.ok(await page.locator('.camellia > header .chat-mascot').count(), 'メリィ is in the header, not over the messages');
+  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'Camellia · YURA');
+  assert.ok(await page.locator('.camellia > header .chat-mascot').count(), 'Camellia is in the header, not over the messages');
   if (shots) await page.screenshot({ path: `${shots}/reaction-before-reply.png` });
   await page.waitForTimeout(1500);
   assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-praise.svg', 'she holds the pose, not just a blink');
   assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '👏', 'and the emoji stays beside her');
   await page.locator('.chat-loading').waitFor({ timeout: 3000 });
-  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィは考え中です', 'then she thinks');
+  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'Camelliaは考え中です', 'then she thinks');
   const mascot = page.locator('.chat-mascot img');
   if (shots) await page.screenshot({ path: `${shots}/reaction-then-thinking.png` });
-  assert.equal(await pill.textContent(), 'メリィ · YURAのリアクション：がんばったね👏', 'the emoji, with words for screen readers');
+  assert.equal(await pill.textContent(), 'Camellia · YURAのリアクション：がんばったね👏', 'the emoji, with words for screen readers');
   await page.locator('.bubble.assistant:not(.chat-loading)').waitFor();
-  assert.equal(await page.locator('.bubble.assistant .message-model-label').first().textContent(), 'メリィ · YURA');
+  assert.equal(await page.locator('.bubble.assistant .message-model-label').first().textContent(), 'Camellia · YURA');
   assert.equal(await mascot.getAttribute('src'), '/character/full/yura-praise.svg', 'after the reply her face matches the reaction');
   await page.waitForFunction(() => document.querySelector('.chat-mascot img')?.getAttribute('src') === '/character/full/yura-listen.svg', null, { timeout: 8000 });
-  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'メリィ · YURA', 'then she goes back to listening');
+  assert.equal(await page.locator('.chat-mascot-name').textContent(), 'Camellia · YURA', 'then she goes back to listening');
 
   await box.fill('最近ずっとつらい');
   await page.getByRole('button', { name: '送信', exact: true }).click();
   await page.locator('.bubble.user .message-reaction').nth(1).waitFor({ timeout: 1500 });
   assert.ok((await page.locator('.bubble.user .message-reaction').nth(1).textContent()).includes('😭'), 'つらい gets 😭');
   assert.equal(await page.locator('.chat-mascot-emoji').textContent(), '😭');
-  assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-cry.svg', 'and メリィ cries with her');
+  assert.equal(await page.locator('.chat-mascot img').getAttribute('src'), '/character/full/yura-cry.svg', 'and Camellia cries with her');
   if (shots) await page.screenshot({ path: `${shots}/reaction-cry.png` });
   await page.locator('.bubble.assistant:not(.chat-loading)').nth(1).waitFor();
   if (shots) await page.screenshot({ path: `${shots}/reaction-after-reply.png` });
@@ -74,13 +74,13 @@ try {
   const again = page.locator('.conversation-preview').first();
   if (await again.count()) await again.click();
   await page.locator('.bubble.user .message-reaction').nth(1).waitFor();
-  console.log('PASS the reaction lands on her message before the reply, matches メリィ\'s face, and is still there after reloading');
+  console.log('PASS the reaction lands on her message before the reply, matches Camellia\'s face, and is still there after reloading');
 
   // Tap the floating character: her profile, then 「名前を編集」 and 「姿を変える」 from the pencil (as in companion apps).
-  await page.getByRole('button', { name: 'メリィのプロフィールを開く' }).click();
+  await page.getByRole('button', { name: 'Camelliaのプロフィールを開く' }).click();
   const sheet = page.locator('dialog.character-profile');
   await sheet.waitFor();
-  assert.equal(await sheet.locator('h2').textContent(), 'メリィ');
+  assert.equal(await sheet.locator('h2').textContent(), 'Camellia');
   if (shots) await page.screenshot({ path: `${shots}/character-profile.png` });
   await sheet.getByRole('button', { name: 'キャラクターを編集' }).click();
   await sheet.getByRole('menuitem', { name: /名前を編集/ }).click();
@@ -115,7 +115,7 @@ try {
   assert.equal(await page.locator('.bubble.assistant .message-model-label').first().textContent(), 'つばきちゃん · YURA');
   assert.equal(await page.locator('.chat-mascot-name').textContent(), 'つばきちゃん · YURA');
   assert.deepEqual(errors, []);
-  console.log('PASS she can rename メリィ (1–12 characters); the new name shows in the conversation');
+  console.log('PASS she can rename Camellia (1–12 characters); the new name shows in the conversation');
   await context.close();
 } finally {
   await browser.close();
