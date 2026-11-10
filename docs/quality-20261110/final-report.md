@@ -62,7 +62,7 @@ FreeはToday/Check、基本推薦、会話、Discover、既存Circle、My、掲�
 
 ### Performance
 
-main91e95baを別のdetached worktreeで、同じ依存関係・同じ既定OFF設定でbuildして比較した。全client JSのgzip合計をbundle-size.jsonへ記録。これは初期request graphや実モバイルの読み込み時間ではない。Place画像はlazy、Circle/会話の既存paginationを保持。大きなpage chunk、管理項目・SDKの遅延分割、実画像配信の性能測定はP2として残す。
+main91e95baを別のdetached worktreeで、同じ依存関係・同じ既定OFF設定でbuildして比較した。全client JSのgzip合計はmain 478,718 bytes → candidate 488,180 bytes（+9,462 bytes、約2.0%）。bundle-size.jsonへ記録。これは初期request graphや実モバイルの読み込み時間ではない。Place画像はlazy、Circle/会話の既存paginationを保持。大きなpage chunk、管理項目・SDKの遅延分割、実画像配信の性能測定はP2として残す。検証用browserは外部写真配信を遮断したため、写真の実配信の成功と取り違えない。
 
 ## D. コード・PR・公開状況
 
@@ -73,18 +73,18 @@ main91e95baを別のdetached worktreeで、同じ依存関係・同じ既定OFF�
 |Circle・私的体験|`feat/camellia-experience-circle-20261110`|114bb55 / c44c613|[#64](https://github.com/Wertask11/camellia-beta/pull/64)|
 |店舗・集計・通知設定|`feat/camellia-operator-quality-20261110`|d59c2b4|[#65](https://github.com/Wertask11/camellia-beta/pull/65)|
 |停止中の紹介基盤|`feat/camellia-referral-quality-20261110`|aa66fb3|[#66](https://github.com/Wertask11/camellia-beta/pull/66)|
-|総合検証・画面修正|`test/camellia-quality-release-audit-20261110`|このPRのコードcommitを参照|最終PR（作成後に追記）|
+|総合検証・画面修正|`test/camellia-quality-release-audit-20261110`|e29bb44|[#67](https://github.com/Wertask11/camellia-beta/pull/67)|
 
 変更ファイルの全件は各PRとGit diffで確認できる。全件リストはchanged-files.md。各段階のunit・emulator・画面検証を分離し、巨大な単一PRへまとめない。
 
 固定Previewは以前からのURL1つだけ：
 https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/
 
-同じbranch aliasをfast-forward更新し、LINEのcallback設定を増やしていない。aa66fb3のVercel成功と、本人の選択保存・過去記録確認を得た。最終画面修正後のReadyも別途記録する。実行環境から固定PreviewへのHTTPは許可先制限でCONNECT403となるため、そこからのブラウザ確認を実施済みとはしない。ローカル実ブラウザ・Vercelの結果・本人の回答を分けている。
+同じbranch aliasをfast-forward更新し、LINEのcallback設定を増やしていない。aa66fb3のVercel成功と、本人の選択保存・過去記録確認を得た。最終コードe29bb44も、機能PR用と固定branch用のVercel deploymentがともにsuccess。最終レポートの追記commitは文書だけの差分として区別する。実行環境から固定PreviewへのHTTPは許可先制限でCONNECT403となるため、そこからのブラウザ確認を実施済みとはしない。ローカル実ブラウザ・Vercelの結果・本人の回答を分けている。
 
 ### Production
 
-mainは91e95bac4237f5349d6c35e7a0ae7b24087dd5d3のまま。Productionの公開statusのみ読み、root200・同じindex-DfJLd4me.js、chat enabled／dataPolicy unknown／rate limit firestore、membership Free／checkout false、Place503 PLACE_UNAVAILABLE、未認証Circle401 LOGIN_REQUIREDを確認。これらは本番改修の利用成功を示さない。
+mainは91e95bac4237f5349d6c35e7a0ae7b24087dd5d3のまま。Productionの公開statusのみ読み、root200・同じindex-DfJLd4me.js、chat enabled／dataPolicy unknown／rate limit firestore、membership Free／checkout false、Place503 PLACE_UNAVAILABLE、未認証Circle401 LOGIN_REQUIREDを確認。別途、実ChromiumでProductionの公開入口を開くことも試したが、検証環境の証明書信頼エラー（ERR_CERT_AUTHORITY_INVALID）で画面表示を確認できなかった。TLS検証を無効化して成功とは扱わない。これらは本番改修の利用成功を示さない。
 
 **今回の改修はmainへ未merge・Production未反映。** 本人の今回指示「本番公開、料金徴収開始、紹介キャンペーン開始、ユーザーへの通知配信など、運営上の開始判断は開発完了とは分離する」に従う。
 
@@ -119,6 +119,7 @@ v3データは一括migrationしない。私的Place体験の初回保存時だ�
 
 - 紹介の月予算、trial AI枠、開始数値、期間、装飾catalog、月3件超過時、重複規則を本人が決める。そこからsignup・実AI・装飾UIを接続し、正式公開後の紹介開始を別承認する。
 - 店舗担当の導入／本人確認・担当scope、台帳の保持削除・TTL／承認済み定期削除、異常登録・原価の運営監視。まだ役割も新データも本番へ付与しない。
+- 現行Termsは18〜45歳の女性、生年月日と自己申告を利用する。KYCではない。server eligibilityは同意済profile・招待・停止を判定し、UIの年齢・自己申告を公的な本人保証と扱わない。既存利用者を突然遮断する変更はしていない。
 - Gemini実利用条件と現在unknownの公開statusを照合。Privacyの無料枠説明を弱めない。紹介identity hashの保持／削除方針を決めてから運用開始。
 - PostHog新着信・保存insight・D7/D30の登録済み利用者コホートとJST境界を確認。現行UTCとLinux除外filterを断定的な事業指標へ使わない。
 - 実端末iOS/Samsung、実OSkeyboard、screen reader、画像配信・初期bundleの計測と分割。

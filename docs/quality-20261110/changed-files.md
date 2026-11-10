@@ -107,3 +107,4 @@ main 91e95baからの全改修。ファイル単位の差分は各PRを参照。
 - `tests/today-one-flow-cases.mjs`
 - `tests/ux-preview.mjs`
 - `types/index.ts`
+- `docs/quality-20261110/evidence/production-public-browser.json`
