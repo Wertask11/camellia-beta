@@ -45,7 +45,7 @@ export class PartnerShareService{
   if(!record.exists||v?.revoked===true||typeof v?.expiresAt!=='string'||!Number.isFinite(Date.parse(v.expiresAt)))throw new ShareError(404,'SHARE_NOT_FOUND');
   if(Date.parse(v.expiresAt)<=this.now()){await record.ref.update({revoked:true,content:{}});throw new ShareError(404,'SHARE_NOT_FOUND');}
   const owner=await this.db.doc(`camellia_users/${v.ownerUid}`).get();
-  if(!owner.exists||owner.createTime?.toMillis()!==v.ownerCreatedAt)throw new ShareError(404,'SHARE_NOT_FOUND');
+  if(!owner.exists||owner.createTime?.toMillis()!==v.ownerCreatedAt){await record.ref.update({revoked:true,content:{}});throw new ShareError(404,'SHARE_NOT_FOUND');}
   const c=v.content as PublicShare;
   return {kind:c.kind,title:c.title,description:c.description,timing:c.timing,expiresAt:c.expiresAt,demo:c.demo,...(c.placeSlug?{placeSlug:c.placeSlug}:{})};
  }

@@ -1,0 +1,52 @@
+[
+  {
+    "width": 375,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "referral": "STOPPED",
+    "publicShareUnavailable": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "referral": "STOPPED",
+    "publicShareUnavailable": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "referral": "STOPPED",
+    "publicShareUnavailable": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "referral": "STOPPED",
+    "publicShareUnavailable": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "referral": "STOPPED",
+    "publicShareUnavailable": "PASS",
+    "pageErrors": []
+  }
+]

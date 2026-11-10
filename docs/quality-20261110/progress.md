@@ -51,3 +51,9 @@
 公開カタログの操作だけを日別集計。重複eventIdは一度、私的本文は拒否。店舗への自店集計はクリックであり来店ではない。通知は好み・頻度・停止を保存するだけで配信なし。AIの数値メタデータ台帳と承認単価の見積り関数まで。実Gemini原価観測は未接続、請求額・価格は未確認。
 
 検証：専用unit、Firestore emulatorのscope/他店/公開権限/集計concurrency/契約/事業者イベント/撤回/停止、5幅の通知保存・reload・off PASS。lint/typecheck/build/full testsは各実行ログと最終報告を参照。Phase 3の全51 suite再実行もPASS。実店舗登録0、Productionの設定変更0。詳細はoperator-workflow.md。
+
+## Phase 5：プレビュー共有・紹介の安全な基盤
+
+共有送信・匿名公開は引き続き停止。共有owner削除時の読取を失効させるだけでなく本文もscrubする。紹介は未決定設定がないと起動しない内部transaction基盤を追加。7日体験、月3件の永久選択権、自己／連携ID重複、予算／trial専用枠、同時送信、期限、対象取消をローカルで検証。紹介の公開APIはstatusのみ、POST拒否。signup／実Geminiへの紹介連携は未接続、実際の特典提供と称さない。
+
+Phase 4の全52 unit suites PASS。Phase 5の専用unit、referralと既存sharingのFirestore emulator PASS。5幅・全unit・buildは最終検証へ。未決定事項と未接続部分はreferral-workflow.mdに記載。本番の紹介データ・設定・装飾は0件変更。

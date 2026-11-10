@@ -1,3 +1,4 @@
+import {ReferralPreparation} from '@/components/ReferralPreparation';
 import {NotificationPreferences} from '@/components/NotificationPreferences';
 import type {NotificationPreferences as NotificationPreferenceValue} from '@/lib/notifications/preferences';
 import {PlaceExperienceDialog} from '@/components/PlaceExperienceDialog';
@@ -51,7 +52,7 @@ export function MyScreen({onNotifications,onRemoveExperience,onReflectPlace,onPr
     {LIVE_DESTINATIONS.has('place')&&onPlaces&&<button className="secondary-button" onClick={onPlaces}>保存したPlaceを見る →</button>}
     <section className="insights"><p className="eyebrow">Camelliaがあなたについて気づいたこと</p><h2>これまでの記録からの気づき</h2>{insights.length?insights.map(i=><article className="insight-card" key={i.key}><p className="eyebrow">事実</p><p>{i.fact??i.text}</p><p className="eyebrow">仮説・受け取り方</p><p>{i.hypothesis??'この記録だけで理由は決められません。'}</p><small>{i.periodStart&&i.periodEnd?`${i.periodStart}〜${i.periodEnd} · `:''}{i.sampleSize}件の記録。因果関係を示すものではありません。</small><div><button onClick={()=>onInsight(i.key,'correct')}>合ってる</button><button onClick={()=>onInsight(i.key,'incorrect')}>ちょっと違う</button></div></article>):<div className="empty"><b>まだ分からないこともたくさんあります。</b><br/>少しずつ一緒に見つけていきましょう。</div>}</section>
     {onNotifications&&<NotificationPreferences value={state.profile.notificationPreferences} onSave={onNotifications}/>}
-    <details className="my-profile"><summary>プロフィール</summary><section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section></details>
+    <ReferralPreparation/><details className="my-profile"><summary>プロフィール</summary><section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section></details>
     {onRenameCharacter&&<CharacterNameSetting value={state.profile.characterName} onSave={onRenameCharacter}/>}
     <details className="account-records"><summary>アカウントと記録 <span>{sync.phase==='saved'?'保存済み':sync.phase==='error'?'確認が必要':sync.phase==='pending'?'保存中':'確認中'}</span></summary>
     <AccountSettings distinctId={state.profile.id}/>

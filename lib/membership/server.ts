@@ -1,3 +1,4 @@
+import {referralMembership} from '../referral/membership.js';
 import type {Firestore} from 'firebase-admin/firestore';
 import {membershipFromRecord} from './model.js';
 export const subscriptionPath=(uid:string)=>`camellia_users/${uid}/admin/subscription`;
@@ -5,5 +6,7 @@ export const shareQuotaPath=(uid:string)=>`camellia_users/${uid}/admin/partner_s
 export async function memberStatus(db:Firestore,uid:string,now=Date.now()){
  const sub=await db.doc(subscriptionPath(uid)).get();
  // Owner decision: previews only until real billing is configured. Never infer readiness from a URL or client state.
- return {...membershipFromRecord(sub.data(),now),sharingReady:false};
+ const base=membershipFromRecord(sub.data(),now);
+ const referral=base.plan==='free'?await referralMembership(db,uid,now):undefined;
+ return {...base,...referral,sharingReady:false};
 }
