@@ -43,3 +43,11 @@
 ### 保存形式とrollback
 
 既存v3は新readerでそのまま読める。一括migrationなし。v4を作成済みの環境では、v4 readerと保存保護を残したまま画面だけ戻す。v4対応前のbuildへ丸ごと戻す場合はread-only recoveryとなるため、原本／pre-v4控えのexportを確保し、v4対応buildへ戻す。古いreaderで新しい記録を読み飛ばして再同期しないことを検証済み。
+
+## Phase 4：店舗管理・オンライン集計・通知設定
+
+店舗担当はserver-onlyの割当slugだけ。運営のみpublish、担当は自店draft/submit/suspend。営業用の別ログイン・事業者導入は未提供。自店イベント専用APIはCircle会員資格を付与せず、feed閲覧不可。無料実証は明示同意、特典任意、自動有料化なし。有料オプション／来店確認は未提供。
+
+公開カタログの操作だけを日別集計。重複eventIdは一度、私的本文は拒否。店舗への自店集計はクリックであり来店ではない。通知は好み・頻度・停止を保存するだけで配信なし。AIの数値メタデータ台帳と承認単価の見積り関数まで。実Gemini原価観測は未接続、請求額・価格は未確認。
+
+検証：専用unit、Firestore emulatorのscope/他店/公開権限/集計concurrency/契約/事業者イベント/撤回/停止、5幅の通知保存・reload・off PASS。lint/typecheck/build/full testsは各実行ログと最終報告を参照。Phase 3の全51 suite再実行もPASS。実店舗登録0、Productionの設定変更0。詳細はoperator-workflow.md。

@@ -485,7 +485,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen onRemoveExperience={store.removePlaceExperience} onReflectPlace={store.reflectPlace} onPrepareCircle={slug=>{setPlaceEntry({slug});setSecondary('circle');}} onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
+        <MyScreen onNotifications={value=>store.updateProfile({notificationPreferences:value})} onRemoveExperience={store.removePlaceExperience} onReflectPlace={store.reflectPlace} onPrepareCircle={slug=>{setPlaceEntry({slug});setSecondary('circle');}} onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}

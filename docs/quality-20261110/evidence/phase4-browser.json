@@ -1,0 +1,42 @@
+[
+  {
+    "width": 375,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "explicitPreferences": "PASS",
+    "reload": "PASS",
+    "optOut": "PASS",
+    "delivery": "OFF",
+    "pageErrors": []
+  }
+]

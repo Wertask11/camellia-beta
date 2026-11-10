@@ -1,3 +1,5 @@
+import {NotificationPreferences} from '@/components/NotificationPreferences';
+import type {NotificationPreferences as NotificationPreferenceValue} from '@/lib/notifications/preferences';
 import {PlaceExperienceDialog} from '@/components/PlaceExperienceDialog';
 import type {ExperienceInput} from '@/lib/place/experience';
 import type {PlaceChoice} from '@/lib/journey/model';
@@ -17,7 +19,7 @@ import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
 import type { AnalyticsEventName,CamelliaState } from '@/types';
 
-export function MyScreen({onRemoveExperience,onReflectPlace,onPrepareCircle,onExplorePlaces,onShareFeeling,onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onRemoveExperience?:(id:string)=>void;onReflectPlace?:(input:ExperienceInput)=>void;onPrepareCircle?:(slug:string)=>void;onExplorePlaces?:()=>void;onShareFeeling?:()=>void;onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onNotifications,onRemoveExperience,onReflectPlace,onPrepareCircle,onExplorePlaces,onShareFeeling,onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onNotifications?:(value:NotificationPreferenceValue)=>void;onRemoveExperience?:(id:string)=>void;onReflectPlace?:(input:ExperienceInput)=>void;onPrepareCircle?:(slug:string)=>void;onExplorePlaces?:()=>void;onShareFeeling?:()=>void;onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
@@ -48,6 +50,7 @@ export function MyScreen({onRemoveExperience,onReflectPlace,onPrepareCircle,onEx
     {LIVE_DESTINATIONS.has('circle')&&onCircles&&<button className="secondary-button" onClick={onCircles}>参加中のCircleを見る →</button>}
     {LIVE_DESTINATIONS.has('place')&&onPlaces&&<button className="secondary-button" onClick={onPlaces}>保存したPlaceを見る →</button>}
     <section className="insights"><p className="eyebrow">Camelliaがあなたについて気づいたこと</p><h2>これまでの記録からの気づき</h2>{insights.length?insights.map(i=><article className="insight-card" key={i.key}><p className="eyebrow">事実</p><p>{i.fact??i.text}</p><p className="eyebrow">仮説・受け取り方</p><p>{i.hypothesis??'この記録だけで理由は決められません。'}</p><small>{i.periodStart&&i.periodEnd?`${i.periodStart}〜${i.periodEnd} · `:''}{i.sampleSize}件の記録。因果関係を示すものではありません。</small><div><button onClick={()=>onInsight(i.key,'correct')}>合ってる</button><button onClick={()=>onInsight(i.key,'incorrect')}>ちょっと違う</button></div></article>):<div className="empty"><b>まだ分からないこともたくさんあります。</b><br/>少しずつ一緒に見つけていきましょう。</div>}</section>
+    {onNotifications&&<NotificationPreferences value={state.profile.notificationPreferences} onSave={onNotifications}/>}
     <details className="my-profile"><summary>プロフィール</summary><section className="panel"><h2>プロフィール</h2><p>{state.profile.name}</p><button className="secondary-button" onClick={onEditProfile}>プロフィールを確認・編集する</button></section></details>
     {onRenameCharacter&&<CharacterNameSetting value={state.profile.characterName} onSave={onRenameCharacter}/>}
     <details className="account-records"><summary>アカウントと記録 <span>{sync.phase==='saved'?'保存済み':sync.phase==='error'?'確認が必要':sync.phase==='pending'?'保存中':'確認中'}</span></summary>

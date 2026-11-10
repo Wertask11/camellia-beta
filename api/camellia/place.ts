@@ -1,3 +1,7 @@
+import {managedPlaceSlugs} from '../../lib/place/operator.js';
+import {recordPlaceMetric,placeMetricSummary,acceptFreePilot} from '../../lib/place/metrics.js';
+import {createSharedRateLimiter} from '../../lib/server/shared-limit.js';
+import {CircleService,CircleError} from '../../lib/circle/service.js';
 import { adminConfigured, serverAdmin } from '../../lib/server/admin.js';
 import { PlaceError, PlaceService } from '../../lib/place/service.js';
 import {requireEligibleUser,EligibilityError} from '../../lib/server/eligibility.js';
@@ -20,17 +24,26 @@ export default async function place(req: Request, res: Response) {
     process.env.CAMELLIA_PLACE_ENABLED === 'true' && adminConfigured();
   if (req.method === 'GET' && req.query?.status === '1')
     return res.status(200).json({ enabled });
-  if (!enabled) return res.status(503).json({ error: 'PLACE_UNAVAILABLE' });
+  const publicFlag=process.env.CAMELLIA_PLACE_ENABLED==='true';
+  const operation=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?(req.body as Record<string,unknown>).operation:undefined;
+  const management=req.query?.operator==='1'||req.query?.operatorStatus==='1'||req.query?.metrics!==undefined||req.method==='POST'&&typeof operation==='string'&&['save','submit','publish','suspend','acceptFreePilot','requestPaidOption','verifyVisit','merchantEvent','merchantEventEdit','merchantEventDelete'].includes(operation);
+  if(!adminConfigured()||!publicFlag&&!management)return res.status(503).json({error:'PLACE_UNAVAILABLE'});
   if (!['GET', 'POST'].includes(req.method ?? ''))
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   try {
     const { db, auth } = serverAdmin();
     const service = new PlaceService(db);
+    const incoming=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body as Record<string,unknown>:{};
+    if(Buffer.byteLength(JSON.stringify(incoming))>12000)throw new PlaceError(413,'INVALID_PLACE');
+    if(req.method==='POST'&&incoming.operation==='metric'){
+      const limit=createSharedRateLimiter(db,{CAMELLIA_CHAT_RATE_USER:'120',CAMELLIA_CHAT_RATE_GLOBAL:'6000',CAMELLIA_CHAT_RATE_WINDOW_SECONDS:'300'},Date.now,'place_rate_windows');const forwarded=req.headers['x-vercel-forwarded-for'];const actor=typeof forwarded==='string'?forwarded.split(',')[0].trim():'public-metrics';
+      if(!await limit.take(actor))throw new PlaceError(429,'SLOW_DOWN');return res.status(200).json(await recordPlaceMetric(db,incoming));
+    }
     const operatorRequest =
       req.method === 'POST' ||
       req.query?.operator === '1' ||
       req.query?.operatorStatus === '1' ||
-      req.query?.saved === '1';
+      req.query?.saved === '1' || req.query?.metrics!==undefined;
     let identity;
     if (operatorRequest || req.headers.authorization) {
       const header = req.headers.authorization,
@@ -45,8 +58,11 @@ export default async function place(req: Request, res: Response) {
       } catch {
         return res.status(401).json({ error: 'LOGIN_REQUIRED' });
       }
+      const access=await db.doc(`camellia_users/${decoded.uid}/admin/access`).get();
+      if(access.data()?.suspended===true)return res.status(403).json({error:'SUSPENDED'});
+      const slugs=decoded.firebase?.sign_in_provider==='anonymous'?[]:await managedPlaceSlugs(db,decoded.uid);
       identity = {
-        uid: decoded.uid,
+        uid: decoded.uid,managedSlugs:slugs,
         operator:
           decoded.firebase?.sign_in_provider !== 'anonymous' &&
           (decoded.camelliaPlaceOperator === true ||
@@ -55,8 +71,9 @@ export default async function place(req: Request, res: Response) {
       if (decoded.firebase?.sign_in_provider === 'anonymous' && operatorRequest)
         return res.status(403).json({ error: 'LOGIN_REQUIRED' });
       if (req.query?.operatorStatus === '1')
-        return res.status(200).json({ operator: identity.operator });
+        return res.status(200).json({ operator: identity.operator||slugs.length>0,canPublish:identity.operator });
     }
+    if(req.method==='GET'&&req.query?.metrics!==undefined){if(!identity)throw new PlaceError(401,'LOGIN_REQUIRED');return res.status(200).json(await placeMetricSummary(db,identity,req.query.metrics));}
     const cursor =
       typeof req.query?.cursor === 'string' ? req.query.cursor : undefined;
     const slug =
@@ -87,6 +104,17 @@ export default async function place(req: Request, res: Response) {
         : {};
     if (Buffer.byteLength(JSON.stringify(body)) > 12000)
       throw new PlaceError(413, 'INVALID_PLACE');
+    if(body.operation==='acceptFreePilot')return res.status(200).json(await acceptFreePilot(db,identity!,body.slug,body.agrees));
+    if(body.operation==='requestPaidOption'||body.operation==='verifyVisit')throw new PlaceError(503,'SERVICE_NOT_OFFERED');
+    if(body.operation==='merchantEventEdit'||body.operation==='merchantEventDelete'){
+      if(!identity?.managedSlugs?.length||typeof body.id!=='string'||!/^[-\w]{1,160}$/.test(body.id)||!process.env.CAMELLIA_CIRCLE_SIGNING_SECRET)throw new PlaceError(403,'OPERATOR_REQUIRED');
+      const circle=new CircleService(db,process.env.CAMELLIA_CIRCLE_SIGNING_SECRET);return res.status(200).json(await circle.change({uid:identity.uid,moderator:false,merchantEndpoint:true},'post',body.id,body.operation==='merchantEventEdit'?'edit':'delete',{text:body.text,event:body.event}));
+    }
+    if(body.operation==='merchantEvent'){
+      if(!identity?.managedSlugs?.length)throw new PlaceError(403,'OPERATOR_REQUIRED');
+      if(!process.env.CAMELLIA_CIRCLE_SIGNING_SECRET||process.env.CAMELLIA_CIRCLE_ENABLED!=='true'||process.env.CAMELLIA_CIRCLE_PLACE_LINKS_ENABLED!=='true')throw new PlaceError(503,'SERVICE_NOT_OFFERED');
+      const circle=new CircleService(db,process.env.CAMELLIA_CIRCLE_SIGNING_SECRET);return res.status(200).json(await circle.write({uid:identity.uid,moderator:false,merchantEndpoint:true},typeof body.circleId==='string'?body.circleId:'',{text:body.text,placeSlug:body.slug,event:body.event}));
+    }
     if(body.operation==='recommendation'){
       if(Object.keys(body).some(k=>!['operation','intents','area','compareSlugs'].includes(k))||!Array.isArray(body.intents)||body.intents.length>3||body.intents.some(x=>!['quiet','rest','try','move','together'].includes(String(x)))||body.area!==undefined&&(typeof body.area!=='string'||body.area.length>40))throw new PlaceError(400,'INVALID_PLACE');
       const header=req.headers.authorization;const user=await requireEligibleUser(typeof header==='string'?header.slice(7):'',{db,auth});
@@ -105,6 +133,7 @@ export default async function place(req: Request, res: Response) {
       .status(200)
       .json(await service.change(identity!, body.operation, body));
   } catch (error) {
+    if(error instanceof CircleError)return res.status(error.status).json({error:error.code});
     if(error instanceof EligibilityError)return res.status(error.status).json({error:error.code});
     if (error instanceof PlaceError)
       return res.status(error.status).json({ error: error.code });
