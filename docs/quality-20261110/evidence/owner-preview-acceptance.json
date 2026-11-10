@@ -1,0 +1,12 @@
+{
+  "dateJst": "2026-11-10",
+  "preview": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/",
+  "revisionAtQuestion": "aa66fb3c38418495f6aafb7e7e64a3003f551717",
+  "reportedBy": "owner",
+  "flow": "private window → skip Check → save selected action → My → existing LINE or Google login → account records",
+  "answer": "選んだ行動と過去の記録を確認できた",
+  "selectedChoicePreserved": "PASS (owner reported)",
+  "previousRecordsAvailable": "PASS (owner reported)",
+  "authProvider": "not specified; do not claim both providers were exercised",
+  "notTested": ["account deletion", "live new Place listing", "billing", "referral launch", "notification delivery"]
+}

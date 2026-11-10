@@ -1354,3 +1354,10 @@ details {
 .commerce-dialog .privacy-choice{display:grid;grid-template-columns:22px 1fr}.commerce-dialog .primary,.commerce-dialog .secondary-button{width:100%;margin:8px 0;white-space:normal;min-height:44px}.commerce-dialog .close{position:absolute;top:8px;right:8px;min-width:44px;min-height:44px;background:transparent;border:0;font-size:26px}
 .commerce-dialog .plus-price{font-size:25px;color:#9d3155;font-weight:600}.commerce-dialog section{margin:18px 0}.share-preview{padding:18px;border:1px solid #ebd6df;border-radius:18px;background:#fff5f8;overflow-wrap:anywhere}.share-preview strong{display:block;font-size:13px;color:#8b3452;line-height:1.7}
 .commerce-dialog output{display:block;font-size:14px;line-height:1.7}.plan-card h2{font-size:21px}.partner-public{padding-top:40px}.today-choice-next{margin:22px 0}.today-choice-next h2{font-size:21px}.today-choice-next .quick-inputs{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Keep optional filters and preparation settings reachable without pushing the catalog away. */
+.place-condition-controls>summary,.place-demo-notice details>summary,.my-feature-preferences>summary{min-height:44px;padding:10px 0;cursor:pointer;line-height:1.6}
+.place-condition-controls{margin:12px 0 20px;border-bottom:1px solid #eadce2}
+.place-condition-controls[open]{padding-bottom:12px}
+
+.guest-check-shell .conversation-workspace--open .camellia{min-height:0;padding:12px 16px 8px}

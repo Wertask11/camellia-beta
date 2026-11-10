@@ -77,7 +77,9 @@ export class ReferralService {
       // A retried successful grant remains the same after a new-acceptance stop. Never renew its expiry.
       if (previous.exists)
         return {
-          granted: true,
+          granted:
+            previous.data()!.revoked !== true &&
+            Date.parse(previous.data()!.expiresAt) > now,
           reused: true,
           expiresAt: previous.data()!.expiresAt,
           rewarded: previous.data()!.rewarded,
@@ -234,6 +236,12 @@ export class ReferralService {
         tx.get(grantRef),
         tx.get(receiptRef),
       ]);
+      const g = grant.data();
+      reject(
+        g && g.revoked !== true && Date.parse(g.expiresAt) > this.now(),
+        'TRIAL_EXPIRED',
+        403,
+      );
       if (receipt.exists) {
         reject(
           receipt.data()?.maxCostYen === maxCostYen,
@@ -241,12 +249,6 @@ export class ReferralService {
         );
         return { reserved: true, reused: true };
       }
-      const g = grant.data();
-      reject(
-        g && g.revoked !== true && Date.parse(g.expiresAt) > this.now(),
-        'TRIAL_EXPIRED',
-        403,
-      );
       reject(
         g.aiUsed < g.aiLimit && g.aiReservedYen + maxCostYen <= g.reservedYen,
         'TRIAL_AI_LIMIT',

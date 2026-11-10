@@ -57,3 +57,13 @@
 共有送信・匿名公開は引き続き停止。共有owner削除時の読取を失効させるだけでなく本文もscrubする。紹介は未決定設定がないと起動しない内部transaction基盤を追加。7日体験、月3件の永久選択権、自己／連携ID重複、予算／trial専用枠、同時送信、期限、対象取消をローカルで検証。紹介の公開APIはstatusのみ、POST拒否。signup／実Geminiへの紹介連携は未接続、実際の特典提供と称さない。
 
 Phase 4の全52 unit suites PASS。Phase 5の専用unit、referralと既存sharingのFirestore emulator PASS。5幅・全unit・buildは最終検証へ。未決定事項と未接続部分はreferral-workflow.mdに記載。本番の紹介データ・設定・装飾は0件変更。
+
+## Phase 6：総合検証
+
+全54 unit suites、lint/typecheck/build、全Firestore entry suiteがPASS。紹介取消後／期限後の再送を有効な新特典・AI予約と扱わないガードを追加し、専用emulatorでも再実行PASS。
+
+5幅のCheckあり／なし、Place条件・比較、私的Reflection／任意Memory、手動Circle、通知設定・紹介停止・共有エラー復帰を確認。実PostHog SDKの横取り試験で送信privacy、503復旧・DNT・block・破損・容量不足がPASS。会話のsearch/pagination/legacy/モデル切替/reload/focus/Escape、低いviewportもPASS。
+
+最終画面確認で、条件を変える前の比較候補が残る問題と、低い画面でguest会話入力がnavに隠れる問題を修正。Placeの詳細条件をnative detailsへ整理し、常時デモ表示を保持。低速150ms/200kB/s/CPU4倍遅延で5幅の入力とdialog focusも確認した。
+
+固定Previewの本人確認は「選んだ行動と過去の記録を確認できた」。実際のproviderは回答にないので両認証方式の実操作PASSとはしない。Productionは公開statusの読取のみで、main91e95baと配信indexが変わっていないことを確認。最終レポートと40件の対応表に、未接続・未決定・未検証を分離した。

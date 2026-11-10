@@ -5,7 +5,7 @@ import {PlaceComparison} from '@/components/PlaceComparison';
 import {matchesPlaceConditions,type PlaceConditions} from '@/lib/place/conditions';
 import {PLACE_SECTORS,availableBenefits,type PlaceSector} from '@/lib/place/details';
 import {requestMembership} from '@/lib/membership/client';
-import { useEffect, useState,useRef } from 'react';
+import { useEffect, useState,useRef,type SetStateAction } from 'react';
 import { placeRequest } from '@/lib/place/client';
 import { PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
 import {CHOICE_ACTION_FLOW} from '@/lib/features';
@@ -40,6 +40,7 @@ export function PlaceScreen({
   const viewReceipt=useRef({slug:'',id:''});
   const [conditions,setConditions]=useState<PlaceConditions>({});
   const [compareIds,setCompareIds]=useState<string[]>([]),[comparison,setComparison]=useState<Place[]>(),[enhanced,setEnhanced]=useState(false),[plus,setPlus]=useState(false);
+  const changeConditions=(value:SetStateAction<PlaceConditions>)=>{setConditions(value);setCompareIds([]);};
   const emptyReview={realConfirmed:false,listingPermission:false,photoPermission:false,detailsConfirmed:false,listingEvidence:'',photoEvidence:''};
   const [review,setReview]=useState(emptyReview);
   useEffect(()=>{let active=true;void requestMembership().then(plan=>{if(active)setPlus(plan.plan==='plus');}).catch(()=>{});return()=>{active=false;};},[]);
@@ -221,9 +222,7 @@ export function PlaceScreen({
           aria-label="Placeデモについて"
         >
           <strong>デモ · 掲載イメージ</strong>
-          <p>
-            実在の掲載店舗・施設ではありません。写真は雰囲気を伝える参考画像です。{onSelectPlace?'予約や地図は利用できません。気になる体験のイメージとしてMyへ残せます。':'予約・地図・保存は利用できません。'}確認した実在の場所に、後から差し替えられます。
-          </p>
+          <p>実在の掲載店舗・施設ではありません。</p><details><summary>掲載イメージについて</summary><p>写真は雰囲気を伝える参考画像です。{onSelectPlace?'予約や地図は利用できません。気になる体験のイメージとしてMyへ残せます。':'予約・地図・保存は利用できません。'}確認した実在の場所に、後から差し替えられます。</p></details>
         </section>
       )}
       {error && (
@@ -238,7 +237,7 @@ export function PlaceScreen({
         </p>
       )}
       {busy && <output>…</output>}
-      {!selected&&<section className="place-intents"><h2>今日は、どんな時間にしたい？</h2><p className="meta">場所から選ぶ、今日の小さな一歩。</p><div className="quick-inputs">{Object.entries(PLACE_INTENTS).map(([key,label])=><button key={key} aria-pressed={intent===key} onClick={()=>setIntent(intent===key?'':key)}>{label}</button>)}</div>{contextState&&<label className="privacy-choice"><input type="checkbox" checked={personalized} onChange={e=>{setPersonalized(e.target.checked);onPersonalization?.(e.target.checked);}}/>今日のCheckと選んだ行動を、候補の並び替えに使う<small>この端末内で処理します。会話・月経・My Treeは使わず、店舗へ渡しません。</small></label>}</section>}
+      {!selected&&<section className="place-intents"><h2>今日は、どんな時間にしたい？</h2><p className="meta">場所から選ぶ、今日の小さな一歩。</p><div className="quick-inputs">{Object.entries(PLACE_INTENTS).map(([key,label])=><button key={key} aria-pressed={intent===key} onClick={()=>{setIntent(intent===key?'':key);setCompareIds([]);}}>{label}</button>)}</div>{contextState&&<label className="privacy-choice"><input type="checkbox" checked={personalized} onChange={e=>{setPersonalized(e.target.checked);onPersonalization?.(e.target.checked);}}/>今日のCheckと選んだ行動を、候補の並び替えに使う<small>この端末内で処理します。会話・月経・My Treeは使わず、店舗へ渡しません。</small></label>}</section>}
       {onOpenPlus&&<button className="text-button" onClick={onOpenPlus}>Plusで広がるPlaceの体験を見る · 月500円</button>}
       {operator && (
         <details>
@@ -445,12 +444,12 @@ export function PlaceScreen({
       ) : (
         <>
           <p>地域と過ごし方から探せます。位置情報の許可は必要ありません。</p>
-          <div className="place-filters">
+          <details className="place-condition-controls"><summary>条件を調整する（エリア・料金・時間など）</summary><div className="place-filters">
             <label>
               過ごし方
               <select
                 value={intent}
-                onChange={(event) => setIntent(event.target.value)}
+                onChange={(event) => {setIntent(event.target.value);setCompareIds([]);}}
               >
                 <option value="">自由に探す</option>
                 {Object.entries(PLACE_INTENTS).map(([id, label]) => (
@@ -464,7 +463,7 @@ export function PlaceScreen({
               カテゴリ
               <select
                 value={category}
-                onChange={(event) => setCategory(event.target.value)}
+                onChange={(event) => {setCategory(event.target.value);setCompareIds([]);}}
               >
                 <option value="">すべて</option>
                 {PLACE_CATEGORIES.map((c) => (
@@ -476,7 +475,7 @@ export function PlaceScreen({
               エリア
               <select
                 value={area}
-                onChange={(event) => setArea(event.target.value)}
+                onChange={(event) => {setArea(event.target.value);setCompareIds([]);}}
               >
                 <option value="">すべて</option>
                 {[...new Set(places.map((p) => p.area))].sort().map((a) => (
@@ -485,8 +484,8 @@ export function PlaceScreen({
               </select>
             </label>
           </div>
-          <section className="place-conditions" aria-label="利用条件"><h2>譲れない条件から、候補を絞る</h2><div className="place-filters"><label>分野<select aria-label="Placeの分野" value={conditions.sector??''} onChange={e=>setConditions(c=>({...c,sector:(e.target.value||undefined) as PlaceSector|undefined}))}><option value="">すべて</option>{Object.entries(PLACE_SECTORS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label>表示料金の上限<select aria-label="表示料金の上限" value={conditions.maxBudgetYen??''} onChange={e=>setConditions(c=>({...c,maxBudgetYen:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[1000,3000,5000,10000].map(v=><option key={v} value={v}>{v.toLocaleString()}円まで</option>)}</select></label><label>所要時間<select aria-label="Placeの所要時間" value={conditions.maxMinutes??''} onChange={e=>setConditions(c=>({...c,maxMinutes:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[30,60,120].map(v=><option key={v} value={v}>{v}分以内</option>)}</select></label><label>サービス<select aria-label="Placeのサービス" value={conditions.service??''} onChange={e=>setConditions(c=>({...c,service:e.target.value||undefined}))}><option value="">指定しない</option>{[...new Set(places.flatMap(p=>p.services??[]))].sort().map(v=><option key={v}>{v}</option>)}</select></label></div><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.walkIn)} onChange={e=>setConditions(c=>({...c,walkIn:e.target.checked}))}/>予約なしで利用できる候補</label><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.openAt)} onChange={e=>setConditions(c=>({...c,openAt:e.target.checked?new Date():undefined}))}/>登録された営業時間内の候補</label><p className="meta">情報が不明な候補は、指定条件に一致したとは扱いません。臨時休業・最終料金・予約条件は公式情報をご確認ください。</p></section>
-          <div className="quick-inputs"><button disabled={compareIds.length<2} onClick={()=>{setEnhanced(false);setComparison(places.filter(p=>compareIds.includes(p.slug)));}}>選んだ候補を比較する（{compareIds.length}/3）</button>{onOpenPlus&&<button disabled={compareIds.length<2} onClick={()=>{if(!plus||!personalized){onOpenPlus();return;}if(isDemo){setError('デモではPlusの実提案は利用できません。掲載された事実から比較できます。');return;}void run(async()=>{const result=await placeRequest('',{operation:'recommendation',compareSlugs:compareIds,intents:contextState?localPlaceIntents(contextState):[]});setEnhanced(true);setComparison(result.places);});}}>Plusのパーソナル比較</button>}</div>
+          <section className="place-conditions" aria-label="利用条件"><h2>譲れない条件から、候補を絞る</h2><div className="place-filters"><label>分野<select aria-label="Placeの分野" value={conditions.sector??''} onChange={e=>changeConditions(c=>({...c,sector:(e.target.value||undefined) as PlaceSector|undefined}))}><option value="">すべて</option>{Object.entries(PLACE_SECTORS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label>表示料金の上限<select aria-label="表示料金の上限" value={conditions.maxBudgetYen??''} onChange={e=>changeConditions(c=>({...c,maxBudgetYen:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[1000,3000,5000,10000].map(v=><option key={v} value={v}>{v.toLocaleString()}円まで</option>)}</select></label><label>所要時間<select aria-label="Placeの所要時間" value={conditions.maxMinutes??''} onChange={e=>changeConditions(c=>({...c,maxMinutes:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[30,60,120].map(v=><option key={v} value={v}>{v}分以内</option>)}</select></label><label>サービス<select aria-label="Placeのサービス" value={conditions.service??''} onChange={e=>changeConditions(c=>({...c,service:e.target.value||undefined}))}><option value="">指定しない</option>{[...new Set(places.flatMap(p=>p.services??[]))].sort().map(v=><option key={v}>{v}</option>)}</select></label></div><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.walkIn)} onChange={e=>changeConditions(c=>({...c,walkIn:e.target.checked}))}/>予約なしで利用できる候補</label><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.openAt)} onChange={e=>changeConditions(c=>({...c,openAt:e.target.checked?new Date():undefined}))}/>登録された営業時間内の候補</label><p className="meta">情報が不明な候補は、指定条件に一致したとは扱いません。臨時休業・最終料金・予約条件は公式情報をご確認ください。</p></section>
+          </details><div className="quick-inputs"><button disabled={compareIds.length<2} onClick={()=>{setEnhanced(false);setComparison(places.filter(p=>compareIds.includes(p.slug)));}}>選んだ候補を比較する（{compareIds.length}/3）</button>{onOpenPlus&&<button disabled={compareIds.length<2} onClick={()=>{if(!plus||!personalized){onOpenPlus();return;}if(isDemo){setError('デモではPlusの実提案は利用できません。掲載された事実から比較できます。');return;}void run(async()=>{const result=await placeRequest('',{operation:'recommendation',compareSlugs:compareIds,intents:contextState?localPlaceIntents(contextState):[]});setEnhanced(true);setComparison(result.places);});}}>Plusのパーソナル比較</button>}</div>
           {filtered.filter((p) => !p.sponsored).map(card)}
           {filtered.some((p) => p.sponsored) && (
             <section aria-label="広告の掲載場所">
