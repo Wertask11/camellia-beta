@@ -36,15 +36,15 @@ const mocks = {
   'firebase/auth': state,
   '@/lib/schoolpark/firebase': `export {schoolParkAuth} from 'firebase/auth';`,
   '@/lib/auth/camellia': `import{setUser}from'firebase/auth';
-import{bridgeGuestOAuth,cancelGuestLogin,clearGuestCheck,completeGuestOAuth,readGuestCheck}from'@/lib/onboarding/guest-check';
+import{bridgeGuestOAuth,cancelGuestLogin,clearGuestCheck,completeGuestOAuth,readGuestDraft}from'@/lib/onboarding/guest-check';
 export const startLineLogin=()=>{
  const uid=sessionStorage.getItem('ux-login-uid')||'synthetic-ux-user';
  if(${checkFirst}){
   const state='synthetic-line-state-local-only';
   if(sessionStorage.getItem('ux-auth-mode')==='cancel'){cancelGuestLogin();sessionStorage.setItem('ux-auth-return','cancel');location.assign('/');return;}
-  if(readGuestCheck())bridgeGuestOAuth(state);
+  if(readGuestDraft())bridgeGuestOAuth(state);
   setUser({uid,isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})});
-  if(readGuestCheck())completeGuestOAuth(state,uid);
+  if(readGuestDraft())completeGuestOAuth(state,uid);
   sessionStorage.setItem('ux-auth-return','line');location.assign('/');return;
  }
  setUser({uid,isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})});

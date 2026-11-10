@@ -3,7 +3,7 @@ import { currentAge, MIN_AGE, MAX_AGE } from '@/lib/profile';
 import type { Profile } from '@/types';
 /** existing: someone who already used Camellia (β) and is asked once for what v1 requires; their records stay.
  * Consent to Camellia's Terms / Privacy is given at login (AccountScreen); saving here records agreedAt once. */
-export function ProfileScreen({profile,onSave,onBack,existing=false,hasGuestCheck=false}:{profile:Profile;onSave:(patch:Partial<Profile>)=>void;onBack?:()=>void;existing?:boolean;hasGuestCheck?:boolean}) {
+export function ProfileScreen({profile,onSave,onBack,existing=false,hasGuestJourney=false,hasGuestCheck=false}:{profile:Profile;onSave:(patch:Partial<Profile>)=>void;onBack?:()=>void;existing?:boolean;hasGuestJourney?:boolean;hasGuestCheck?:boolean}) {
   const [name,setName]=useState(profile.name),[birthDate,setBirthDate]=useState(profile.birthDate??''),[women,setWomen]=useState(profile.womanSelfDeclared??false);
   const [region,setRegion]=useState(profile.region??''),[lifestyle,setLifestyle]=useState(profile.lifestyle),[living,setLiving]=useState(profile.livingSituation??''),[sleep,setSleep]=useState(String(profile.usualSleep??'')),[concerns,setConcerns]=useState(profile.concerns??''),[purposes,setPurposes]=useState(profile.purposes??[]),[period,setPeriod]=useState(profile.periodEnabled),[minutes,setMinutes]=useState(String(profile.availableMinutes??''));
   const age=currentAge(birthDate),valid=Boolean(name.trim()&&age!==undefined&&age>=MIN_AGE&&age<=MAX_AGE&&women);
@@ -31,7 +31,7 @@ export function ProfileScreen({profile,onSave,onBack,existing=false,hasGuestChec
         <fieldset><legend>使う目的（複数選択可）</legend>{['心を整えたい','身体を整えたい','生活を整えたい','自分を知りたい','人間関係','仕事','恋愛','その他'].map(value=><label className="profile-check" key={value}><input type="checkbox" checked={purposes.includes(value)} onChange={()=>setPurposes(items=>items.includes(value)?items.filter(x=>x!==value):[...items,value])}/>{value}</label>)}</fieldset>
         <label className="profile-check"><input type="checkbox" checked={period} onChange={e=>setPeriod(e.target.checked)}/>月経関連の記録を提案に使う</label>
       </details>}
-      <button className="primary" disabled={!valid} type="submit">{onBack?'変更を保存する':hasGuestCheck?'記録を残して続ける':'今日の私をCheckする'}</button>
+      <button className="primary" disabled={!valid} type="submit">{onBack?'変更を保存する':hasGuestCheck||hasGuestJourney?'記録を残して続ける':'今日の私をCheckする'}</button>
     </form>
   </main>;
 }

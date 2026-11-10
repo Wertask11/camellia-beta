@@ -6,7 +6,7 @@ ProductionはHTTP 200、配信入口index-DfJLd4me.js。chat公開statusはenabl
 
 既存仕様はCheck-first、写真のDiscover、YURA/Lactone、会話ライブラリ、明示Memory、Today One Flow、Circle moderation、protected subscription、任意fieldのarchive同期。データ一括migrationは予定しない。公開設定・招待・Rules・claim・決済・配信・キャンペーンを勝手に変更しない。公開表記はCamelliaを維持し、指示書中の「Camellia AI」を新たな画面名として復活させない。
 
-決済と実在掲載の準備状況を本人へ確認中。未決定の月予算・trial専用AI枠・開始数値・装飾デザイン・上限超過時の扱い・重複規則・期間・店舗有料額・来店確認方式は、null／未設定を許容する設定モデルとし、安全に起動できない場合は開始を拒否する。架空店舗・特典・装飾・決済成功・来店確認は作らない。
+本人から決済と実在掲載はどちらも未準備と回答を受領。未決定の月予算・trial専用AI枠・開始数値・装飾デザイン・上限超過時の扱い・重複規則・期間・店舗有料額・来店確認方式は、null／未設定を許容する設定モデルとし、安全に起動できない場合は開始を拒否する。架空店舗・特典・装飾・決済成功・来店確認は作らない。
 
 |採用事項|改修前|コードの根拠|不足と実施方針|Phase|
 |---|---|---|---|---|
