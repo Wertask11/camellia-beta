@@ -20,9 +20,13 @@ export type GuestCheck = JourneyChoices & {
   entrySession?: string;
   shown: string[];
 };
+/** No synthetic Check: a catalog-only journey has its own version and identity. */
+export type GuestExploration = JourneyChoices & {version:2;journeyId:string;check?:never;expiresAt:number;phase:'preview'|'pending'|'bound';method?:Method;attempt?:string;ownerUid?:string;entrySession?:string;shown:string[]};
+export type GuestDraft = GuestCheck | GuestExploration;
+export const guestDraftId=(draft:GuestDraft)=>draft.version===1?draft.check.id:draft.journeyId;
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const owner = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 128 && !/[\s/]/.test(v);
-let memory: GuestCheck | undefined;
+let memory: GuestDraft | undefined;
 let loaded = false;
 let storageUnavailable = false;
 const changed = () => { if (typeof window !== 'undefined') window.dispatchEvent(new window.Event(GUEST_CHECK_CHANGED)); };
@@ -57,34 +61,49 @@ export function parseGuestCheck(value: unknown, now = Date.now()): GuestCheck | 
     ...(uuid(v.entrySession) ? { entrySession: v.entrySession } : {}),
     shown: Array.isArray(v.shown) ? v.shown.filter((x): x is string => ['result', 'prompt'].includes(String(x))).slice(0, 2) : [],...safeJourney(v,now) };
 }
-function write(value: GuestCheck | undefined) {
+export function parseGuestDraft(value:unknown,now=Date.now()):GuestDraft|undefined {
+ if(!value||typeof value!=='object')return;
+ const v=value as Record<string,unknown>;
+ if(v.version===1)return parseGuestCheck(value,now);
+ if(v.version!==2||v.check!==undefined||!uuid(v.journeyId)||typeof v.expiresAt!=='number'||!Number.isFinite(v.expiresAt)||v.expiresAt<=now||v.expiresAt>now+GUEST_TTL_MS||!['preview','pending','bound'].includes(String(v.phase)))return;
+ if(v.phase==='pending'&&(!uuid(v.attempt)||!['line','google'].includes(String(v.method))))return;
+ if(v.phase==='bound'&&(!owner(v.ownerUid)||!uuid(v.attempt)))return;
+ return {version:2,journeyId:v.journeyId,expiresAt:v.expiresAt,phase:v.phase as GuestExploration['phase'],...(v.method==='line'||v.method==='google'?{method:v.method}:{}),...(uuid(v.attempt)?{attempt:v.attempt}:{}),...(owner(v.ownerUid)?{ownerUid:v.ownerUid}:{}),...(uuid(v.entrySession)?{entrySession:v.entrySession}:{}),shown:Array.isArray(v.shown)&&v.shown.includes('prompt')?['prompt']:[],...safeJourney(v,now)};
+}
+function write(value: GuestDraft | undefined) {
   memory = value; loaded = true;
   try { if(value)sessionStorage.setItem(GUEST_CHECK_KEY, JSON.stringify(value));else sessionStorage.removeItem(GUEST_CHECK_KEY); }
   catch { storageUnavailable = true; }
   changed();
 }
 function removeBridge() { try { localStorage.removeItem(GUEST_OAUTH_KEY); } catch { /* no bridge */ } }
-function readBridge(now = Date.now()): { state: string; draft: GuestCheck; expiresAt: number } | undefined {
+function readBridge(now = Date.now()): { state: string; draft: GuestDraft; expiresAt: number } | undefined {
   try {
     const raw = localStorage.getItem(GUEST_OAUTH_KEY);
     if (!raw) return;
     if (raw.length > 16000) { removeBridge(); return; }
-    const v = JSON.parse(raw), draft = parseGuestCheck(v.draft, now);
+    const v = JSON.parse(raw), draft = parseGuestDraft(v.draft, now);
     if (!draft || draft.phase !== 'pending' || draft.method !== 'line' || typeof v.state !== 'string' ||
         !/^[A-Za-z0-9_-]{16,128}$/.test(v.state) || typeof v.expiresAt !== 'number' ||
         v.expiresAt <= now || v.expiresAt > now + GUEST_OAUTH_TTL_MS) { removeBridge(); return; }
     return { state: v.state, draft, expiresAt: v.expiresAt };
   } catch { removeBridge(); return; }
 }
-export function readGuestCheck(now = Date.now()): GuestCheck | undefined {
+export function readGuestDraft(now = Date.now()): GuestDraft | undefined {
   readBridge(now); // expire a stranded OAuth bridge on the next visit
   if (!loaded && typeof sessionStorage !== 'undefined') {
     loaded = true;
-    try { const raw = sessionStorage.getItem(GUEST_CHECK_KEY); memory = raw && raw.length <= 16000 ? parseGuestCheck(JSON.parse(raw), now) : undefined; if(raw&&!memory)sessionStorage.removeItem(GUEST_CHECK_KEY); }
+    try { const raw = sessionStorage.getItem(GUEST_CHECK_KEY); memory = raw && raw.length <= 16000 ? parseGuestDraft(JSON.parse(raw), now) : undefined; if(raw&&!memory)sessionStorage.removeItem(GUEST_CHECK_KEY); }
     catch { storageUnavailable = true; }
   }
-  if (memory && !parseGuestCheck(memory, now)) { write(undefined); return; }
+  if (memory && !parseGuestDraft(memory, now)) { write(undefined); return; }
   return memory;
+}
+/** Legacy callers keep a Check-only view. */
+export function readGuestCheck(now=Date.now()):GuestCheck|undefined{const draft=readGuestDraft(now);return draft?.version===1?draft:undefined;}
+export function createGuestExploration(entrySession?:string,now=Date.now()):GuestDraft{
+ const current=readGuestDraft(now);if(current)return current;
+ const draft:GuestExploration={version:2,journeyId:crypto.randomUUID(),expiresAt:now+GUEST_TTL_MS,phase:'preview',shown:[],...(uuid(entrySession)?{entrySession}:{})};write(draft);return draft;
 }
 export function createGuestCheck(input: { mood: Mood } & Partial<Checkin>, entrySession?: string, now = Date.now()) {
   if (checkInputError(input)) throw new Error('INVALID_GUEST_CHECK');
@@ -92,58 +111,59 @@ export function createGuestCheck(input: { mood: Mood } & Partial<Checkin>, entry
   const check = guestCheckValue({ ...input, id: crypto.randomUUID(), createdAt: at, updatedAt: at }, now);
   if (!check) throw new Error('INVALID_GUEST_CHECK');
   removeBridge();
-  const draft: GuestCheck = { ...safeJourney(readGuestCheck(now),now),version: 1, check, phase: 'preview', expiresAt: now + GUEST_TTL_MS,
+  const draft: GuestCheck = { ...safeJourney(readGuestDraft(now),now),version: 1, check, phase: 'preview', expiresAt: now + GUEST_TTL_MS,
     ...(uuid(entrySession) ? { entrySession } : {}), shown: [] };
   write(draft); return draft;
 }
 /** Public catalog selections only. Conversation remains in component memory, never in the OAuth bridge. */
-export function updateGuestJourney(choices:JourneyChoices){const draft=readGuestCheck();if(!draft||draft.phase!=='preview')return;write({...draft,...safeJourney({...draft,...choices})});}
+export function updateGuestJourney(choices:JourneyChoices){const draft=readGuestDraft()??createGuestExploration();if(draft.phase!=='preview')return;write({...draft,...safeJourney({...draft,...choices})});}
 export function clearGuestCheck() { removeBridge(); write(undefined); }
 export function markGuestShown(stage: 'result' | 'prompt') {
-  const draft = readGuestCheck();
+  const draft = readGuestDraft();
   if (!draft || draft.shown.includes(stage)) return false;
   // Mark before forwarding an event so React StrictMode/reload cannot emit the same impression twice.
   write({ ...draft, shown: [...draft.shown, stage] }); return true;
 }
 export function armGuestLogin(method: Method) {
-  const draft = readGuestCheck();
+  const draft = readGuestDraft();
   if (!draft || draft.phase === 'bound') return false;
   removeBridge(); write({ ...draft, phase: 'pending', method, attempt: crypto.randomUUID(), ownerUid: undefined }); return true;
 }
 export function cancelGuestLogin() {
-  removeBridge(); const draft = readGuestCheck();
+  removeBridge(); const draft = readGuestDraft();
   if (draft?.phase === 'pending') write({ ...draft, phase: 'preview', method: undefined, attempt: undefined, ownerUid: undefined });
 }
 /** Only while an explicit guest-save LINE login is in flight. Never created during ordinary Check. */
 export function bridgeGuestOAuth(state: string, now = Date.now()) {
-  const draft = readGuestCheck(now);
+  const draft = readGuestDraft(now);
   if (!draft || draft.phase !== 'pending' || draft.method !== 'line') return;
   try { localStorage.setItem(GUEST_OAUTH_KEY, JSON.stringify({ state, draft, expiresAt: Math.min(draft.expiresAt, now + GUEST_OAUTH_TTL_MS) })); return true; }
   catch { storageUnavailable = true; return false; }
 }
 /** Called only after the existing nonce/state and token exchange have succeeded. */
 export function completeGuestOAuth(state: string, uid: string, now = Date.now()) {
-  const bridge = readBridge(now), local = readGuestCheck(now);
+  const bridge = readBridge(now), local = readGuestDraft(now);
   if (!bridge || bridge.state !== state || !owner(uid)) { cancelGuestLogin(); return false; }
-  if (local && (local.check.id !== bridge.draft.check.id || local.attempt !== bridge.draft.attempt)) { removeBridge(); return false; }
+  if (local && (guestDraftId(local) !== guestDraftId(bridge.draft) || local.attempt !== bridge.draft.attempt)) { removeBridge(); return false; }
   removeBridge(); write({ ...bridge.draft, phase: 'bound', ownerUid: uid }); return true;
 }
 export function completeGuestGoogle(uid: string) {
-  const draft = readGuestCheck();
+  const draft = readGuestDraft();
   if (!draft || draft.phase !== 'pending' || draft.method !== 'google' || !owner(uid)) return false;
   removeBridge(); write({ ...draft, phase: 'bound', ownerUid: uid }); return true;
 }
-export function guestEventProperties(draft = readGuestCheck()): Record<string, string> {
-  return { entry_flow: 'check_first', ...(uuid(draft?.entrySession) ? { entry_session: draft.entrySession } : {}) };
+export function guestEventProperties(draft = readGuestDraft()): Record<string, string> {
+  return { entry_flow: draft?.version===2?'explore_first':'check_first', ...(uuid(draft?.entrySession) ? { entry_session: draft.entrySession } : {}) };
 }
 /** No implicit guest import. The current verified account must be the one that completed this attempt. */
 export function guestForAccount(uid: string, now = Date.now()) {
   const draft = readGuestCheck(now);
   return draft?.phase === 'bound' && draft.ownerUid === uid ? draft : undefined;
 }
+export function journeyForAccount(uid:string,now=Date.now()){const draft=readGuestDraft(now);return draft?.phase==='bound'&&draft.ownerUid===uid?draft:undefined;}
 export function finishGuestTransfer(id: string, uid: string) {
-  const draft = guestForAccount(uid);
-  if (!draft || draft.check.id !== id) return false;
+  const draft = journeyForAccount(uid);
+  if (!draft || guestDraftId(draft) !== id) return false;
   clearGuestCheck(); return true;
 }
 /** Inaccessible session storage must be visible to the flow; do not silently promise OAuth persistence. */

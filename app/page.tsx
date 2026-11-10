@@ -41,7 +41,7 @@ import { AuthFlowError, finishAuthCallback, logoutCamellia } from '@/lib/auth/ca
 import { captureAuthEvent } from '@/lib/analytics/posthog';
 import { CHECK_FIRST_ONBOARDING, CHOICE_ACTION_FLOW, LIVE_DESTINATIONS } from '@/lib/features';
 import { currentAnalyticsSession } from '@/lib/analytics/session';
-import { armGuestLogin, cancelGuestLogin, clearGuestCheck, completeGuestGoogle, createGuestCheck, finishGuestTransfer, GUEST_CHECK_CHANGED, guestEventProperties, guestForAccount, guestStorageIsUnavailable, markGuestShown, readGuestCheck, type GuestCheck } from '@/lib/onboarding/guest-check';
+import { armGuestLogin, cancelGuestLogin, clearGuestCheck, completeGuestGoogle, createGuestCheck, finishGuestTransfer, GUEST_CHECK_CHANGED, guestEventProperties, guestForAccount, guestStorageIsUnavailable, markGuestShown, readGuestDraft,journeyForAccount, type GuestDraft } from '@/lib/onboarding/guest-check';
 import type { AnalyticsEventName, Category, Recommendation, TreeLeaf } from '@/types';
 
 /* ログインの戻り（LINE / SchoolPark）で起きたことを、その人に分かる言葉にする。
@@ -66,10 +66,10 @@ export default function Page() {
   const store = useCamelliaStore();
   const currentTime=useCurrentTime(store.state.checkins);
   const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app' | 'guest'>('welcome');
-  const [guest,setGuest]=useState<GuestCheck>();
+  const [guest,setGuest]=useState<GuestDraft>();
   const guestResume=useRef('');
   useEffect(()=>{
-    const read=()=>{const draft=readGuestCheck();setGuest(draft);if(CHECK_FIRST_ONBOARDING&&draft&&!schoolParkAuth.currentUser)setEntry('guest');};
+    const read=()=>{const draft=readGuestDraft();setGuest(draft);if(CHECK_FIRST_ONBOARDING&&draft&&!schoolParkAuth.currentUser)setEntry('guest');};
     read();window.addEventListener(GUEST_CHECK_CHANGED,read);
     const timer=setInterval(read,15000);
     return()=>{window.removeEventListener(GUEST_CHECK_CHANGED,read);clearInterval(timer);};
@@ -166,7 +166,7 @@ export default function Page() {
       appliedUser.current=user?`${user.uid}:${user.isAnonymous}`:'';
       if(previous!==appliedUser.current){accessStarted.current='';setAccess(undefined);}
       setAccountReady(false);setAccountError('');setAccountUser(user?.isAnonymous?null:user);
-      const draft=readGuestCheck();
+      const draft=readGuestDraft();
       if(previous?.endsWith(':false')&&previous!==appliedUser.current){clearGuestCheck();if(!user||user.isAnonymous)setEntry('account');}
       else if(draft?.ownerUid&&draft.ownerUid!==user?.uid)clearGuestCheck();
       else if(user&&!user.isAnonymous&&draft?.phase==='preview')clearGuestCheck();
@@ -184,19 +184,19 @@ export default function Page() {
     if(!store.ready||!accountReady||callbackHandled.current)return;
     callbackHandled.current=true;
     void finishAuthCallback().then(result=>{
-      if(!result){if(readGuestCheck()?.phase==='pending')cancelGuestLogin();return;}
-      const draft=readGuestCheck();
+      if(!result){if(readGuestDraft()?.phase==='pending')cancelGuestLogin();return;}
+      const draft=readGuestDraft();
       setPendingAuthAnalytics({method:result.method,flow:'redirect',linked:result.linked,...(draft?.phase==='bound'?{entryProperties:guestEventProperties(draft)}:{})});
       setEntry('app');
       const user=schoolParkAuth.currentUser;
       if(user&&appliedUser.current!==null&&appliedUser.current!==`${user.uid}:${user.isAnonymous}`)applyUser.current(user);
     }).catch(error=>{
       if(error instanceof AuthFlowError){
-        const properties=readGuestCheck()?guestEventProperties():{};
+        const properties=readGuestDraft()?guestEventProperties():{};
         if(error.returned)captureAuthEvent('auth_returned',{method:error.method,auth_flow:'redirect',...properties},store.state.profile.id);
         captureAuthEvent('login_failure',{method:error.method,stage:error.stage,reason:error.reason,...properties},store.state.profile.id);
       }
-      const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry(CHECK_FIRST_ONBOARDING&&readGuestCheck()?'guest':'account');
+      const user=schoolParkAuth.currentUser;setAuthNotice(authNoticeFor(error instanceof Error?error.message:'AUTH_FAILED',Boolean(user&&!user.isAnonymous)));setEntry(CHECK_FIRST_ONBOARDING&&readGuestDraft()?'guest':'account');
     });
   },[store.ready,accountReady,store.state.profile.id,store.state.profile,store.state.onboardingComplete]);
   useEffect(()=>{
@@ -247,13 +247,22 @@ export default function Page() {
     store.resumeGuestCheck(draft.check.id,profileId,properties);
     queueMicrotask(()=>{if(schoolParkAuth.currentUser?.uid===accountUid){setEntry('app');setTab(CHOICE_ACTION_FLOW&&((draft.actions?.length??0)+(draft.savedActions?.length??0)+(draft.placeChoices?.length??0)>0)?'my':'today');}});
   },[accountUser,accountReady,accountError,access,accessFor,accessBlocked,guest,store.state,store.storageError,store.adoptGuestCheck,store.hasPersistedCheck,store.resumeGuestCheck]);
+  useEffect(()=>{
+    if(!CHECK_FIRST_ONBOARDING||!accountUser||!accountReady||accountError||store.storageError||!accessFor||access?.verified!==true||accessBlocked||!profileComplete(store.state.profile))return;
+    const draft=journeyForAccount(accountUser.uid);if(!draft||draft.version!==2||guestResume.current===draft.journeyId)return;
+    const profileId=store.state.profile.id,uid=accountUser.uid;
+    const contains=(key:'actions'|'savedActions'|'placeChoices')=>(draft[key]??[]).every(a=>(store.state[key]??[]).some(old=>old.id===a.id));
+    if(!(['actions','savedActions','placeChoices'] as const).every(contains)){store.adoptGuestJourney(draft,draft.journeyId,profileId,()=>schoolParkAuth.currentUser?.uid===uid&&journeyForAccount(uid)?.phase==='bound',guestEventProperties(draft));return;}
+    if(!store.hasPersistedJourney(draft,profileId)||schoolParkAuth.currentUser?.uid!==uid||!finishGuestTransfer(draft.journeyId,uid))return;
+    guestResume.current=draft.journeyId;queueMicrotask(()=>{if(schoolParkAuth.currentUser?.uid===uid){setEntry('app');setTab('my');}});
+  },[accountUser,accountReady,accountError,access,accessFor,accessBlocked,guest,store.state,store.storageError,store.adoptGuestJourney,store.hasPersistedJourney]);
   const onLoginSelect=(method:'line'|'google')=>{if(guestVisible&&guest)armGuestLogin(method);setAuthNotice('');captureAuthEvent('auth_method_selected',{method,auth_method:method,...(guestVisible&&guest?guestEventProperties():{})},store.state.profile.id);};
   const onAuthReturned=(method:'line'|'google')=>{popupAuthReturned.current=method;};
   const onLoginSuccess=(method:'line'|'google',uid?:string)=>{
       if(method==='google'&&uid&&schoolParkAuth.currentUser?.uid===uid)completeGuestGoogle(uid);
-      const draft=readGuestCheck();popupAuthReturned.current=undefined;setPendingAuthAnalytics({method,flow:'popup',...(draft?.phase==='bound'?{entryProperties:guestEventProperties(draft)}:{})});
+      const draft=readGuestDraft();popupAuthReturned.current=undefined;setPendingAuthAnalytics({method,flow:'popup',...(draft?.phase==='bound'?{entryProperties:guestEventProperties(draft)}:{})});
   };
-  const onLoginFailure=(method:'line'|'google',reason:string,stage:string)=>{const draft=readGuestCheck(),properties=draft?guestEventProperties(draft):{};if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup',...properties},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage,...properties},store.state.profile.id);if(draft)cancelGuestLogin();};
+  const onLoginFailure=(method:'line'|'google',reason:string,stage:string)=>{const draft=readGuestDraft(),properties=draft?guestEventProperties(draft):{};if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup',...properties},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage,...properties},store.state.profile.id);if(draft)cancelGuestLogin();};
   const authHandlers={onSelect:onLoginSelect,onAuthReturned,onLoginSuccess,onLoginFailure,onContinue:()=>setEntry('app')};
   const dialogs=<>{shareDraft&&<PartnerShareDialog draft={shareDraft} onClose={()=>setShareDraft(undefined)} onTrack={store.track}/>} {plusSource&&<PlusOffer source={plusSource} onClose={()=>setPlusSource(undefined)} onTrack={store.track}/>}</>;
   if(publicShareToken!==null)return <div className="app-shell"><PartnerShareScreen token={publicShareToken} onTrack={store.track} onBack={()=>{setPublicShareToken(null);history.replaceState({},'',location.pathname);}}/></div>;
@@ -298,8 +307,8 @@ export default function Page() {
   }}/></div>;
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='pending')return <output className="loading">今日のCheckを確認しています…</output>;
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.ownerUid===accountUser.uid&&(!accessFor||access?.verified!==true))return <main className="screen"><h1>今日の記録を残す前に</h1><output>利用できることを確認しています。時間がかかる場合は、通信を確かめてお試しください。Checkは一時的に保持しています。</output><button className="primary" onClick={()=>{const uid=accountUser.uid;setAccess(undefined);void Promise.race([fetchAccess(),new Promise<null>(resolve=>setTimeout(()=>resolve(null),5000))]).then(status=>{if(schoolParkAuth.currentUser?.uid===uid)setAccess({uid,status,verified:Boolean(status)});});}}>もう一度確認する</button><button className="text-button" onClick={logoutToAccount}>ログアウトする</button></main>;
-  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} hasGuestCheck={guest?.phase==='bound'&&guest.ownerUid===accountUser.uid} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!firstProfileComplete(store.state.profile))store.track('profile_complete',guest?.phase==='bound'?guestEventProperties(guest):{});store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
-  if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.ownerUid===accountUser.uid&&!store.state.checkins.some(check=>check.id===guest.check.id))return <output className="loading">今日の記録を引き継いでいます…</output>;
+  if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} hasGuestCheck={Boolean(guest?.phase==='bound'&&guest.check&&guest.ownerUid===accountUser.uid)} hasGuestJourney={Boolean(guest?.phase==='bound'&&!guest.check&&guest.ownerUid===accountUser.uid)} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!firstProfileComplete(store.state.profile))store.track('profile_complete',guest?.phase==='bound'?guestEventProperties(guest):{});store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
+  if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.check&&guest.ownerUid===accountUser.uid&&!store.state.checkins.some(check=>check.id===guest.check!.id))return <output className="loading">今日の記録を引き継いでいます…</output>;
   const openAction = (r: Recommendation,source='today') => {
     setSelectionSource(source);
     if (r.action.opens === 'camellia') {

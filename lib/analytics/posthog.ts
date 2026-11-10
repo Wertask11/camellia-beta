@@ -31,6 +31,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   auth_returned: ['method', 'auth_flow', 'entry_flow', 'entry_session'],
   login_failure: ['method', 'stage', 'reason', 'entry_flow', 'entry_session'],
   save_prompt_view: ['entry_flow', 'entry_session'],
+  guest_choices_saved: ['entry_flow', 'entry_session', 'storage'],
   guest_check_saved: ['entry_flow', 'entry_session', 'storage'],
   today_flow_resume: ['entry_flow', 'entry_session'],
   conversation_starter_selected: ['starter_id'],
@@ -306,7 +307,7 @@ export function captureAuthEvent(
 
 const ENUMS: Record<string, readonly string[]> = {
   catalog:['demo','published'],share_kind:['feeling','action','place'],share_result:['sent','copied','cancelled','failed'],source:['place','partner','my'],currency:['JPY'],
-  entry_flow: ['check_first', 'login_first'], storage: ['device'],
+  entry_flow: ['check_first', 'login_first', 'explore_first'], storage: ['device'],
   period: ['morning','day','evening','night'], method: AUTH_METHODS, auth_method: AUTH_METHODS,
   auth_flow: AUTH_FLOWS, stage: AUTH_STAGES, reason: AUTH_REASONS,
   reflection_stage: ['first_day','yesterday_compare','recent','weekly'],

@@ -1,3 +1,5 @@
+import {RecommendationControls} from '@/components/RecommendationControls';
+import {adjustedRecommendations,type RecommendationFilter} from '@/lib/recommendation/adjustments';
 import { useCheckView } from '@/hooks/useCheckView';
 /* oxlint-disable next/no-img-element -- external editorial images are intentionally unoptimized in this prototype */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -19,6 +21,7 @@ import { TodayScreenClassic } from '@/screens/TodayScreenClassic';
 import type { AnalyticsEventName, CamelliaState, Checkin, FeedbackRating, Mood, Recommendation } from '@/types';
 
 type TodayProps = {
+  onSkipCheck?:()=>void;
   onPlace?:()=>void;
   /** First-Check preview reuses the form/result; protected steps remain behind this save prompt. */
   guestSavePrompt?: ReactNode;
@@ -96,7 +99,7 @@ function TodayOneFlow({
   onIntent, onTalk, onFortune, onTree, onMy, onComplete, onFeedback, onProposals, onTrack,
   focusIntent = false, onIntentFocused,
   guestSavePrompt,
-  onPlace,
+  onPlace,onSkipCheck,
 }: TodayProps) {
   const currentTime = useCurrentTime(state.checkins);
   useCheckView(onCheckView);
@@ -106,6 +109,8 @@ function TodayOneFlow({
   const [stress, setStress] = useState<Checkin['stress']>();
   const [period, setPeriod] = useState('');
   const [editingCheck, setEditingCheck] = useState(false);
+  const [browseWithoutCheck,setBrowseWithoutCheck]=useState(false);
+  const [filter,setFilter]=useState<RecommendationFilter>({});
   const [inputError, setInputError] = useState('');
   const saveLocked = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
@@ -135,7 +140,7 @@ function TodayOneFlow({
   const yesterday = useMemo(() => yesterdayMood(state.checkins, displayDate), [state.checkins, displayDate]);
   const check = dailyReflection ? todayCheck(state, displayDate) : undefined;
   const checked = Boolean(dailyReflection && check);
-  const showForm = !checked || editingCheck;
+  const showForm = (!checked&&!browseWithoutCheck) || editingCheck;
 
   useEffect(() => {
     if (checked && justSaved.current && resultHeading.current) {
@@ -145,7 +150,7 @@ function TodayOneFlow({
     }
   }, [checked, state.checkins.length]);
   /* 2/3: one plan in front, two quiet ones. 何もしない lives only in 今日どうする？. */
-  const plans = useMemo(() => todayPlans(state, displayDate), [state, displayDate]);
+  const plans = useMemo(() => filter.category!==undefined||filter.maxMinutes!==undefined||!checked?adjustedRecommendations(state,filter,displayDate):todayPlans(state,displayDate), [state,displayDate,filter,checked]);
   useEffect(() => {
     if (checked && !guestSavePrompt) onProposals(plans.map(r => r.action.id));
   }, [plans, checked, onProposals, guestSavePrompt]);
@@ -182,7 +187,7 @@ function TodayOneFlow({
   /* Once something is chosen today it stays in front (the engine may reorder after a choice). */
   const mainRecord = state.actions.find(a => jstDate(new Date(a.startedAt ?? a.createdAt)) === today
     && a.status !== 'skipped' && a.actionId !== 'do-nothing' && ACTIONS.some(x => x.id === a.actionId));
-  const chosenAction = mainRecord && ACTIONS.find(x => x.id === mainRecord.actionId);
+  const chosenAction = !filter.category&&filter.maxMinutes===undefined&&mainRecord && ACTIONS.find(x => x.id === mainRecord.actionId);
   const main: Recommendation | undefined = chosenAction
     ? plans.find(r => r.action.id === chosenAction.id) ?? { action: chosenAction, score: 0, reasons: ['今日、あなたが選んだ過ごし方'] }
     : plans[0];
@@ -225,7 +230,7 @@ function TodayOneFlow({
         <section className="check-folded" aria-label="今日のCheck">
           <span className="check-folded-emoji" aria-hidden="true">{moodMeta(check.mood).emoji}</span>
           <div>
-            <p>今日のCheck · {jstTime(check.createdAt)} · {dailyReflection!.historyDays}日目</p>
+            <p>今日のCheck · {jstTime(check.createdAt)} · {dailyReflection!.historyDays}日分の記録</p>
             <b>{checkSummaryLine(check)}</b>
           </div>
           <button className="text-button" onClick={recheck}>選び直す</button>
@@ -280,7 +285,10 @@ function TodayOneFlow({
         </section>
       )}
 
-      {!checked && (
+      {!checked&&<button className="secondary-button" onClick={()=>{setBrowseWithoutCheck(true);setEditingCheck(false);onSkipCheck?.();}}>Checkをせずに選択肢を見る</button>}
+      {(checked||browseWithoutCheck)&&<RecommendationControls value={filter} onChange={setFilter}/>}
+      {!checked&&browseWithoutCheck&&<section className="flow-section" aria-label="Checkなしの提案"><p className="eyebrow">Checkなしでも、自分で選べます</p><h2>今日の過ごし方</h2>{plans.map((r,index)=><article key={r.action.id} className={index===0?'plan-main':'panel'}>{index===0&&<img src={r.action.image} alt="" loading="lazy"/>}<div><p className="eyebrow">{index===0?'今日のひとつの提案':'別の候補'} · {r.action.minutes}分</p><h3>{r.action.title}</h3><p>{r.reasons.join('、')}。</p><button className={index===0?'plan-cta':'text-button'} onClick={()=>onOpenAction(r)}>{index===0?'この過ごし方を見る':'別の候補を開く'}</button></div></article>)}{!plans.length&&<output>選んだ条件に合う過ごし方がありません。条件を変えるか、今日は選ばなくても大丈夫です。</output>}<div className="quick-inputs"><button onClick={()=>onIntent('探す')}>Discoverでほかの選択肢を見る</button>{onPlace&&<button onClick={onPlace}>Placeで場所・体験を見る →</button>}</div></section>}
+      {!checked&&!browseWithoutCheck && (
         <section className="flow-preview" aria-label="Checkのあとに返ってくるもの">
           <p>Checkすると、ここに返ってきます</p>
           <ol>
