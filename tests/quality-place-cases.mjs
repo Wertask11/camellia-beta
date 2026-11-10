@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'vite';
+const server=await createServer({configFile:false,root:process.cwd(),resolve:{alias:{'@':process.cwd()}},server:{middlewareMode:true,hmr:false}});
+try{
+ const {validatePlace}=await server.ssrLoadModule('/lib/place/model.ts');const {PLACE_DEMO_DATA}=await server.ssrLoadModule('/data/place-demo.ts');const {matchesPlaceConditions,scheduledOpen}=await server.ssrLoadModule('/lib/place/conditions.ts');const {availableBenefits,placeSector}=await server.ssrLoadModule('/lib/place/details.ts');
+ const input={...PLACE_DEMO_DATA[0],experience:'過ごし方の例',services:['読書'],budget:{minYen:500,maxYen:1000},durationMinutes:30,reservation:'optional',weeklyHours:[{day:2,start:600,end:1200}],closedDates:[]};const p={...input,...validatePlace(input)};
+ assert.ok(matchesPlaceConditions(p,{maxBudgetYen:1000,maxMinutes:30,walkIn:true,service:'読書'}));assert.ok(!matchesPlaceConditions(p,{maxBudgetYen:999}));assert.ok(!matchesPlaceConditions(p,{maxMinutes:29}));assert.ok(!matchesPlaceConditions({...p,budget:undefined},{maxBudgetYen:3000}));assert.ok(!matchesPlaceConditions({...p,reservation:'unknown'},{walkIn:true}));
+ assert.ok(scheduledOpen(p,new Date('2026-11-10T10:00:00+09:00')));assert.ok(!scheduledOpen(p,new Date('2026-11-10T20:00:00+09:00')));assert.ok(!scheduledOpen({...p,closedDates:['2026-11-10']},new Date('2026-11-10T12:00:00+09:00')));assert.ok(!scheduledOpen(p,new Date(NaN)));
+ const overnight={...p,weeklyHours:[{day:1,start:1380,end:120}]};assert.ok(scheduledOpen(overnight,new Date('2026-11-10T01:00:00+09:00')));assert.ok(!scheduledOpen({...overnight,closedDates:['2026-11-09']},new Date('2026-11-10T01:00:00+09:00')));
+ for(const value of [{budget:{minYen:2000,maxYen:1000}},{phone:'javascript:alert(1)'},{weeklyHours:[{day:2,start:60,end:60}]},{benefits:[{id:'free',title:'優待',conditions:'',eligible:'plus',validFrom:'2026-11-01',validUntil:'2026-11-30'}]}])assert.throws(()=>validatePlace({...input,...value}));
+ const benefit={id:'example',title:'確認済みの企画',conditions:'店舗が指定する条件',eligible:'plus',validFrom:'2026-11-01',validUntil:'2026-11-30'};assert.equal(availableBenefits({...p,benefits:[benefit]},Date.parse('2026-11-10')).length,0);assert.equal(availableBenefits({...p,informationCheckedAt:'2026-11-01',benefits:[benefit]},Date.parse('2026-11-10')).length,1);assert.equal(availableBenefits({...p,informationCheckedAt:'2026-11-01',benefits:[benefit]},Date.parse('2026-12-01')).length,0);
+ assert.equal(placeSector({category:'飲食店'}),'food');assert.equal(placeSector({category:'美容'}),'beauty');assert.equal(placeSector({category:'リラクゼーション'}),'relax');assert.equal(placeSector({category:'ワークショップ'}),'experience');
+ assert.ok(!JSON.stringify(validatePlace({...input,review:{listingEvidence:'PRIVATE'}})).includes('PRIVATE'));
+ console.log('PASS strict price/time/service/reservation/opening constraints, unknown facts, JST overnight and holidays, optional expiring benefits, equal sectors, private proof exclusion.');
+}finally{await server.close();}

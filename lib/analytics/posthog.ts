@@ -17,6 +17,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
   partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
   plus_offer_view:['source'],plus_start:['source'],plus_complete:['currency','amount'],
+  place_contact_open:['place_id'],
   place_view:['place_id','catalog'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
   circle_view: ['circle_id', 'days_since_join'], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
   session_start: [],

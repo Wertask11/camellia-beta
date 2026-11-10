@@ -1,5 +1,9 @@
 /* oxlint-disable next/no-img-element -- operator-reviewed external photos use native lazy loading without an image proxy */
 'use client';
+import {PlaceComparison} from '@/components/PlaceComparison';
+import {matchesPlaceConditions,type PlaceConditions} from '@/lib/place/conditions';
+import {PLACE_SECTORS,availableBenefits,type PlaceSector} from '@/lib/place/details';
+import {requestMembership} from '@/lib/membership/client';
 import { useEffect, useState } from 'react';
 import { placeRequest } from '@/lib/place/client';
 import { PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
@@ -32,6 +36,12 @@ export function PlaceScreen({
   savedOnly = false,
 }: Props) {
   const isDemo = Boolean(demoPlaces);
+  const [conditions,setConditions]=useState<PlaceConditions>({});
+  const [compareIds,setCompareIds]=useState<string[]>([]),[comparison,setComparison]=useState<Place[]>(),[enhanced,setEnhanced]=useState(false),[plus,setPlus]=useState(false);
+  const emptyReview={realConfirmed:false,listingPermission:false,photoPermission:false,detailsConfirmed:false,listingEvidence:'',photoEvidence:''};
+  const [review,setReview]=useState(emptyReview);
+  useEffect(()=>{let active=true;void requestMembership().then(plan=>{if(active)setPlus(plan.plan==='plus');}).catch(()=>{});return()=>{active=false;};},[]);
+
   const [personalized,setPersonalized]=useState(contextState?.profile.placePersonalization===true);
   const [places, setPlaces] = useState<Place[]>([]),
     [selected, setSelected] = useState<Place>(),
@@ -43,6 +53,7 @@ export function PlaceScreen({
     [intent, setIntent] = useState<string>(initialIntent??''),
     [operator, setOperator] = useState(false),
     [operatorMode, setOperatorMode] = useState(false);
+  useEffect(()=>{queueMicrotask(()=>setReview(emptyReview));},[selected?.slug,selected?.updatedAt]); // oxlint-disable-line react-hooks/exhaustive-deps -- every publication requires fresh review
   const load = async (next?: string, manage = false) => {
     if (demoPlaces) {
       setPlaces(demoPlaces);
@@ -123,6 +134,7 @@ export function PlaceScreen({
   };
   const filtered = rankPlaces(places.filter(
     (place) =>
+      matchesPlaceConditions(place,conditions) &&
       (!savedOnly || place.saved === true) &&
       (!category || place.category === category) &&
       (!area || place.area === area) &&
@@ -145,7 +157,7 @@ export function PlaceScreen({
       </a>
     ) : null;
   const card = (place: Place) => (
-    <button className="place-card" key={place.id} onClick={() => open(place)}>
+    <article key={place.id}><button className="place-card" onClick={() => open(place)}>
       {place.imageUrls[0] && (
         <img
           src={place.imageUrls[0]}
@@ -168,10 +180,12 @@ export function PlaceScreen({
         </small>
         <small>{reason(place)}</small>
       </span>
-    </button>
+    </button><label className="privacy-choice"><input type="checkbox" checked={compareIds.includes(place.slug)} disabled={!compareIds.includes(place.slug)&&compareIds.length>=3} onChange={e=>setCompareIds(ids=>e.target.checked?[...ids,place.slug]:ids.filter(id=>id!==place.slug))}/>候補を比べる</label></article>
   );
   return (
     <main className="screen place-screen">
+      {comparison&&<PlaceComparison places={comparison} enhanced={enhanced} onClose={()=>setComparison(undefined)}/>}
+
       <button
         className="back"
         onClick={() => {
@@ -250,7 +264,7 @@ export function PlaceScreen({
               referrerPolicy="no-referrer"
             />
           ))}
-          <p>{selected.description}</p>
+<p>{selected.experience||selected.description}</p>{selected.services?.length?<p>体験・サービス：{selected.services.join("・")}</p>:null}{selected.informationCheckedAt&&<p className="meta">掲載情報の確認日：{new Date(selected.informationCheckedAt).toLocaleDateString("ja-JP")}</p>}
           <p>{reason(selected)}</p>
           {!operatorMode&&onSelectPlace&&<div className="choice-bridge"><button className="primary" onClick={()=>{onTrack('place_selected',{place_id:selected.slug,catalog:isDemo?'demo':'published'});onSelectPlace(selected,isDemo);}}>{isDemo?'こんな体験をしてみたい':'ここへ行ってみたい'}</button>{onSharePlace&&<button className="secondary-button" onClick={()=>onSharePlace(selected,isDemo)}>パートナーに伝える</button>}{isDemo&&<p className="meta">選ぶのは体験イメージです。予約や実在店舗への申し込みにはなりません。</p>}</div>}
           <dl>
@@ -270,7 +284,7 @@ export function PlaceScreen({
           {selected.partnerStatus === 'partner' && (
             <p>掲載内容を確認した提携先です。</p>
           )}
-          {selected.specialOffer && <p>{selected.specialOffer}</p>}
+          {availableBenefits(selected).map(b=><section className="panel" key={b.id}><h3>{b.title}</h3><p>{b.conditions}</p><p>{b.eligible==='plus'?'Plus会員が対象':'利用条件を満たす方が対象'}</p><p className="meta">有効期限：{new Date(b.validUntil).toLocaleDateString('ja-JP')}</p></section>)}
           {!isDemo && (
             <>
               <nav aria-label="場所の外部情報">
@@ -289,6 +303,8 @@ export function PlaceScreen({
                   selected.bookingUrl,
                   'place_booking_open',
                 )}
+                {external('問い合わせ', selected.contactUrl??'', 'place_contact_open')}
+                {selected.phone&&<a href={`tel:${selected.phone.replace(/[^+0-9]/g,'')}`} onClick={()=>onTrack('place_contact_open',{place_id:selected.slug})}>電話で問い合わせる ↗</a>}
                 {external('地図を開く', selected.mapUrl, 'place_map_open')}
               </nav>
               <p className="meta">
@@ -352,9 +368,10 @@ export function PlaceScreen({
                   reviewへ送る
                 </button>
               )}
+              {selected.status==='review'&&<section aria-label="掲載前の確認"><p>実在・掲載許可・写真の利用権・営業情報を別々に確認します。証跡は運営だけが閲覧します。</p>{([['realConfirmed','実在を確認した'],['listingPermission','掲載許可を確認した'],['photoPermission','写真の利用許可を確認した'],['detailsConfirmed','料金・営業時間・体験・連絡先を確認した']] as const).map(([key,label])=><label className="privacy-choice" key={key}><input type="checkbox" checked={review[key]} onChange={e=>setReview(r=>({...r,[key]:e.target.checked}))}/>{label}</label>)}<label>掲載許可の確認記録<input maxLength={300} value={review.listingEvidence} onChange={e=>setReview(r=>({...r,listingEvidence:e.target.value}))}/></label><label>写真利用許可の確認記録<input maxLength={300} value={review.photoEvidence} onChange={e=>setReview(r=>({...r,photoEvidence:e.target.value}))}/></label></section>}
               {selected.status === 'review' && (
                 <button
-                  disabled={busy}
+                  disabled={busy||!review.realConfirmed||!review.listingPermission||!review.photoPermission||!review.detailsConfirmed||!review.listingEvidence.trim()||!review.photoEvidence.trim()}
                   onClick={() =>
                     void run(async () => {
                       if (
@@ -369,6 +386,7 @@ export function PlaceScreen({
                           operation: 'publish',
                           slug: selected.slug,
                           verified: true,
+                          review,
                           partnerConfirmed:
                             selected.partnerStatus === 'partner',
                         },
@@ -460,6 +478,8 @@ export function PlaceScreen({
               </select>
             </label>
           </div>
+          <section className="place-conditions" aria-label="利用条件"><h2>譲れない条件から、候補を絞る</h2><div className="place-filters"><label>分野<select aria-label="Placeの分野" value={conditions.sector??''} onChange={e=>setConditions(c=>({...c,sector:(e.target.value||undefined) as PlaceSector|undefined}))}><option value="">すべて</option>{Object.entries(PLACE_SECTORS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label>表示料金の上限<select aria-label="表示料金の上限" value={conditions.maxBudgetYen??''} onChange={e=>setConditions(c=>({...c,maxBudgetYen:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[1000,3000,5000,10000].map(v=><option key={v} value={v}>{v.toLocaleString()}円まで</option>)}</select></label><label>所要時間<select aria-label="Placeの所要時間" value={conditions.maxMinutes??''} onChange={e=>setConditions(c=>({...c,maxMinutes:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[30,60,120].map(v=><option key={v} value={v}>{v}分以内</option>)}</select></label><label>サービス<select aria-label="Placeのサービス" value={conditions.service??''} onChange={e=>setConditions(c=>({...c,service:e.target.value||undefined}))}><option value="">指定しない</option>{[...new Set(places.flatMap(p=>p.services??[]))].sort().map(v=><option key={v}>{v}</option>)}</select></label></div><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.walkIn)} onChange={e=>setConditions(c=>({...c,walkIn:e.target.checked}))}/>予約なしで利用できる候補</label><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.openAt)} onChange={e=>setConditions(c=>({...c,openAt:e.target.checked?new Date():undefined}))}/>登録された営業時間内の候補</label><p className="meta">情報が不明な候補は、指定条件に一致したとは扱いません。臨時休業・最終料金・予約条件は公式情報をご確認ください。</p></section>
+          <div className="quick-inputs"><button disabled={compareIds.length<2} onClick={()=>{setEnhanced(false);setComparison(places.filter(p=>compareIds.includes(p.slug)));}}>選んだ候補を比較する（{compareIds.length}/3）</button>{onOpenPlus&&<button disabled={compareIds.length<2} onClick={()=>{if(!plus||!personalized){onOpenPlus();return;}if(isDemo){setError('デモではPlusの実提案は利用できません。掲載された事実から比較できます。');return;}void run(async()=>{const result=await placeRequest('',{operation:'recommendation',compareSlugs:compareIds,intents:contextState?localPlaceIntents(contextState):[]});setEnhanced(true);setComparison(result.places);});}}>Plusのパーソナル比較</button>}</div>
           {filtered.filter((p) => !p.sponsored).map(card)}
           {filtered.some((p) => p.sponsored) && (
             <section aria-label="広告の掲載場所">
@@ -472,7 +492,7 @@ export function PlaceScreen({
             <p className="empty">
               {operatorMode
                 ? '掲載候補はまだありません。'
-                : 'この条件で公開されている場所はまだありません。確認できた場所から、少しずつ増やしていきます。'}
+                : cursor?'読み込んだ候補には条件に合う場所がありません。「さらに場所を見る」で続きも確認できます。':'この条件で公開されている場所はまだありません。条件は自動では緩めません。'}
             </p>
           )}
           {cursor && (

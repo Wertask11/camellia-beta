@@ -15,3 +15,16 @@
 - 実Chromiumの375／390／412／768／1280でCheckなし→選択→My→合成LINE/Google→保存→refreshがPASS。Checkは0件、選択は1度だけ、横overflowなし。
 - 既存のCheckありGuest→Camellia→Discover→Place→My→保存の5幅と両スタイルSafety6境界もPASS。
 - 実ログイン・Productionの新機能公開・実Geminiの実行は未確認。合成認証を実認証の成功とは扱わない。
+
+
+## Phase 2：Placeの基本品質
+
+- 価格上限・所要時間・4分野・サービス・予約なし・JST営業時間／休業日を構造化し、条件不明を一致として扱わない。深夜営業も検証。
+- 掲載前に実在・掲載許可・写真利用許可・情報確認の4確認と、非公開の許可証跡を必須化。公開projectionから証跡・運営UIDを除外。変更前後のauditと再審査・停止を維持。
+- 任意特典に対象・条件・有効期限を追加。確認済みかつ有効な特典だけ表示。特典・スポンサーは順位に使わない。
+- Freeでも3候補の事実比較ができる。Plusの個別比較APIはサーバーの有効プランを検証し、許可した希望だけを受け取る。
+- 問い合わせと電話の導線を追加。デモの料金例は例のある1件だけ構造化し、他2件の価格を創作しない。
+- CheckなしのOAuth bridgeをv1とは別keyへ分離し、古いタブによる消去を回避。既存v1のCheck引き継ぎを維持。
+- lint／typecheck／build、Place条件の単体、既存Place境界、Guest互換性がPASS。ローカルFirestoreで権限・審査証跡・公開projection・audit・再審査・停止PASS。
+- 実Chromium 375／390／412／768／1280で比較dialog/Escape、価格・時間制限、不明営業時間の除外、空状態、横overflowなしを確認。Checkなし保存の5幅回帰もPASS。
+- Production公開・実在店舗掲載・課金・共有送信は行っていない。

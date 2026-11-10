@@ -22,6 +22,7 @@ export class PlaceService {
     const safe = validatePlace(data);
     return {
       ...safe,
+      ...(data.reviewVersion===2&&typeof data.verifiedAt==='string'?{informationCheckedAt:data.verifiedAt}:{}),
       id,
       status: data.status as Place['status'],
       createdAt: String(data.createdAt),
@@ -140,8 +141,9 @@ export class PlaceService {
         if (operation === 'submit' && data?.status === 'draft')
           tx.update(ref, { status: 'review', updatedAt: now });
         else if (operation === 'publish' && data?.status === 'review') {
+          const review=body.review&&typeof body.review==='object'?body.review as Record<string,unknown>:{};
           if (
-            body.verified !== true ||
+            body.verified !== true || !['realConfirmed','listingPermission','photoPermission','detailsConfirmed'].every(key=>review[key]===true) || !['listingEvidence','photoEvidence'].every(key=>typeof review[key]==='string'&&(review[key] as string).trim().length>0&&(review[key] as string).length<=300) || !data?.experience || !data?.services?.length || !data?.priceRange || !data?.openingHours || (!data?.bookingUrl&&!data?.contactUrl&&!data?.phone&&!data?.officialUrl) ||
             !data?.officialUrl ||
             !data?.address ||
             !data?.imageUrls?.length ||
@@ -154,6 +156,8 @@ export class PlaceService {
             publishedAt: now,
             updatedAt: now,
             verifiedAt: now,
+            reviewVersion:2,
+            review: {realConfirmed:true,listingPermission:true,photoPermission:true,detailsConfirmed:true,listingEvidence:review.listingEvidence,photoEvidence:review.photoEvidence},
           });
         } else if (operation === 'suspend' && data?.status === 'published')
           tx.update(ref, { status: 'suspended', updatedAt: now });
@@ -166,6 +170,9 @@ export class PlaceService {
         createdAt: now,
         verified: body.verified === true,
         partnerConfirmed: body.partnerConfirmed === true,
+        before: data?validatePlace(data):null,
+        ...(operation==='publish'?{review:{realConfirmed:true,listingPermission:true,photoPermission:true,detailsConfirmed:true,listingEvidence:(body.review as Record<string,unknown>).listingEvidence,photoEvidence:(body.review as Record<string,unknown>).photoEvidence}}:{}),
+        after: operation==='save'?validatePlace(input):{...validatePlace(data!),status:operation==='publish'?'published':operation==='submit'?'review':'suspended'},
       });
     });
     return { ok: true };
