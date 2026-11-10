@@ -45,6 +45,7 @@ export type DismissReason =
   | 'other';
 export type SaveTiming = 'later_today' | 'holiday' | 'when_free' | 'save_only';
 export interface Profile {
+  notificationPreferences?: import('@/lib/notifications/preferences').NotificationPreferences;
   /** Explicit opt-in to local Place context ranking. Defaults off. */
   placePersonalization?: boolean;
   lastConversationModel?: ConversationModelId;

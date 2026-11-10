@@ -18,7 +18,7 @@ export function createSharedRateLimiter(
   db: Firestore,
   env: Record<string, string | undefined> = process.env,
   now = Date.now,
-  namespace:'rate_windows'|'partner_rate_windows'='rate_windows',
+  namespace:'rate_windows'|'partner_rate_windows'|'place_rate_windows'|'referral_rate_windows'='rate_windows',
 ) {
   const config = rateLimitConfig(env);
   return {

@@ -1,10 +1,11 @@
 /* oxlint-disable next/no-img-element -- operator-reviewed external photos use native lazy loading without an image proxy */
 'use client';
+import {recordPublicPlaceMetric} from '@/lib/place/metric-client';
 import {PlaceComparison} from '@/components/PlaceComparison';
 import {matchesPlaceConditions,type PlaceConditions} from '@/lib/place/conditions';
 import {PLACE_SECTORS,availableBenefits,type PlaceSector} from '@/lib/place/details';
 import {requestMembership} from '@/lib/membership/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState,useRef } from 'react';
 import { placeRequest } from '@/lib/place/client';
 import { PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
 import {CHOICE_ACTION_FLOW} from '@/lib/features';
@@ -36,6 +37,7 @@ export function PlaceScreen({
   savedOnly = false,
 }: Props) {
   const isDemo = Boolean(demoPlaces);
+  const viewReceipt=useRef({slug:'',id:''});
   const [conditions,setConditions]=useState<PlaceConditions>({});
   const [compareIds,setCompareIds]=useState<string[]>([]),[comparison,setComparison]=useState<Place[]>(),[enhanced,setEnhanced]=useState(false),[plus,setPlus]=useState(false);
   const emptyReview={realConfirmed:false,listingPermission:false,photoPermission:false,detailsConfirmed:false,listingEvidence:'',photoEvidence:''};
@@ -52,8 +54,12 @@ export function PlaceScreen({
     [area, setArea] = useState(''),
     [intent, setIntent] = useState<string>(initialIntent??''),
     [operator, setOperator] = useState(false),
+    [canPublish,setCanPublish]=useState(false),
+    [metricCounts,setMetricCounts]=useState<Record<string,number>>(),
+    [agreesFree,setAgreesFree]=useState(false),
     [operatorMode, setOperatorMode] = useState(false);
-  useEffect(()=>{queueMicrotask(()=>setReview(emptyReview));},[selected?.slug,selected?.updatedAt]); // oxlint-disable-line react-hooks/exhaustive-deps -- every publication requires fresh review
+  useEffect(()=>{queueMicrotask(()=>{setReview(emptyReview);setMetricCounts(undefined);setAgreesFree(false);});},[selected?.slug,selected?.updatedAt]); // oxlint-disable-line react-hooks/exhaustive-deps -- every publication requires fresh review
+  useEffect(()=>{if(isDemo||operatorMode||!selected){viewReceipt.current={slug:'',id:''};return;}if(viewReceipt.current.slug!==selected.slug)viewReceipt.current={slug:selected.slug,id:crypto.randomUUID()};recordPublicPlaceMetric(selected.slug,'detail',viewReceipt.current.id);},[selected,isDemo,operatorMode]);
   const load = async (next?: string, manage = false) => {
     if (demoPlaces) {
       setPlaces(demoPlaces);
@@ -93,7 +99,7 @@ export function PlaceScreen({
       });
     void placeRequest('?operatorStatus=1', undefined, true)
       .then((data) => {
-        if (active) setOperator(data.operator === true);
+        if (active){setOperator(data.operator === true);setCanPublish(data.canPublish===true);}
       })
       .catch(() => {});
     if (initialSlug)
@@ -151,7 +157,7 @@ export function PlaceScreen({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => onTrack(event, { place_id: selected!.slug })}
+        onClick={() => {onTrack(event, { place_id: selected!.slug });recordPublicPlaceMetric(selected!.slug,event==='place_booking_open'?'booking':event==='place_map_open'?'map':event==='place_contact_open'?'contact':'official');}}
       >
         {label} ↗
       </a>
@@ -250,6 +256,7 @@ export function PlaceScreen({
       )}
       {selected ? (
         <article className="place-detail">
+          {operatorMode&&<section className="panel"><h2>基本掲載・無料実証</h2><p>基本情報・体験紹介・既存の予約導線・基本集計は無料です。店舗特典は任意で、自動的に有料へ移行しません。有料オプション・来店確認は未提供です。</p><label className="privacy-choice"><input type="checkbox" checked={agreesFree} onChange={e=>setAgreesFree(e.target.checked)}/>この無料実証の条件を確認しました</label><button disabled={!agreesFree||busy} onClick={()=>void run(async()=>{await placeRequest('',{operation:'acceptFreePilot',slug:selected.slug,agrees:true},true);setError('無料実証の確認を記録しました。料金は発生しません。');})}>無料実証の確認を記録する</button><button disabled={busy} onClick={()=>void run(async()=>{const data=await placeRequest(`?metrics=${selected.slug}`,undefined,true);setMetricCounts(data.counts);})}>このPlaceの操作集計を見る</button>{metricCounts&&<><p className="meta">直近30日。閲覧・クリック等の送信数で、来店・予約成立ではありません。</p>{Object.entries(metricCounts).map(([key,count])=><p key={key}>{{detail:'詳細閲覧',official:'公式リンク',booking:'予約リンク',map:'地図リンク',contact:'問い合わせリンク'}[key]??key}：{count}</p>)}</>}</section>}
           {operatorMode && (
             <output>運営プレビュー・掲載状態：{selected.status}</output>
           )}
@@ -304,7 +311,7 @@ export function PlaceScreen({
                   'place_booking_open',
                 )}
                 {external('問い合わせ', selected.contactUrl??'', 'place_contact_open')}
-                {selected.phone&&<a href={`tel:${selected.phone.replace(/[^+0-9]/g,'')}`} onClick={()=>onTrack('place_contact_open',{place_id:selected.slug})}>電話で問い合わせる ↗</a>}
+                {selected.phone&&<a href={`tel:${selected.phone.replace(/[^+0-9]/g,'')}`} onClick={()=>{onTrack('place_contact_open',{place_id:selected.slug});recordPublicPlaceMetric(selected.slug,'contact');}}>電話で問い合わせる ↗</a>}
                 {external('地図を開く', selected.mapUrl, 'place_map_open')}
               </nav>
               <p className="meta">
@@ -368,8 +375,8 @@ export function PlaceScreen({
                   reviewへ送る
                 </button>
               )}
-              {selected.status==='review'&&<section aria-label="掲載前の確認"><p>実在・掲載許可・写真の利用権・営業情報を別々に確認します。証跡は運営だけが閲覧します。</p>{([['realConfirmed','実在を確認した'],['listingPermission','掲載許可を確認した'],['photoPermission','写真の利用許可を確認した'],['detailsConfirmed','料金・営業時間・体験・連絡先を確認した']] as const).map(([key,label])=><label className="privacy-choice" key={key}><input type="checkbox" checked={review[key]} onChange={e=>setReview(r=>({...r,[key]:e.target.checked}))}/>{label}</label>)}<label>掲載許可の確認記録<input maxLength={300} value={review.listingEvidence} onChange={e=>setReview(r=>({...r,listingEvidence:e.target.value}))}/></label><label>写真利用許可の確認記録<input maxLength={300} value={review.photoEvidence} onChange={e=>setReview(r=>({...r,photoEvidence:e.target.value}))}/></label></section>}
-              {selected.status === 'review' && (
+              {selected.status==='review'&&canPublish&&<section aria-label="掲載前の確認"><p>実在・掲載許可・写真の利用権・営業情報を別々に確認します。証跡は運営だけが閲覧します。</p>{([['realConfirmed','実在を確認した'],['listingPermission','掲載許可を確認した'],['photoPermission','写真の利用許可を確認した'],['detailsConfirmed','料金・営業時間・体験・連絡先を確認した']] as const).map(([key,label])=><label className="privacy-choice" key={key}><input type="checkbox" checked={review[key]} onChange={e=>setReview(r=>({...r,[key]:e.target.checked}))}/>{label}</label>)}<label>掲載許可の確認記録<input maxLength={300} value={review.listingEvidence} onChange={e=>setReview(r=>({...r,listingEvidence:e.target.value}))}/></label><label>写真利用許可の確認記録<input maxLength={300} value={review.photoEvidence} onChange={e=>setReview(r=>({...r,photoEvidence:e.target.value}))}/></label></section>}
+              {selected.status === 'review' && canPublish && (
                 <button
                   disabled={busy||!review.realConfirmed||!review.listingPermission||!review.photoPermission||!review.detailsConfirmed||!review.listingEvidence.trim()||!review.photoEvidence.trim()}
                   onClick={() =>

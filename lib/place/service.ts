@@ -9,9 +9,9 @@ export class PlaceError extends Error {
     super(code);
   }
 }
-export type PlaceOperator = { uid: string; operator: boolean };
-const permit = (identity: PlaceOperator) => {
-  if (!identity.operator) throw new PlaceError(403, 'OPERATOR_REQUIRED');
+export type PlaceOperator = { uid: string; operator: boolean; managedSlugs?:string[] };
+const permit = (identity: PlaceOperator,slug?:string) => {
+  if (!identity.operator && !(slug?identity.managedSlugs?.includes(slug):identity.managedSlugs?.length)) throw new PlaceError(403, 'OPERATOR_REQUIRED');
 };
 export class PlaceService {
   constructor(private db: Firestore) {}
@@ -36,6 +36,7 @@ export class PlaceService {
     if (operator) permit(operator);
     if (cursor && !validSlug(cursor))
       throw new PlaceError(400, 'INVALID_PLACE');
+    if(operator&&!operator.operator){const slugs=[...(operator.managedSlugs??[])].sort().filter(slug=>!cursor||slug>cursor);const records=slugs.length?await this.db.getAll(...slugs.slice(0,20).map(slug=>this.places().doc(slug))):[];return {places:records.filter(d=>d.exists).map(d=>this.project(d.id,d.data()!)),nextCursor:slugs.length>20?slugs[19]:undefined};}
     let query = operator
       ? this.places().orderBy('slug')
       : this.places().where('status', '==', 'published').orderBy('slug');
@@ -49,7 +50,7 @@ export class PlaceService {
     };
   }
   async detail(slug: string, operator?: PlaceOperator) {
-    if (operator) permit(operator);
+    if (operator) permit(operator,slug);
     if (!validSlug(slug)) throw new PlaceError(400, 'INVALID_PLACE');
     const record = await this.places().doc(slug).get();
     if (!record.exists || (!operator && record.data()?.status !== 'published'))
@@ -118,6 +119,7 @@ export class PlaceService {
         : {};
     const slug = operation === 'save' ? input.slug : body.slug;
     if (!validSlug(slug)) throw new PlaceError(400, 'INVALID_PLACE');
+    permit(identity,slug);if(operation==='publish'&&!identity.operator)throw new PlaceError(403,'OPERATOR_REQUIRED');
     const ref = this.places().doc(slug);
     await this.db.runTransaction(async (tx) => {
       const previous = await tx.get(ref),
