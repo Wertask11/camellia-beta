@@ -216,8 +216,13 @@ try {
   );
   await service.revokeTrial('new-a', 'LOCAL OPERATOR', 'privacy_incident');
   assert.equal((await memberStatus(db, 'new-a', now)).plan, 'free');
+  await assert.rejects(service.reserveTrialAi('new-a', request, 2), {
+    code: 'TRIAL_EXPIRED',
+  });
+  assert.equal((await service.grant('new-a', token)).granted, false);
   now += 8 * 86400000;
   assert.equal((await memberStatus(db, 'new-b', now)).plan, 'free');
+  assert.equal((await service.grant('new-b', token)).granted, false);
   assert.equal((await credits.docs[0].ref.get()).data().permanent, true);
   console.log(
     'PASS local-only referral foundation: strict missing config, new verified registration, no self/linked duplication, atomic retry, exact seven days/no auto billing, monthly three permanent choices, explicit over-cap policy, concurrent budget/quota, existing grants survive stop, targeted revocation, expiry, protected ledgers. No campaign launched.',
