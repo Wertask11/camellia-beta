@@ -88,13 +88,14 @@ export default async function place(req: Request, res: Response) {
     if (Buffer.byteLength(JSON.stringify(body)) > 12000)
       throw new PlaceError(413, 'INVALID_PLACE');
     if(body.operation==='recommendation'){
-      if(Object.keys(body).some(k=>!['operation','intents','area'].includes(k))||!Array.isArray(body.intents)||body.intents.length>3||body.intents.some(x=>!['quiet','rest','try','move','together'].includes(String(x)))||body.area!==undefined&&(typeof body.area!=='string'||body.area.length>40))throw new PlaceError(400,'INVALID_PLACE');
+      if(Object.keys(body).some(k=>!['operation','intents','area','compareSlugs'].includes(k))||!Array.isArray(body.intents)||body.intents.length>3||body.intents.some(x=>!['quiet','rest','try','move','together'].includes(String(x)))||body.area!==undefined&&(typeof body.area!=='string'||body.area.length>40))throw new PlaceError(400,'INVALID_PLACE');
       const header=req.headers.authorization;const user=await requireEligibleUser(typeof header==='string'?header.slice(7):'',{db,auth});
       if((await memberStatus(db,user.uid)).plan!=='plus')return res.status(403).json({error:'PLUS_REQUIRED'});
+      if(body.compareSlugs!==undefined){if(!Array.isArray(body.compareSlugs)||body.compareSlugs.length<2||body.compareSlugs.length>3||body.compareSlugs.some(s=>typeof s!=='string'||!/^[a-z0-9][a-z0-9-]{0,79}$/.test(s)))throw new PlaceError(400,'INVALID_PLACE');const places=await Promise.all((body.compareSlugs as string[]).map(slug=>service.detail(slug)));return res.status(200).json({places:rankPlaces(places,body.intents as PlaceIntent[]),personalized:true});}
       const catalog=[];let cursor: string|undefined;
       for(let page=0;page<3;page++){const result=await service.list(cursor);catalog.push(...result.places);cursor=result.nextCursor;if(!cursor)break;}
       const places=rankPlaces(catalog.filter(p=>!body.area||p.area===body.area),body.intents as PlaceIntent[]).slice(0,12);
-      return res.status(200).json({places:await service.withSaved(places,user.uid),personalized:true});
+      return res.status(200).json({places:await service.withSaved(places,user.uid),personalized:true,catalogComplete:!cursor,nextCursor:cursor});
     }
     if (body.operation === 'bookmark')
       return res

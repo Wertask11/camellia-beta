@@ -5,6 +5,7 @@ import {safeJourney,type JourneyChoices} from '@/lib/journey/model';
 
 export const GUEST_CHECK_KEY = 'camellia-guest-check-v1';
 export const GUEST_OAUTH_KEY = 'camellia-guest-check-oauth-v1';
+export const GUEST_JOURNEY_OAUTH_KEY = 'camellia-guest-exploration-oauth-v1';
 export const GUEST_CHECK_CHANGED = 'camellia-guest-check-changed';
 export const GUEST_TTL_MS = 30 * 60_000;
 export const GUEST_OAUTH_TTL_MS = 10 * 60_000;
@@ -76,18 +77,17 @@ function write(value: GuestDraft | undefined) {
   catch { storageUnavailable = true; }
   changed();
 }
-function removeBridge() { try { localStorage.removeItem(GUEST_OAUTH_KEY); } catch { /* no bridge */ } }
-function readBridge(now = Date.now()): { state: string; draft: GuestDraft; expiresAt: number } | undefined {
-  try {
-    const raw = localStorage.getItem(GUEST_OAUTH_KEY);
-    if (!raw) return;
-    if (raw.length > 16000) { removeBridge(); return; }
-    const v = JSON.parse(raw), draft = parseGuestDraft(v.draft, now);
-    if (!draft || draft.phase !== 'pending' || draft.method !== 'line' || typeof v.state !== 'string' ||
-        !/^[A-Za-z0-9_-]{16,128}$/.test(v.state) || typeof v.expiresAt !== 'number' ||
-        v.expiresAt <= now || v.expiresAt > now + GUEST_OAUTH_TTL_MS) { removeBridge(); return; }
-    return { state: v.state, draft, expiresAt: v.expiresAt };
-  } catch { removeBridge(); return; }
+function removeBridge() { try { localStorage.removeItem(GUEST_OAUTH_KEY);localStorage.removeItem(GUEST_JOURNEY_OAUTH_KEY); } catch { /* no bridge */ } }
+function readBridge(now=Date.now(),expectedState?:string):{state:string;draft:GuestDraft;expiresAt:number}|undefined {
+ let found:{state:string;draft:GuestDraft;expiresAt:number}|undefined;
+ for(const key of [GUEST_OAUTH_KEY,GUEST_JOURNEY_OAUTH_KEY]){
+  try{const raw=localStorage.getItem(key);if(!raw)continue;if(raw.length>16000){localStorage.removeItem(key);continue;}
+   const v=JSON.parse(raw),draft=parseGuestDraft(v.draft,now);
+   if(!draft||draft.phase!=='pending'||draft.method!=='line'||draft.version!==(key===GUEST_OAUTH_KEY?1:2)||typeof v.state!=='string'||!/^[A-Za-z0-9_-]{16,128}$/.test(v.state)||typeof v.expiresAt!=='number'||v.expiresAt<=now||v.expiresAt>now+GUEST_OAUTH_TTL_MS){localStorage.removeItem(key);continue;}
+   if(!found&&(!expectedState||v.state===expectedState))found={state:v.state,draft,expiresAt:v.expiresAt};
+  }catch{try{localStorage.removeItem(key);}catch{/* Browser storage is unavailable. */}}
+ }
+ return found;
 }
 export function readGuestDraft(now = Date.now()): GuestDraft | undefined {
   readBridge(now); // expire a stranded OAuth bridge on the next visit
@@ -137,12 +137,12 @@ export function cancelGuestLogin() {
 export function bridgeGuestOAuth(state: string, now = Date.now()) {
   const draft = readGuestDraft(now);
   if (!draft || draft.phase !== 'pending' || draft.method !== 'line') return;
-  try { localStorage.setItem(GUEST_OAUTH_KEY, JSON.stringify({ state, draft, expiresAt: Math.min(draft.expiresAt, now + GUEST_OAUTH_TTL_MS) })); return true; }
+  try { localStorage.setItem(draft.version===1?GUEST_OAUTH_KEY:GUEST_JOURNEY_OAUTH_KEY, JSON.stringify({ state, draft, expiresAt: Math.min(draft.expiresAt, now + GUEST_OAUTH_TTL_MS) })); return true; }
   catch { storageUnavailable = true; return false; }
 }
 /** Called only after the existing nonce/state and token exchange have succeeded. */
 export function completeGuestOAuth(state: string, uid: string, now = Date.now()) {
-  const bridge = readBridge(now), local = readGuestDraft(now);
+  const bridge = readBridge(now,state), local = readGuestDraft(now);
   if (!bridge || bridge.state !== state || !owner(uid)) { cancelGuestLogin(); return false; }
   if (local && (guestDraftId(local) !== guestDraftId(bridge.draft) || local.attempt !== bridge.draft.attempt)) { removeBridge(); return false; }
   removeBridge(); write({ ...bridge.draft, phase: 'bound', ownerUid: uid }); return true;
