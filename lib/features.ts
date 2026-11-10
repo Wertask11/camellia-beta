@@ -17,3 +17,6 @@ export const CHECK_FIRST_ONBOARDING = TODAY_ONE_FLOW && on(env.VITE_CHECK_FIRST_
 export const CHOICE_ACTION_FLOW = on(env.VITE_CHOICE_ACTION_FLOW);
 /** Copy that follows the person's own record stage (first_day / yesterday_compare / recent / weekly). Never age. */
 export const ADAPTIVE_STAGE_UI = on(env.VITE_ADAPTIVE_STAGE_UI);
+
+/** New integration remains separately reviewable; existing Circle visibility is unchanged. */
+export const CIRCLE_PLACE_LINKS_ENABLED=env.VITE_CIRCLE_PLACE_LINKS_ENABLED==='true';

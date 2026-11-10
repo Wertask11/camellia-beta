@@ -1,5 +1,6 @@
 /** Isolated browser harness: real screens/store, synthetic auth, no Firebase/API/PostHog delivery.
  * Run only locally: node tests/ux-preview.mjs. Never use this configuration for a release build. */
+import {attachQualityRoutes} from './quality-http-fixture.mjs';
 import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
@@ -7,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
+const qualityLinks=process.env.CIRCLE_LINKS_FIXTURE==='on';
+if(qualityLinks){process.env.VITE_CIRCLE_ENABLED='true';process.env.VITE_PLACE_ENABLED='true';process.env.VITE_CIRCLE_PLACE_LINKS_ENABLED='true';}
 const checkFirst = process.env.CHECK_FIRST_FIXTURE === 'on';
 // Historical browser fixtures keep their original entry. The new journey opts in explicitly.
 process.env.VITE_CHECK_FIRST_ONBOARDING = checkFirst ? 'true' : 'off';
@@ -85,6 +88,7 @@ const server = await createServer({
     },
     load(id) { if (id.startsWith('\0ux:')) return mocks[id.slice(4)]; },
     configureServer(s) {
+      if(qualityLinks)attachQualityRoutes(s);
       /* Synthetic invite/suspension answers (lib/auth/access.ts). Cookie ux-access=invite|suspended|open
          chooses the state; the code K7QM2XPA is accepted. Nothing leaves this machine. */
       /* Synthetic conversation: the reply in pieces (lib/conversation/stream.ts), starting quickly so the tests can

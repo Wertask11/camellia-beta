@@ -1,3 +1,6 @@
+import {PlaceExperienceDialog} from '@/components/PlaceExperienceDialog';
+import type {ExperienceInput} from '@/lib/place/experience';
+import type {PlaceChoice} from '@/lib/journey/model';
 import {PlanCard} from '@/components/PlanCard';
 import {serializeConversationState} from '@/lib/conversation/persistence';
 import { PersonalDeleteDialog } from '@/components/PersonalDeleteDialog';
@@ -14,7 +17,7 @@ import { actionTitle, moodMeta, splitActiveActions } from '@/lib/today/flow';
 import { LESS_EXPLAIN_KEY, applyLessExplain, readLessExplain } from '@/lib/today/display';
 import type { AnalyticsEventName,CamelliaState } from '@/types';
 
-export function MyScreen({onExplorePlaces,onShareFeeling,onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onExplorePlaces?:()=>void;onShareFeeling?:()=>void;onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
+export function MyScreen({onRemoveExperience,onReflectPlace,onPrepareCircle,onExplorePlaces,onShareFeeling,onRenameCharacter,onTrack,onCircles,onPlaces,state,devNight,onEditProfile,onForget,onReset,onInsight,onPrivacy,onTree,onDevNight,onComplete}:{onRemoveExperience?:(id:string)=>void;onReflectPlace?:(input:ExperienceInput)=>void;onPrepareCircle?:(slug:string)=>void;onExplorePlaces?:()=>void;onShareFeeling?:()=>void;onRenameCharacter?:(name:string|null)=>void;onTrack?:(name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>void;onCircles?:()=>void;onPlaces?:()=>void;state:CamelliaState;devNight:boolean;onComplete?:(id:string)=>void;onEditProfile:()=>void;onForget:(id:string)=>void;onReset:()=>void|Promise<void|{cloudDeleted:boolean}>;onInsight:(key:string,v:'correct'|'incorrect')=>void;onPrivacy:()=>void;onTree:()=>void;onDevNight:(value:boolean)=>void}) {
   const insights=generateInsights(state);
   const reflection=buildDailyReflection(state);
   const week=currentWeekChecks(dailyCheckins(state.checkins),new Date());
@@ -24,6 +27,7 @@ export function MyScreen({onExplorePlaces,onShareFeeling,onRenameCharacter,onTra
   const sync=useSyncExternalStore(subscribeSyncStatus,getSyncStatus,getSyncStatus);
   const backups=typeof window==='undefined'?[]:Object.keys(localStorage).filter(key=>key.startsWith('camellia-local-backup:'));
   const exportBackups=()=>{const data=backups.map(key=>({key,data:JSON.parse(localStorage.getItem(key)||'null')}));const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-preserved-records.json';link.click();URL.revokeObjectURL(url);};
+  const [experienceChoice,setExperienceChoice]=useState<PlaceChoice>();
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [lessExplain,setLessExplain]=useState(readLessExplain);
   const toggleExplain=(value:boolean)=>{setLessExplain(value);try{localStorage.setItem(LESS_EXPLAIN_KEY,value?'1':'0')}catch{/* display only */}applyLessExplain(value)};
@@ -32,8 +36,9 @@ export function MyScreen({onExplorePlaces,onShareFeeling,onRenameCharacter,onTra
   const [deleteError,setDeleteError]=useState('');
   const [deleteResult,setDeleteResult]=useState('');
   const deleteData=async()=>{setDeleting(true);setDeleteError('');setDeleteResult('');try{const result=await onReset();setDeleteResult(result&&typeof result==='object'&&'cloudDeleted'in result&&result.cloudDeleted?'端末内と同期先のCamelliaデータを削除しました。PostHogへ送信済みの操作イベントは削除されていません。':'端末内のCamelliaデータを削除しました。ログイン中の同期先データはありません。PostHogへ送信済みの操作イベントは削除されていません。')}catch(error){const code=error instanceof Error?error.message:'';setDeleteError(code==='SIGN_IN_TO_DELETE_SYNCED_DATA'?'以前同期した記録があります。同期したCamelliaアカウントにログインしてから削除してください。':code==='OTHER_SCHOOLPARK_ACCOUNTS_HAVE_SYNCED_DATA'?'この端末の記録は別のCamelliaアカウントにも同期されています。そのアカウントへ切り替えて削除してください。':'同期データを削除できませんでした。端末内データは削除していません。通信を確認して、もう一度お試しください。');setDeleting(false);return}setDeleting(false);setConfirmDelete(false)};
-  return <main className="screen my"><header><div><p className="eyebrow">私が積み重なっていく場所</p><h1>My Camellia</h1></div></header>
-    {CHOICE_ACTION_FLOW&&<section className="my-choice-summary"><p>自分で選んだこと、やってみたことが、次の私につながる。</p><p className="meta">Camellia IDは無料。LINE・Googleにつながる、あなたの記録の場所です。</p>{Boolean(state.placeChoices?.length)&&<section className="panel"><h2>行ってみたい場所・体験</h2>{state.placeChoices?.slice(-8).reverse().map(p=><p key={p.id}>{p.title}{p.demo?<small> · デモの体験イメージ</small>:null}</p>)}<button className="text-button" onClick={onExplorePlaces??onPlaces}>Placeを見にいく →</button></section>}</section>}
+  return <main className="screen my">{experienceChoice&&onReflectPlace&&<PlaceExperienceDialog choice={experienceChoice} onSave={onReflectPlace} onClose={()=>setExperienceChoice(undefined)}/>}<header><div><p className="eyebrow">私が積み重なっていく場所</p><h1>My Camellia</h1></div></header>
+    {CHOICE_ACTION_FLOW&&<section className="my-choice-summary"><p>自分で選んだこと、やってみたことが、次の私につながる。</p><p className="meta">Camellia IDは無料。LINE・Googleにつながる、あなたの記録の場所です。</p>{Boolean(state.placeChoices?.length)&&<section className="panel"><h2>行ってみたい場所・体験</h2>{state.placeChoices?.slice(-8).reverse().map(p=><p key={p.id}>{p.title}{p.demo?<small> · デモの体験イメージ</small>:null}{onReflectPlace&&<button className="text-button" onClick={()=>setExperienceChoice(p)}>この体験を振り返る</button>}{!p.demo&&onPrepareCircle&&<button className="text-button" onClick={()=>onPrepareCircle(p.slug)}>Circleで伝える内容を、自分で書く</button>}</p>)}<button className="text-button" onClick={onExplorePlaces??onPlaces}>Placeを見にいく →</button></section>}</section>}
+    {Boolean(state.placeExperiences?.length)&&<section className="panel"><h2>体験から、自分に残ったこと</h2>{state.placeExperiences?.filter(e=>e.status!=='removed').slice(-8).reverse().map(e=><article key={e.id}><h3>{e.placeName}</h3><small>{e.demo?'デモについての記録':e.status==='self_reported'?'本人が体験を申告した記録':'これから体験したいこと'}</small><p>{e.value==='helpful'?'心地よかった・役に立った':e.value==='okay'?'どちらともいえない':e.value==='not_for_me'?'今の自分には合わなかった':''}</p><p>{e.text}</p>{onRemoveExperience&&<button className="text-button" onClick={()=>{if(window.confirm('この振り返りを削除しますか？別に残したMemoryはMemory側で削除できます。'))onRemoveExperience(e.id);}}>この振り返りを削除する</button>}</article>)}</section>}
     {CHOICE_ACTION_FLOW&&onTrack&&<PlanCard onTrack={onTrack}/>}
     {CHOICE_ACTION_FLOW&&onShareFeeling&&<button className="secondary-button" onClick={onShareFeeling}>伝えたい気持ちを選ぶ · 共有プレビュー</button>}
     {/* Only a problem gets a line at the top; the details stay in 「アカウントと記録」. */}
