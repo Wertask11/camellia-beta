@@ -17,6 +17,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
   partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
   plus_offer_view:['source'],plus_start:['source'],plus_complete:['currency','amount'],
+  experience_feedback:['value','experience_status','catalog'],circle_place_open:['circle_id','place_id'],
   place_contact_open:['place_id'],
   place_view:['place_id','catalog'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
   circle_view: ['circle_id', 'days_since_join'], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
@@ -206,6 +207,7 @@ export function sanitizeEventProperties(
   const safe: Record<string, string | number | boolean> = {};
   for (const key of allowed ?? []) {
     const value = source[key];
+    if(event.name==='experience_feedback'&&key==='value'){if(typeof value==='string'&&['helpful','okay','not_for_me'].includes(value))safe[key]=value;continue;}
     if (!validProperty(key, value)) continue;
     if (['model_id','from_model','to_model'].includes(key) && !isConversationModel(value)) continue;
     if (key === 'days_since_join' && (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 36500)) continue;
@@ -308,6 +310,7 @@ export function captureAuthEvent(
 
 const ENUMS: Record<string, readonly string[]> = {
   catalog:['demo','published'],share_kind:['feeling','action','place'],share_result:['sent','copied','cancelled','failed'],source:['place','partner','my'],currency:['JPY'],
+  experience_status:['considering','self_reported'],
   entry_flow: ['check_first', 'login_first', 'explore_first'], storage: ['device'],
   period: ['morning','day','evening','night'], method: AUTH_METHODS, auth_method: AUTH_METHODS,
   auth_flow: AUTH_FLOWS, stage: AUTH_STAGES, reason: AUTH_REASONS,

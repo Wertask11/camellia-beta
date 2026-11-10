@@ -1,3 +1,4 @@
+import {validatePlace,validSlug} from '../place/model.js';
 import { createHmac } from 'node:crypto';
 import {
   FieldPath,
@@ -91,6 +92,7 @@ export class CircleService {
   constructor(
     private db: Firestore,
     private secret: string,
+    private features={placeLinksEnabled:process.env.CAMELLIA_CIRCLE_PLACE_LINKS_ENABLED==='true'&&process.env.CAMELLIA_PLACE_ENABLED==='true'},
   ) {
     requireValue(secret.length >= 32, 503, 'COMMUNITY_NOT_CONFIGURED');
   }
@@ -141,6 +143,9 @@ export class CircleService {
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       mine: data.uid === identity.uid,
+      ...(typeof data.placeSlug==='string'&&validSlug(data.placeSlug)?{placeSlug:data.placeSlug}:{}),
+      ...(data.authorKind==='place_event'?{authorKind:'place_event' as const}:{}),
+      ...(data.event&&typeof data.event==='object'&&typeof (data.event as Record<string,unknown>).title==='string'?{event:{title:String((data.event as Record<string,unknown>).title).slice(0,80),startsAt:String((data.event as Record<string,unknown>).startsAt),endsAt:String((data.event as Record<string,unknown>).endsAt)}}:{}),
     };
   }
   /** Old posts are initialized once, without a new composite index or exposing actors. */
@@ -188,13 +193,39 @@ export class CircleService {
         ),
       ),
     );
-    return Promise.all(items.map(async (item, index) => ({
+    const received=await Promise.all(items.map(async (item, index) => ({
       ...item,
       myReaction: REACTIONS.includes(reactions[index].data()?.reaction)
         ? reactions[index].data()?.reaction
         : null,
       ...(item.mine ? { receivedReactions: await this.receivedReactions(identity, kind, item.id) } : {}),
     })));
+    const slugs=[...new Set(received.flatMap(p=>p.placeSlug?[p.placeSlug]:[]))];
+    if(!slugs.length)return received;
+    const records=await this.db.getAll(...slugs.map(slug=>this.col('places').doc(slug))),links=new Map<string,ReturnType<typeof validatePlace>>();
+    for(const record of records)if(this.features.placeLinksEnabled&&record.data()?.status==='published'){try{links.set(record.id,validatePlace(record.data()!));}catch{/* Invalid listing never breaks the community feed. */}}
+    return received.map(p=>{const {placeSlug,...visible}=p;const place=placeSlug?links.get(placeSlug):undefined;return {...visible,...(place?{relatedPlace:{slug:place.slug,name:place.name,recommendedFor:place.recommendedFor}}:placeSlug?{placeUnavailable:true}:{})};});
+  }
+  private async placePost(tx:Transaction,identity:CircleIdentity,body:Record<string,unknown>,parent?:Record<string,unknown>){
+    const scope=await tx.get(this.db.doc(`camellia_users/${identity.uid}/admin/place_scope`));
+    const slugs=Array.isArray(scope.data()?.slugs)?(scope.data()!.slugs as unknown[]).filter(validSlug).slice(0,100):[];
+    if(parent){requireValue(body.placeSlug===undefined&&body.event===undefined,400,'INVALID_INPUT');if(slugs.length)requireValue(parent.uid===identity.uid&&parent.authorKind==='place_event',403,'MERCHANT_EVENT_REQUIRED');return {};}
+    if(body.placeSlug===''&&!slugs.length)return {};
+    if(body.placeSlug!==undefined||body.event!==undefined||slugs.length)requireValue(this.features.placeLinksEnabled,503,'PLACE_LINKS_UNAVAILABLE');
+    if(!slugs.length)requireValue(body.event===undefined,403,'MERCHANT_REQUIRED');
+    if(slugs.length)requireValue(validSlug(body.placeSlug)&&slugs.includes(body.placeSlug)&&body.event&&typeof body.event==='object',403,'MERCHANT_EVENT_REQUIRED');
+    if(body.placeSlug===undefined)return {};
+    requireValue(validSlug(body.placeSlug));const place=await tx.get(this.col('places').doc(body.placeSlug as string));requireValue(place.data()?.status==='published',400,'PLACE_NOT_AVAILABLE');
+    if(!slugs.length)return {placeSlug:body.placeSlug};
+    const event=body.event as Record<string,unknown>;
+    requireValue(typeof event.title==='string'&&event.title.trim().length>0&&event.title.length<=80&&typeof event.startsAt==='string'&&typeof event.endsAt==='string'&&event.startsAt.length<=80&&event.endsAt.length<=80&&/(Z|[+-]\d\d:\d\d)$/.test(event.startsAt)&&/(Z|[+-]\d\d:\d\d)$/.test(event.endsAt)&&Number.isFinite(Date.parse(event.startsAt))&&Number.isFinite(Date.parse(event.endsAt))&&Date.parse(event.endsAt)>Date.parse(event.startsAt)&&Date.parse(event.endsAt)>Date.now());
+    return {placeSlug:body.placeSlug,authorKind:'place_event',event:{title:text(event.title,80),startsAt:event.startsAt,endsAt:event.endsAt}};
+  }
+  async postingOptions(identity:CircleIdentity){
+    const scope=await this.db.doc(`camellia_users/${identity.uid}/admin/place_scope`).get();const slugs=Array.isArray(scope.data()?.slugs)?(scope.data()!.slugs as unknown[]).filter(validSlug).slice(0,100):[];
+    if(!this.features.placeLinksEnabled)return {placeLinksEnabled:false,merchant:slugs.length>0,places:[]};
+    const records=slugs.length?await this.db.getAll(...slugs.map(slug=>this.col('places').doc(slug))):(await this.col('places').where('status','==','published').orderBy('slug').limit(20).get()).docs;
+    return {placeLinksEnabled:true,merchant:slugs.length>0,places:records.filter(d=>d.data()?.status==='published').map(d=>({slug:d.id,name:String(d.data()?.name??'')}))};
   }
   async list(identity: CircleIdentity) {
     const memberships = await this.col('circle_memberships')
@@ -402,6 +433,7 @@ export class CircleService {
     const now = new Date().toISOString();
     await this.db.runTransaction(async (tx) => {
       const member = await this.requireMember(tx, identity, circle);
+      let parentData:Record<string,unknown>|undefined;
       if (comment) {
         const parent = await tx.get(
           this.col('circle_posts').doc(String(body.postId)),
@@ -412,6 +444,7 @@ export class CircleService {
           404,
           'NOT_FOUND',
         );
+        parentData=parent.data();
         const blocked = await tx.get(
           this.col('circle_blocks').doc(
             `${this.author(identity.uid)}_${parent.data()?.authorId}`,
@@ -419,6 +452,7 @@ export class CircleService {
         );
         requireValue(!blocked.exists, 403, 'NOT_AVAILABLE');
       }
+      const placeFields=await this.placePost(tx,identity,body,parentData);
       const recent = await tx.get(
         this.col('circle_write_limits').doc(this.author(identity.uid)),
       );
@@ -434,6 +468,7 @@ export class CircleService {
         circleId: circle,
         ...(comment ? { postId: body.postId } : {}),
         text: content,
+        ...placeFields,
         status: 'active',
         receivedReactionCounts: emptyReactionCounts(),
         reactionCountsVersion: 1,
@@ -468,7 +503,10 @@ export class CircleService {
       requireValue(data.uid === identity.uid, 403, 'NOT_OWNER');
       if (operation === 'edit') {
         await this.requireMember(tx, identity, data.circleId);
+        const placeFields=kind==='post'?await this.placePost(tx,identity,{...body,...(body.placeSlug===undefined&&data.placeSlug?{placeSlug:data.placeSlug}:{}),...(body.event===undefined&&data.event?{event:data.event}:{})}):{};
         tx.update(ref, {
+          ...placeFields,
+          ...(kind==='post'&&body.placeSlug===''?{placeSlug:FieldValue.delete()}:{}),
           text: text(body.text),
           updatedAt: new Date().toISOString(),
         });
@@ -476,6 +514,7 @@ export class CircleService {
         tx.update(ref, {
           text: '',
           status: 'deleted',
+          placeSlug:FieldValue.delete(),event:FieldValue.delete(),authorKind:FieldValue.delete(),
           updatedAt: new Date().toISOString(),
         });
       this.changed(tx, data.circleId);
@@ -650,7 +689,7 @@ export class CircleService {
       requireValue(original.exists, 404, 'NOT_FOUND');
       const now = new Date().toISOString();
       if (action !== 'dismiss')
-        tx.update(target, { text: '', status: 'removed', updatedAt: now });
+        tx.update(target, { text: '', status: 'removed', placeSlug:FieldValue.delete(),event:FieldValue.delete(),authorKind:FieldValue.delete(),updatedAt: now });
       if (action !== 'dismiss') this.changed(tx, original.data()!.circleId);
       /* Stop the author's account as well. Same documents as SchoolPark's admin screen
          (backend/camellia-access.js), so the stop shows up and can be undone there. Records are kept. */

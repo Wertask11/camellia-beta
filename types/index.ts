@@ -233,7 +233,7 @@ export type AnalyticsEventName =
   | 'discover_action_selected' | 'place_recommendation_view' | 'place_selected' | 'my_view'
   | 'partner_share_view' | 'partner_share_created' | 'partner_share_sent' | 'partner_share_revoked' | 'partner_share_open'
   | 'plus_offer_view' | 'plus_start' | 'plus_complete'
-  | 'place_contact_open' | 'place_view' | 'place_save' | 'place_external_open' | 'place_booking_open' | 'place_map_open'
+  | 'experience_feedback' | 'circle_place_open' | 'place_contact_open' | 'place_view' | 'place_save' | 'place_external_open' | 'place_booking_open' | 'place_map_open'
   | 'session_start'
   | 'welcome_view'
   | 'welcome_continue'
@@ -289,8 +289,9 @@ export interface AnalyticsEvent {
   deliverySuppressed?: 'dnt' | 'opt_out' | 'expired' | 'invalid_event' | 'restored';
 }
 export interface CamelliaState {
+  placeExperiences?: import('@/lib/place/experience').PlaceExperience[];
   placeChoices?: import('@/lib/journey/model').PlaceChoice[];
-  version: 3;
+  version: 3 | 4;
   profile: Profile;
   checkins: Checkin[];
   actions: ActionRecord[];
@@ -298,7 +299,7 @@ export interface CamelliaState {
   savedActions: SavedAction[];
   aiConversations: AIConversation[];
   contextualMemory: ContextualActionMemory[];
-  personalMemories?: Array<{id:string;text:string;createdAt:string;updatedAt:string;source:'explicit_conversation';status?:'removed'}>;
+  personalMemories?: Array<{id:string;text:string;createdAt:string;updatedAt:string;source:'explicit_conversation'|'explicit_place';status?:'removed'}>;
   insights: Insight[];
   insightFeedback: InsightFeedback[];
   fortunes: DailyFortune[];

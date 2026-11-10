@@ -7,7 +7,10 @@ const mapper = fs.readFileSync('lib/schoolpark/map.ts', 'utf8');
 const sync = fs.readFileSync('lib/schoolpark/sync.ts', 'utf8');
 
 assert.match(hook, /syncToSchoolPark\(state\)/);
-assert.match(hook, /localStorage\.setItem\(STORAGE_KEY/);
+assert.match(hook, /persistPersonalState\(/);
+const persistence=fs.readFileSync('lib/storage/persist.ts','utf8');
+assert.match(persistence,/localStorage\.setItem\(key/);
+assert.ok(hook.indexOf('persistPersonalState({...state')<hook.indexOf('syncToSchoolPark(state)'), 'local protected persistence precedes remote sync');
 assert.doesNotMatch(hook, /server-sync|deleteServerData|syncCamelliaState/);
 
 assert.match(firebase, /projectId: 'emusch-2a111'/);

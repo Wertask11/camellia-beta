@@ -28,3 +28,18 @@
 - lint／typecheck／build、Place条件の単体、既存Place境界、Guest互換性がPASS。ローカルFirestoreで権限・審査証跡・公開projection・audit・再審査・停止PASS。
 - 実Chromium 375／390／412／768／1280で比較dialog/Escape、価格・時間制限、不明営業時間の除外、空状態、横overflowなしを確認。Checkなし保存の5幅回帰もPASS。
 - Production公開・実在店舗掲載・課金・共有送信は行っていない。
+
+
+## Phase 3：Circle・Memory・Reflection
+
+- 投稿者が公開済みPlaceを手動で選ぶ連携。私的Check・Memory・Reflection本文は自動共有しない。新着と、本人が選ぶ希望に合うPlace付き投稿を区別。
+- 店舗はprotected admin/place_scopeの割当Placeのイベント・体験だけ投稿可。役割の偽装、他店、無関係なコメント広告を拒否。通常の新着と店舗イベントを分離。
+- 私的なPlace体験・感想・Reflection、本人申告と検証済み来店の区別、任意のMemory保存、個別削除を追加。デモを来店済みにできない。
+- 新しい任意collectionの取り落としを防ぐため、初めて記録を作るときだけarchive/local version 4へ進む。v3の原本を先にバックアップ。バックアップ失敗・retryでは旧原本を保持する。旧readerはv4を拒否して上書きを止める。
+- lint／typecheck／build、private体験・Memory・archive roundtrip・旧reader拒否・控え保存／quota失敗の単体PASS。既存Circle 40件と新しいPlace連携のlocal Firestore権限・停止・偽装・広告・削除境界PASS。
+- 実Chromium 375／390／412／768／1280で私的Reflection、Memory選択、v3控え→v4、refresh、別欄からの手動Circle投稿、元の私的文章を送らないこと、Circle→PlaceがPASS。HTTPとAuthは合成で、実アカウントではない。
+- 新しいCircle→Place連携はfrontend/serverの別フラグOFF。既存Circleの公開設定は維持。実店舗・scope設定・新機能のProduction公開はしていない。
+
+### 保存形式とrollback
+
+既存v3は新readerでそのまま読める。一括migrationなし。v4を作成済みの環境では、v4 readerと保存保護を残したまま画面だけ戻す。v4対応前のbuildへ丸ごと戻す場合はread-only recoveryとなるため、原本／pre-v4控えのexportを確保し、v4対応buildへ戻す。古いreaderで新しい記録を読み飛ばして再同期しないことを検証済み。

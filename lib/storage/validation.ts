@@ -1,3 +1,4 @@
+import {validPlaceExperience} from '@/lib/place/experience';
 import type { AIConversation, CamelliaState } from '@/types';
 import {decodeConversation,validStoredSwitches} from '@/lib/conversation/persistence';
 import { validConversationEntry } from '@/lib/conversation/entries';
@@ -15,6 +16,7 @@ const record = (v: unknown): v is Row => object(v) && text(v.id) && date(v.creat
 const message = (v: unknown) => validConversationEntry(v) && object(v) && optional(v,'topics',strings);
 const reflection = (v: unknown) => record(v) && text(v.text);
 const checks: Record<string, (v: unknown) => boolean> = {
+  placeExperiences:validPlaceExperience,
   placeChoices:validPlaceChoice,
   checkins: v => record(v) && oneOf(v.mood,[1,2,3,4,5]) && optional(v,'sleep',x=>typeof x==='number'&&Number.isFinite(x)) && optional(v,'body',x=>oneOf(x,['良い','普通','疲れ気味','悪い'])) && optional(v,'stress',x=>oneOf(x,['低い','普通','やや高い','高い'])),
   actions: v => record(v) && text(v.actionId) && text(v.title) && category(v.category) && oneOf(v.status,['started','completed','skipped']),
@@ -22,7 +24,7 @@ const checks: Record<string, (v: unknown) => boolean> = {
   savedActions: v => record(v) && text(v.actionId) && oneOf(v.timing,['later_today','holiday','when_free','save_only']),
   aiConversations: v => record(v) && optional(v,'activeModel',text) && Array.isArray(v.messages) && v.messages.every(message) && validStoredSwitches(v),
   contextualMemory: v => record(v) && text(v.actionId) && oneOf(v.event,['proposed','saved','dismissed','started','completed','feedback']) && object(v.context) && text(v.context.timeBand) && typeof v.context.weekday==='number' && text(v.context.lifestyle),
-  personalMemories: v => record(v) && text(v.text) && v.source==='explicit_conversation',
+  personalMemories: v => record(v) && text(v.text) && typeof v.source==='string'&&['explicit_conversation','explicit_place'].includes(v.source),
   insights: v => record(v) && text(v.key) && text(v.text) && typeof v.confidence==='number' && typeof v.sampleSize==='number',
   insightFeedback: v => record(v) && text(v.insightKey) && oneOf(v.verdict,['correct','incorrect']),
   fortunes: v => object(v) && date(v.date) && date(v.createdAt) && text(v.cardId) && oneOf(v.orientation,['upright','reversed']) && oneOf(v.status,['drawn','skipped']),
@@ -37,7 +39,7 @@ export function validateStoredState(raw: unknown, base: CamelliaState, legacy = 
   // Preserve unrecognized root fields from older/newer clients without rendering or syncing them.
   // Known fields are initialized safely, then validated below.
   const state = { ...raw, ...base };
-  if (!legacy && raw.version !== 3) issues.push('version');
+  if (!legacy && raw.version !== 3 && raw.version !== 4) issues.push('version');
   const p = raw.profile;
   if (object(p) && text(p.id) && text(p.name) && strings(p.interests)
     && ['age','birthDate','lifestyle','priority','region','livingSituation','concerns','agreedAt','agreedVersion','createdAt','updatedAt'].every(k=>optional(p,k,text))
@@ -54,6 +56,7 @@ export function validateStoredState(raw: unknown, base: CamelliaState, legacy = 
     // Only this validated in-memory projection omits invalid records; originals remain exportable.
     (state as unknown as Row)[field] = field==='aiConversations'?safe.map(value=>decodeConversation(value as AIConversation)):safe;
   }
+  if(raw.version===4||state.placeExperiences?.length)state.version=4;
   state.onboardingComplete = raw.onboardingComplete === true;
   if(raw.onboardingComplete!==undefined&&typeof raw.onboardingComplete!=='boolean')issues.push('onboardingComplete');
   if(raw.createdAt!==undefined&&!date(raw.createdAt))issues.push('createdAt');
