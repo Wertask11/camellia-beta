@@ -1,4 +1,5 @@
 'use client';
+import {clearPendingReferral} from '@/lib/referral/client';
 import { signInAnonymously, signInWithCustomToken, signOut } from 'firebase/auth';
 import { resetAnalyticsIdentity } from '@/lib/analytics/posthog';
 import { schoolParkAuth } from '@/lib/schoolpark/firebase';
@@ -45,7 +46,7 @@ async function exchangeAuthCallback():Promise<{method:AuthMethod;linked?:boolean
   ['code','state','camellia_passport_ticket','error','error_description'].forEach(k=>url.searchParams.delete(k));history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`);
  }
 }
-export async function logoutCamellia(){clearGuestCheck();localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth);resetAnalyticsIdentity({clearPending:false})}
+export async function logoutCamellia(){clearPendingReferral();clearGuestCheck();localStorage.setItem(LOGGED_OUT,'1');await signOut(schoolParkAuth);resetAnalyticsIdentity({clearPending:false})}
 
 let callbackPromise: ReturnType<typeof exchangeAuthCallback> | null = null;
 export function finishAuthCallback(){return callbackPromise ??= exchangeAuthCallback();}

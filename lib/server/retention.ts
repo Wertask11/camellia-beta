@@ -7,6 +7,7 @@ export const EXPIRY_COLLECTIONS = [
   'partner_rate_windows',
   'place_rate_windows',
   'referral_rate_windows',
+  'referral_intents',
   'place_metric_receipts',
   'ai_usage_receipts',
   'ai_request_receipts',
