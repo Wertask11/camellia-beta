@@ -1,5 +1,6 @@
 /* oxlint-disable next/no-img-element -- operator-reviewed external photos use native lazy loading without an image proxy */
 'use client';
+import {PlaceEditor} from '@/components/PlaceEditor';
 import {recordPublicPlaceMetric} from '@/lib/place/metric-client';
 import {PlaceComparison} from '@/components/PlaceComparison';
 import {matchesPlaceConditions,type PlaceConditions} from '@/lib/place/conditions';
@@ -12,6 +13,7 @@ import {CHOICE_ACTION_FLOW} from '@/lib/features';
 import {localPlaceIntents,rankPlaces,type PlaceIntent} from '@/lib/place/recommendation';
 import type { AnalyticsEventName,CamelliaState } from '@/types';
 type Props = {
+  managementOnly?:boolean;
   initialIntent?:PlaceIntent;
   onOpenPlus?:()=>void;
   contextState?:CamelliaState;
@@ -28,6 +30,7 @@ type Props = {
   savedOnly?: boolean;
 };
 export function PlaceScreen({
+  managementOnly=false,
   initialIntent,
   contextState,onSelectPlace,onSharePlace,onPersonalization,onOpenPlus,
   demoPlaces,
@@ -37,13 +40,14 @@ export function PlaceScreen({
   savedOnly = false,
 }: Props) {
   const isDemo = Boolean(demoPlaces);
+  const [editing,setEditing]=useState(false);
   const viewReceipt=useRef({slug:'',id:''});
   const [conditions,setConditions]=useState<PlaceConditions>({});
   const [compareIds,setCompareIds]=useState<string[]>([]),[comparison,setComparison]=useState<Place[]>(),[enhanced,setEnhanced]=useState(false),[plus,setPlus]=useState(false);
   const changeConditions=(value:SetStateAction<PlaceConditions>)=>{setConditions(value);setCompareIds([]);};
   const emptyReview={realConfirmed:false,listingPermission:false,photoPermission:false,detailsConfirmed:false,listingEvidence:'',photoEvidence:''};
   const [review,setReview]=useState(emptyReview);
-  useEffect(()=>{let active=true;void requestMembership().then(plan=>{if(active)setPlus(plan.plan==='plus');}).catch(()=>{});return()=>{active=false;};},[]);
+  useEffect(()=>{if(managementOnly)return;let active=true;void requestMembership().then(plan=>{if(active)setPlus(plan.plan==='plus');}).catch(()=>{});return()=>{active=false;};},[managementOnly]);
 
   const [personalized,setPersonalized]=useState(contextState?.profile.placePersonalization===true);
   const [places, setPlaces] = useState<Place[]>([]),
@@ -58,7 +62,7 @@ export function PlaceScreen({
     [canPublish,setCanPublish]=useState(false),
     [metricCounts,setMetricCounts]=useState<Record<string,number>>(),
     [agreesFree,setAgreesFree]=useState(false),
-    [operatorMode, setOperatorMode] = useState(false);
+    [operatorMode, setOperatorMode] = useState(managementOnly);
   useEffect(()=>{queueMicrotask(()=>{setReview(emptyReview);setMetricCounts(undefined);setAgreesFree(false);});},[selected?.slug,selected?.updatedAt]); // oxlint-disable-line react-hooks/exhaustive-deps -- every publication requires fresh review
   useEffect(()=>{if(isDemo||operatorMode||!selected){viewReceipt.current={slug:'',id:''};return;}if(viewReceipt.current.slug!==selected.slug)viewReceipt.current={slug:selected.slug,id:crypto.randomUUID()};recordPublicPlaceMetric(selected.slug,'detail',viewReceipt.current.id);},[selected,isDemo,operatorMode]);
   const load = async (next?: string, manage = false) => {
@@ -88,7 +92,7 @@ export function PlaceScreen({
         active = false;
       };
     }
-    void placeRequest(savedOnly ? '?saved=1' : '')
+    void placeRequest(managementOnly?'?operator=1':savedOnly ? '?saved=1' : '',undefined,managementOnly)
       .then((data) => {
         if (active) {
           setPlaces(data.places);
@@ -104,11 +108,11 @@ export function PlaceScreen({
       })
       .catch(() => {});
     if (initialSlug)
-      void placeRequest(`?slug=${encodeURIComponent(initialSlug)}`)
+      void placeRequest(`?${managementOnly?'operator=1&':''}slug=${encodeURIComponent(initialSlug)}`,undefined,managementOnly)
         .then((data) => {
           if (active) {
             setSelected(data.place);
-            onTrack('place_view', { place_id: data.place.slug });
+            if(!managementOnly)onTrack('place_view', { place_id: data.place.slug });
           }
         })
         .catch((e) => {
@@ -117,7 +121,7 @@ export function PlaceScreen({
     return () => {
       active = false;
     };
-  }, [initialSlug, onTrack, savedOnly, demoPlaces]);
+  }, [initialSlug, onTrack, savedOnly, demoPlaces,managementOnly]);
   const run = async (fn: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
@@ -135,7 +139,7 @@ export function PlaceScreen({
     if (!operatorMode && (CHOICE_ACTION_FLOW||!isDemo))
       onTrack('place_view', { place_id: place.slug,catalog:isDemo?'demo':'published' });
     const url = new URL(location.href);
-    url.searchParams.set('open', isDemo ? 'place-demo' : 'place');
+    url.searchParams.set('open', managementOnly?'place-operator':isDemo ? 'place-demo' : 'place');
     url.searchParams.set('place', place.slug);
     history.replaceState({}, '', url.pathname + url.search);
   };
@@ -147,7 +151,7 @@ export function PlaceScreen({
       (!area || place.area === area) &&
       (!intent || place.recommendedFor.includes(intent)),
   ),[...(intent?[intent as PlaceIntent]:[]),...(personalized&&contextState?localPlaceIntents(contextState):[])]);
-  useEffect(()=>{onTrack('place_recommendation_view',{catalog:isDemo?'demo':'published',personalized});},[isDemo,personalized,onTrack]);
+  useEffect(()=>{if(managementOnly)return;onTrack('place_recommendation_view',{catalog:isDemo?'demo':'published',personalized});},[isDemo,personalized,onTrack,managementOnly]);
   const reason = (place: Place) =>
     intent && place.recommendedFor.includes(intent)
       ? `「${PLACE_INTENTS[intent as keyof typeof PLACE_INTENTS]}」という希望に合う場所です。`
@@ -158,7 +162,7 @@ export function PlaceScreen({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => {onTrack(event, { place_id: selected!.slug });recordPublicPlaceMetric(selected!.slug,event==='place_booking_open'?'booking':event==='place_map_open'?'map':event==='place_contact_open'?'contact':'official');}}
+        onClick={() => {if(operatorMode||isDemo)return;onTrack(event, { place_id: selected!.slug });recordPublicPlaceMetric(selected!.slug,event==='place_booking_open'?'booking':event==='place_map_open'?'map':event==='place_contact_open'?'contact':'official');}}
       >
         {label} ↗
       </a>
@@ -187,7 +191,7 @@ export function PlaceScreen({
         </small>
         <small>{reason(place)}</small>
       </span>
-    </button><label className="privacy-choice"><input type="checkbox" checked={compareIds.includes(place.slug)} disabled={!compareIds.includes(place.slug)&&compareIds.length>=3} onChange={e=>setCompareIds(ids=>e.target.checked?[...ids,place.slug]:ids.filter(id=>id!==place.slug))}/>候補を比べる</label></article>
+    </button>{!managementOnly&&<label className="privacy-choice"><input type="checkbox" checked={compareIds.includes(place.slug)} disabled={!compareIds.includes(place.slug)&&compareIds.length>=3} onChange={e=>setCompareIds(ids=>e.target.checked?[...ids,place.slug]:ids.filter(id=>id!==place.slug))}/>候補を比べる</label>}</article>
   );
   return (
     <main className="screen place-screen">
@@ -212,7 +216,7 @@ export function PlaceScreen({
           <p className="eyebrow">
             {isDemo ? 'Placeの掲載イメージ' : '今日の自分に合う、現実の場所へ'}
           </p>
-          <h1>{selected?.name ?? (savedOnly ? '保存したPlace' : 'Place')}</h1>
+          <h1>{selected?.name ?? (managementOnly?'掲載管理':savedOnly ? '保存したPlace' : 'Place')}</h1>
         </div>
       </header>
       {isDemo && (
@@ -237,9 +241,9 @@ export function PlaceScreen({
         </p>
       )}
       {busy && <output>…</output>}
-      {!selected&&<section className="place-intents"><h2>今日は、どんな時間にしたい？</h2><p className="meta">場所から選ぶ、今日の小さな一歩。</p><div className="quick-inputs">{Object.entries(PLACE_INTENTS).map(([key,label])=><button key={key} aria-pressed={intent===key} onClick={()=>{setIntent(intent===key?'':key);setCompareIds([]);}}>{label}</button>)}</div>{contextState&&<label className="privacy-choice"><input type="checkbox" checked={personalized} onChange={e=>{setPersonalized(e.target.checked);onPersonalization?.(e.target.checked);}}/>今日のCheckと選んだ行動を、候補の並び替えに使う<small>この端末内で処理します。会話・月経・My Treeは使わず、店舗へ渡しません。</small></label>}</section>}
+      {!selected&&!managementOnly&&<section className="place-intents"><h2>今日は、どんな時間にしたい？</h2><p className="meta">場所から選ぶ、今日の小さな一歩。</p><div className="quick-inputs">{Object.entries(PLACE_INTENTS).map(([key,label])=><button key={key} aria-pressed={intent===key} onClick={()=>{setIntent(intent===key?'':key);setCompareIds([]);}}>{label}</button>)}</div>{contextState&&<label className="privacy-choice"><input type="checkbox" checked={personalized} onChange={e=>{setPersonalized(e.target.checked);onPersonalization?.(e.target.checked);}}/>今日のCheckと選んだ行動を、候補の並び替えに使う<small>この端末内で処理します。会話・月経・My Treeは使わず、店舗へ渡しません。</small></label>}</section>}
       {onOpenPlus&&<button className="text-button" onClick={onOpenPlus}>Plusで広がるPlaceの体験を見る · 月500円</button>}
-      {operator && (
+      {operator && !managementOnly && (
         <details>
           <summary>運営の掲載確認</summary>
           <button
@@ -253,6 +257,8 @@ export function PlaceScreen({
           </p>
         </details>
       )}
+      {managementOnly&&operator&&!editing&&<button className="secondary-button" onClick={()=>setEditing(true)}>{selected?'掲載内容を編集する':'掲載候補を追加する'}</button>}
+      {editing&&<PlaceEditor place={selected} onCancel={()=>setEditing(false)} onSave={async(place,expectedUpdatedAt)=>{if(typeof place.slug!=='string')throw new Error('INVALID_PLACE');await placeRequest('',{operation:'save',place,expectedUpdatedAt},true);const result=await placeRequest(`?operator=1&slug=${place.slug}`,undefined,true);setSelected(result.place);setEditing(false);await load(undefined,true);}}/>}
       {selected ? (
         <article className="place-detail">
           {operatorMode&&<section className="panel"><h2>基本掲載・無料実証</h2><p>基本情報・体験紹介・既存の予約導線・基本集計は無料です。店舗特典は任意で、自動的に有料へ移行しません。有料オプション・来店確認は未提供です。</p><label className="privacy-choice"><input type="checkbox" checked={agreesFree} onChange={e=>setAgreesFree(e.target.checked)}/>この無料実証の条件を確認しました</label><button disabled={!agreesFree||busy} onClick={()=>void run(async()=>{await placeRequest('',{operation:'acceptFreePilot',slug:selected.slug,agrees:true},true);setError('無料実証の確認を記録しました。料金は発生しません。');})}>無料実証の確認を記録する</button><button disabled={busy} onClick={()=>void run(async()=>{const data=await placeRequest(`?metrics=${selected.slug}`,undefined,true);setMetricCounts(data.counts);})}>このPlaceの操作集計を見る</button>{metricCounts&&<><p className="meta">直近30日。閲覧・クリック等の送信数で、来店・予約成立ではありません。</p>{Object.entries(metricCounts).map(([key,count])=><p key={key}>{{detail:'詳細閲覧',official:'公式リンク',booking:'予約リンク',map:'地図リンク',contact:'問い合わせリンク'}[key]??key}：{count}</p>)}</>}</section>}
@@ -310,7 +316,7 @@ export function PlaceScreen({
                   'place_booking_open',
                 )}
                 {external('問い合わせ', selected.contactUrl??'', 'place_contact_open')}
-                {selected.phone&&<a href={`tel:${selected.phone.replace(/[^+0-9]/g,'')}`} onClick={()=>{onTrack('place_contact_open',{place_id:selected.slug});recordPublicPlaceMetric(selected.slug,'contact');}}>電話で問い合わせる ↗</a>}
+                {selected.phone&&<a href={`tel:${selected.phone.replace(/[^+0-9]/g,'')}`} onClick={()=>{if(operatorMode||isDemo)return;onTrack('place_contact_open',{place_id:selected.slug});recordPublicPlaceMetric(selected.slug,'contact');}}>電話で問い合わせる ↗</a>}
                 {external('地図を開く', selected.mapUrl, 'place_map_open')}
               </nav>
               <p className="meta">
@@ -443,7 +449,7 @@ export function PlaceScreen({
         </article>
       ) : (
         <>
-          <p>地域と過ごし方から探せます。位置情報の許可は必要ありません。</p>
+          {!managementOnly&&<><p>地域と過ごし方から探せます。位置情報の許可は必要ありません。</p>
           <details className="place-condition-controls"><summary>条件を調整する（エリア・料金・時間など）</summary><div className="place-filters">
             <label>
               過ごし方
@@ -486,7 +492,7 @@ export function PlaceScreen({
           </div>
           <section className="place-conditions" aria-label="利用条件"><h2>譲れない条件から、候補を絞る</h2><div className="place-filters"><label>分野<select aria-label="Placeの分野" value={conditions.sector??''} onChange={e=>changeConditions(c=>({...c,sector:(e.target.value||undefined) as PlaceSector|undefined}))}><option value="">すべて</option>{Object.entries(PLACE_SECTORS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><label>表示料金の上限<select aria-label="表示料金の上限" value={conditions.maxBudgetYen??''} onChange={e=>changeConditions(c=>({...c,maxBudgetYen:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[1000,3000,5000,10000].map(v=><option key={v} value={v}>{v.toLocaleString()}円まで</option>)}</select></label><label>所要時間<select aria-label="Placeの所要時間" value={conditions.maxMinutes??''} onChange={e=>changeConditions(c=>({...c,maxMinutes:e.target.value?Number(e.target.value):undefined}))}><option value="">指定しない</option>{[30,60,120].map(v=><option key={v} value={v}>{v}分以内</option>)}</select></label><label>サービス<select aria-label="Placeのサービス" value={conditions.service??''} onChange={e=>changeConditions(c=>({...c,service:e.target.value||undefined}))}><option value="">指定しない</option>{[...new Set(places.flatMap(p=>p.services??[]))].sort().map(v=><option key={v}>{v}</option>)}</select></label></div><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.walkIn)} onChange={e=>changeConditions(c=>({...c,walkIn:e.target.checked}))}/>予約なしで利用できる候補</label><label className="privacy-choice"><input type="checkbox" checked={Boolean(conditions.openAt)} onChange={e=>changeConditions(c=>({...c,openAt:e.target.checked?new Date():undefined}))}/>登録された営業時間内の候補</label><p className="meta">情報が不明な候補は、指定条件に一致したとは扱いません。臨時休業・最終料金・予約条件は公式情報をご確認ください。</p></section>
           </details><div className="quick-inputs"><button disabled={compareIds.length<2} onClick={()=>{setEnhanced(false);setComparison(places.filter(p=>compareIds.includes(p.slug)));}}>選んだ候補を比較する（{compareIds.length}/3）</button>{onOpenPlus&&<button disabled={compareIds.length<2} onClick={()=>{if(!plus||!personalized){onOpenPlus();return;}if(isDemo){setError('デモではPlusの実提案は利用できません。掲載された事実から比較できます。');return;}void run(async()=>{const result=await placeRequest('',{operation:'recommendation',compareSlugs:compareIds,intents:contextState?localPlaceIntents(contextState):[]});setEnhanced(true);setComparison(result.places);});}}>Plusのパーソナル比較</button>}</div>
-          {filtered.filter((p) => !p.sponsored).map(card)}
+          </>}{filtered.filter((p) => !p.sponsored).map(card)}
           {filtered.some((p) => p.sponsored) && (
             <section aria-label="広告の掲載場所">
               <h2>PR・広告の掲載場所</h2>
