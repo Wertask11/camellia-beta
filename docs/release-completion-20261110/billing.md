@@ -24,3 +24,5 @@ invoice・顧客binding・event台帳・outboxの保持期間は未決定。法�
 
 `completion-billing-cases`: processorなし・不正署名・偽UID/payment API停止。
 `completion-billing-firestore`: 合成adapter＋実emulatorで、同時再送、改変、500円、取消、未払、更新、返金順不同、期限、将来開始、旧trial保護、outbox重複を確認。実カード・課金・processor・請求書・PostHog着信の証拠ではない。
+
+再実行：機能コード4129121を変更せず、2026-11-11 UTCにunit59/59、Firestore全13エントリー、typecheck/lint/buildを確認（すべてexit0）。ログwork/billing-*。署名検証・gatewayは合成adapterであり、実決済・実請求書・実PostHog着信は未検証。
