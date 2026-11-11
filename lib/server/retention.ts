@@ -9,6 +9,7 @@ export const EXPIRY_COLLECTIONS = [
   'referral_rate_windows',
   'place_metric_receipts',
   'ai_usage_receipts',
+  'ai_request_receipts',
   'partner_shares',
 ] as const;
 const millis = (v: unknown) =>

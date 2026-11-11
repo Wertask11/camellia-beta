@@ -14,7 +14,7 @@ export async function requestGemini(message:string,history:Array<{role:'user'|'a
  try{
   response=await fetch('/api/camellia/chat',{method:'POST',credentials:'same-origin',cache:'no-store',
    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`,Accept:options.batch?'application/json':'text/event-stream'},
-   body:JSON.stringify({message,history,modelId}),signal:AbortSignal.any([AbortSignal.timeout(40000),...(options.signal?[options.signal]:[])]),
+   body:JSON.stringify({message,history,modelId,requestId:crypto.randomUUID()}),signal:AbortSignal.any([AbortSignal.timeout(40000),...(options.signal?[options.signal]:[])]),
   });
  }catch(error){throw Object.assign(new Error('REQUEST_FAILED'),{category:error&&typeof error==='object'&&'name'in error&&error.name==='TimeoutError'?'timeout':'network'});}
  const stream=response.ok&&response.headers?.get('content-type')?.includes('text/event-stream');

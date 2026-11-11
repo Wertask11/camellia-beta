@@ -1,4 +1,5 @@
-import { createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto';
+import { validAiRequestId } from '../server/ai-observation.js';
+import { randomUUID, createPublicKey, createVerify, type JsonWebKeyInput } from 'node:crypto';
 import { parseConversationReply, ACTION_BRIDGE_INSTRUCTION } from './action-bridge.js';
 import { immediateSafetyReply } from './safety.js';
 import { EligibilityError, EligibilityServiceError } from '../server/eligibility.js';
@@ -174,7 +175,7 @@ export function buildGeminiContents(history: SafeHistoryMessage[], currentMessag
   ];
 }
 
-export type GenerationControls = {signal:AbortSignal;onText:(text:string)=>void;onFirstChunk:()=>void};
+export type GenerationControls = {identity?:{uid:string;requestId:string;usageLane?:'referral_extension'};signal:AbortSignal;onText:(text:string)=>void;onFirstChunk:()=>void};
 export type ChatApiResponse = {
   setHeader:(name:string,value:string)=>void;
   status:(code:number)=>{json:(body:unknown)=>void};
@@ -190,6 +191,7 @@ export function createGeminiChatHandler(deps: {
   loadContext?:(uid:string)=>Promise<{mood?:string;context:string}>;
   generate:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls?:GenerationControls)=>Promise<string>;
   generateStream?:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls:GenerationControls)=>Promise<string>;
+  claimRequest?:(uid:string,requestId:string)=>Promise<{finish:(state:'success'|'error'|'aborted')=>Promise<void>}>;
   limiter?:{take:(uid:string)=>boolean|Promise<boolean>};now?:()=>number;
 }) {
  const limiter=deps.limiter??createInMemoryRateLimiter(),clock=deps.now??Date.now;
@@ -214,16 +216,21 @@ export function createGeminiChatHandler(deps: {
   const body=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body as Record<string,unknown>:{};
   if(Buffer.byteLength(JSON.stringify(body))>20000)return res.status(413).json({error:'invalid_request'});
   if(typeof body.message!=='string'||!body.message.trim()||Array.from(body.message).length>1000)return res.status(400).json({error:'invalid_request'});
+  if(body.usageLane!==undefined&&(typeof body.usageLane!=='string'||!['basic','referral_extension'].includes(body.usageLane)))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
+  if(body.requestId!==undefined&&!validAiRequestId(body.requestId))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
   if(body.modelId!==undefined&&!isConversationModel(body.modelId))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
   const modelId=defaultConversationModel(body.modelId),message=redactContactDetails(body.message).trim(),history=sanitizeHistory(body.history);
   const urgent=immediateSafetyReply(message);
   if(urgent)return res.status(200).json({reply:urgent,provider:'fallback',safety:true,modelId,timing:safeConversationTiming(timing)});
   const controller=new AbortController(),disconnect=()=>controller.abort();
   res.once?.('close',disconnect);
+  let requestLease:Awaited<ReturnType<NonNullable<typeof deps.claimRequest>>>|undefined,requestOutcome:'success'|'error'|'aborted'='error';
   let streaming=false,heartbeat:ReturnType<typeof setInterval>|undefined,started=0;
   const emit=(value:unknown)=>{if(!controller.signal.aborted)res.write?.(`data: ${JSON.stringify(value)}\n\n`);};
   const finishTiming=()=>{if(started)timing.provider_total_ms=Math.max(0,clock()-started);return safeConversationTiming(timing);};
   try{
+   const requestId=typeof body.requestId==='string'?body.requestId:randomUUID();
+   try{requestLease=await deps.claimRequest?.(identity.uid,requestId);}catch(error){return res.status(error&&typeof error==='object'&&'code'in error&&error.code==='DUPLICATE_REQUEST'?409:503).json({error:'temporarily_unavailable',category:'provider_error'});}
    const limitStart=clock();let allowed;
    try{allowed=await limiter.take(identity.uid);}catch{return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
    timeline.T4=clock();timing.server_rate_limit_ms=Math.max(0,timeline.T4-limitStart);
@@ -243,7 +250,7 @@ export function createGeminiChatHandler(deps: {
     emit({type:'start'});heartbeat=setInterval(()=>{if(!controller.signal.aborted)res.write?.(': keepalive\n\n');},10000);
    }
    started=clock();timeline.T6=started;timing.server_pre_generation_ms=Math.max(0,started-receivedAt);
-   const controls:GenerationControls={signal:controller.signal,onText:text=>emit({type:'delta',text}),onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
+   const controls:GenerationControls={identity:{uid:identity.uid,requestId,...(body.usageLane==='referral_extension'?{usageLane:'referral_extension' as const}:{})},signal:controller.signal,onText:text=>emit({type:'delta',text}),onFirstChunk:()=>{if(timing.provider_first_chunk_ms===undefined){timeline.T7=clock();timing.provider_first_chunk_ms=Math.max(0,timeline.T7-started);}}};
    const generated=(await(streaming?deps.generateStream!:deps.generate)(buildGeminiContents(history,message),prompt,controls)).trim();
    controller.signal.throwIfAborted();
    const candidate=generated?parseConversationReply(generated,message):{reply:''};
@@ -251,12 +258,13 @@ export function createGeminiChatHandler(deps: {
    if(!parsed.reply)throw Object.assign(new Error('EMPTY_GENERATION'),{code:'INVALID_RESPONSE'});
    timeline.T9_server=clock();
    const result={...parsed,...(deps.env.VERCEL_ENV==='preview'?{timeline}:{}),provider:'gemini',modelId,responseTimeMs:Math.max(0,clock()-started),timing:finishTiming()};
+   requestOutcome='success';
    if(streaming){emit({type:'done',...result});res.end?.();}else return res.status(200).json(result);
   }catch(error){
    if(controller.signal.aborted)return;
    const category=classifyChatError(error),result={error:'temporarily_unavailable',category,timing:finishTiming()};
    if(streaming){emit({type:'error',...result});res.end?.();}
    else return res.status(category==='rate_limited'?429:category==='timeout'?504:category==='invalid_request'?400:502).json(result);
-  }finally{if(heartbeat)clearInterval(heartbeat);res.off?.('close',disconnect);}
+  }finally{if(controller.signal.aborted)requestOutcome='aborted';try{await requestLease?.finish(requestOutcome);}catch{console.warn('camellia_request_receipt_unavailable',{stage:'finish'});}if(heartbeat)clearInterval(heartbeat);res.off?.('close',disconnect);}
  };
 }
