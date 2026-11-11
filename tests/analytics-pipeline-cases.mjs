@@ -16,6 +16,10 @@ try{
   const safe=analytics.sanitizeEventProperties({...event,name,properties},state);assert.ok(!JSON.stringify(safe).includes('PRIVATE_'));
  }
  const nested=analytics.scrubUrlProperties({properties:{$set_once:{$initial_current_url:'https://example.test/?ticket=PRIVATE_TICKET'}}});assert.ok(!JSON.stringify(nested).includes('PRIVATE_'));
+ const entrySession=crypto.randomUUID();let sessionResult;
+ analytics.forwardEvent({id:crypto.randomUUID(),name:'session_start',createdAt:now,properties:{entry_session:entrySession,uid:'PRIVATE_UID',text:'PRIVATE_TEXT'}},state,value=>sessionResult=value);
+ await new Promise(r=>setTimeout(r,40));assert.equal(sessionResult.status,'accepted');const sessionSent=payloads.at(-1).batch[0];assert.equal(sessionSent.properties.entry_session,entrySession);assert.ok(!JSON.stringify(sessionSent).includes('PRIVATE_'));
+ assert.equal(analytics.sanitizeEventProperties({id:crypto.randomUUID(),name:'session_start',properties:{entry_session:'PRIVATE_UID'}},state).entry_session,undefined);
  analytics.resetAnalyticsIdentity();assert.ok(!Object.keys(localStorage).some(key=>key.startsWith('camellia-analytics-delivery-v1:')));
  console.log('PASS public SDK hook/HTTP receipt contract, identity switch/logout, stable UUID/timestamp, final SDK allowlist, nested URL stripping, privacy enums, model/Circle/Place sanitization, optout suppression/delete. SDK and HTTP are isolated, not live ingestion.');
 }finally{await server.close();await dom.happyDOM.close();}

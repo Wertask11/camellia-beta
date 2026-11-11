@@ -1,8 +1,9 @@
+import os
 """Actual screens and storage; synthetic account, Circle and Place HTTP. Server authorization is tested separately in the emulator."""
 import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright,expect
-OUT=Path('/workspace/outputs/camellia-completion-20261110');OUT.mkdir(parents=True,exist_ok=True);results=[]
+OUT=Path(os.environ.get('CAMELLIA_EVIDENCE_DIR','/workspace/outputs/camellia-completion-20261110'));OUT.mkdir(parents=True,exist_ok=True);results=[]
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
  for width in [375,390,412,768,1280]:

@@ -1,8 +1,9 @@
+import os
 """Real Chromium / actual app; synthetic auth and sync only. No production writes."""
 import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright,expect
-OUT=Path('/workspace/outputs/camellia-quality-20261110');OUT.mkdir(parents=True,exist_ok=True)
+OUT=Path(os.environ.get('CAMELLIA_EVIDENCE_DIR','/workspace/outputs/camellia-quality-20261110'));OUT.mkdir(parents=True,exist_ok=True)
 results=[]
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--disable-dev-shm-usage'])
