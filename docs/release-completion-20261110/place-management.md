@@ -11,3 +11,5 @@
 担当者の登録：この入口で本人がLINE／Googleを使用する→運営がFirebase Auth側で担当者を確認→データ保護差分のscope CLIをdry-run→承認後だけ付与。解除はslug `-`。無効化／削除済み担当者も解除できる。global operator claimを一般店舗へ渡さない。公開実績は実店舗受入後に別判定する。
 
 ブラウザ5幅で専用入口→合成Google→下書き→審査依頼、スタッフに公開ボタンが出ないこと、利用者の個人storageが生成・変更されないこと、公開成果イベントを出さないことを確認。これは実LINE／Googleや実店舗掲載の証明ではない。
+
+再実行：コード532d83bを独立worktreeで検証。2026-11-11 UTC、57/57unit、Firestore11エントリー、typecheck/lint/buildすべてexit0。5幅operator browserもこのworktreeの実画面でPASS。ログ：`/workspace/camellia-completion-operator-check-20261111/work/operator-*`。SDK・ルールとHTTP fixtureの証拠は区別し、本番公開・実OAuth・実店舗受入とはしない。
