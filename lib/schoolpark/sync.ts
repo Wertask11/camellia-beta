@@ -1,3 +1,4 @@
+import {completePendingReferral} from '../referral/client';
 import {serializeConversationState} from '@/lib/conversation/persistence';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -188,6 +189,7 @@ async function performSync() {
     saveSent(uid, sent);
   }
   notifySync({phase:'saved',at:new Date().toISOString()});
+  void completePendingReferral(uid);
 }
 
 export function flushSchoolParkSync() {
@@ -261,6 +263,7 @@ export async function deleteSyncedCamelliaData(clearLocalData: () => void) {
         getDocs(collection(schoolParkDb, 'camellia_users', uid, kind)),
       ));
       await assertCurrentUid();
+      if(records[CAMELLIA_SYNC_DELETE_COLLECTIONS.indexOf('profile')]?.docs.some(d=>d.id==='notification_preferences')){const token=await schoolParkAuth.currentUser?.getIdToken();const stopped=await fetch('/api/camellia/notification-settings',{method:'DELETE',headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(15000)});if(!stopped.ok)throw new Error('NOTIFICATION_STOP_FAILED');await assertCurrentUid();}
       if(records[CAMELLIA_SYNC_DELETE_COLLECTIONS.indexOf('partner_shares')]?.size){const token=await schoolParkAuth.currentUser?.getIdToken();const response=await fetch('/api/camellia/share',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({operation:'revokeAll'}),signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('SHARE_REVOCATION_FAILED');await assertCurrentUid();}
       const refs = records.flatMap((snapshot) => snapshot.docs.map((item) => item.ref));
       refs.push(root);

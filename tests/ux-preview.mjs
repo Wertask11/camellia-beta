@@ -74,9 +74,9 @@ export const setAnalyticsDeliveryAllowed=()=>{};`,
 };
 const server = await createServer({
   configFile: false, root,
-  cacheDir: root + '/node_modules/.vite-ux-preview-' + (checkFirst ? 'check-first' : 'legacy'),
+  cacheDir: root + '/work/.vite-ux-preview-' + (checkFirst ? 'check-first' : 'legacy'),
   resolve: { alias: { '@': root }, dedupe: ['react', 'react-dom'] },
-  optimizeDeps: { include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime', 'lucide-react'] },
+  optimizeDeps: { noDiscovery:true, include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime', 'lucide-react'] },
   css: { postcss: { plugins: [tailwindcss()] } },
   plugins: [{
     name: 'isolated-ux-only', enforce: 'pre',

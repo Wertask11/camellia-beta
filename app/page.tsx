@@ -1,5 +1,6 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
+import {captureReferralRegistration} from '@/lib/referral/client';
 import {PlaceOperatorScreen} from '@/screens/PlaceOperatorScreen';
 import {operatorIntent} from '@/lib/place/operator-intent';
 import { useCallback,useEffect, useMemo, useRef, useState } from 'react';
@@ -66,7 +67,7 @@ function viewingPublicPlaceDemo() {
 const ignoreDemoTrack=()=>{};
 export default function Page(){
  const [operator,setOperator]=useState<boolean|null>(null);
- useEffect(()=>{let managing=new URL(location.href).searchParams.get('open')==='place-operator';try{managing=operatorIntent(new URL(location.href),localStorage);}catch{/* The normal storage recovery screen handles unavailable storage. */}queueMicrotask(()=>setOperator(managing));},[]);
+ useEffect(()=>{let active=true,managing=new URL(location.href).searchParams.get('open')==='place-operator';try{managing=operatorIntent(new URL(location.href),localStorage);}catch{/* The normal storage recovery screen handles unavailable storage. */}const open=()=>{if(active)setOperator(managing);};if(managing)queueMicrotask(open);else void captureReferralRegistration().catch(()=>{}).finally(open);return()=>{active=false;};},[]);
  if(operator===null)return <main className="app-shell" aria-busy="true"><p>Camelliaを開いています…</p></main>;
  return operator?<PlaceOperatorScreen/>:<CamelliaPage/>;
 }
