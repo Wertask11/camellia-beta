@@ -273,10 +273,13 @@ export default function Page() {
     const resolve=(choice:'remote'|'adopt'|'fresh')=>{setAccountReady(false);void store.prepareAccount(accountUser.uid,choice).then(()=>{setAccountError('');setAccountReady(true);}).catch(error=>{setAccountError(error instanceof Error?error.message:'RESTORE_FAILED');setAccountReady(true);});};
     // Always leave a way out: logging in with the method used before is often all that is needed.
     const leave=()=>{setAccountReady(false);void logoutCamellia().catch(()=>{}).finally(()=>{setAccountError('');setAccountUser(null);setEntry('account');setAccountReady(true);});};
+    const removed=accountError==='REMOTE_RECORDS_REMOVED',deletingRemote=accountError==='PERSONAL_DELETE_IN_PROGRESS';
     const empty=accountError==='IDENTITY_CONFLICT_EMPTY_ACCOUNT';
     const conflict=['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError);
     return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p>
-      <p role="alert">{empty?'このアカウントには、まだ記録がありません。この端末には、別のアカウントで使っていた記録があります。':conflict?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p>
+      <p role="alert">{deletingRemote?'このアカウントでは個人記録の削除が途中です。端末の原本はそのまま残しています。':removed?'アカウントの記録が別の操作で削除されています。この端末の記録を自動で送り直していません。':empty?'このアカウントには、まだ記録がありません。この端末には、別のアカウントで使っていた記録があります。':conflict?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p>
+      {deletingRemote&&<button className="danger-link" onClick={()=>{if(!window.confirm('このアカウントの個人記録の削除を再開しますか？Circleの文章や他サービスのアカウントは削除しません。'))return;setAccountReady(false);void store.reset().then(()=>{setAccountError('');setAccountReady(true);}).catch(()=>{setAccountError('PERSONAL_DELETE_IN_PROGRESS');setAccountReady(true);});}}>個人記録の削除を再開する</button>}
+      {removed&&<button className="secondary-button" onClick={()=>resolve('fresh')}>この端末に控えを残して、空の記録で再開する</button>}
       {empty?<>
         <p>前に使ったLINEまたはGoogleでログインし直すと、これまでの記録に戻れます。</p>
         <button className="primary" onClick={leave}>ログアウトして、前の方法でログインする</button>
@@ -485,7 +488,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen onNotifications={value=>store.updateProfile({notificationPreferences:value})} onRemoveExperience={store.removePlaceExperience} onReflectPlace={store.reflectPlace} onPrepareCircle={slug=>{setPlaceEntry({slug});setSecondary('circle');}} onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
+        <MyScreen onRestoreBackup={store.restorePersonalBackup} onNotifications={value=>store.updateProfile({notificationPreferences:value})} onRemoveExperience={store.removePlaceExperience} onReflectPlace={store.reflectPlace} onPrepareCircle={slug=>{setPlaceEntry({slug});setSecondary('circle');}} onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}
