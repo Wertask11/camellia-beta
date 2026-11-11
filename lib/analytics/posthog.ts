@@ -21,7 +21,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   place_contact_open:['place_id'],
   place_view:['place_id','catalog'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
   circle_view: ['circle_id', 'days_since_join'], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
-  session_start: [],
+  session_start: ['entry_session'],
   welcome_view: ['period', 'entry_flow', 'entry_session'],
   welcome_continue: ['period', 'entry_flow', 'entry_session'],
   login_view: ['authenticated', 'entry_flow', 'entry_session'],

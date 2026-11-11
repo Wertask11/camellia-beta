@@ -65,7 +65,7 @@ export function useCamelliaStore(){
  },[ready,state,storageError]);
  const sessionEvents=useCallback(()=>{
   const session=analyticsSession(deliveryOwner.current);
-  return {session,events:session.fresh?[{id:uid(),name:'session_start' as const,properties:sessionAttribution(),createdAt:analyticsTimestamp(),sessionId:session.id}]:[]};
+  return {session,events:session.fresh?[{id:uid(),name:'session_start' as const,properties:{...sessionAttribution(),entry_session:session.id},createdAt:analyticsTimestamp(),sessionId:session.id}]:[]};
  },[]);
  const track=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>{
   const {session,events}=sessionEvents();
