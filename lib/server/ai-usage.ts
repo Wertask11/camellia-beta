@@ -9,7 +9,7 @@ export function usageObservation(model:string,value:unknown):UsageObservation|un
  return {model,inputTokens:input as number,outputTokens:output as number};
 }
 export function estimatedUsageYen(value:UsageObservation,pricing?:ApprovedPricing){
- if(!pricing||pricing.approved!==true||pricing.currency!=='JPY'||![pricing.inputPerMillion,pricing.outputPerMillion].every(v=>Number.isFinite(v)&&v>=0)||!pricing.sourceUrl.startsWith('https://')||!Number.isFinite(Date.parse(pricing.checkedAt)))return {status:'pricing_not_configured' as const};
+ if(!pricing||pricing.approved!==true||pricing.currency!=='JPY'||![pricing.inputPerMillion,pricing.outputPerMillion].every(v=>Number.isFinite(v)&&v>=0)||typeof pricing.sourceUrl!=='string'||!pricing.sourceUrl.startsWith('https://')||!Number.isFinite(Date.parse(pricing.checkedAt)))return {status:'pricing_not_configured' as const};
  return {status:'estimate' as const,amountYen:(value.inputTokens*pricing.inputPerMillion+value.outputTokens*pricing.outputPerMillion)/1000000,invoiceVerified:false};
 }
 /** Numeric provider metadata only, isolated from content and analytics. Not an invoice or payment. */
