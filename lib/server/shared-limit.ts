@@ -40,6 +40,7 @@ export function createSharedRateLimiter(
         refs.forEach((ref, index) =>
           tx.set(ref, {
             count: counts[index] + 1,
+            createdAt:new Date(time),
             expiresAt: new Date((window + 2) * config.windowMs),
           }),
         );

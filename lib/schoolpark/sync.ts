@@ -59,8 +59,10 @@ export async function prepareSchoolParkAccount(state: CamelliaState, uid: string
   if(intoEmpty&&root.exists())throw new Error('IDENTITY_CONFLICT');
   if(choice==='fresh'&&!fresh)throw new Error('FRESH_STATE_REQUIRED');
   if(root.data()?.archiveSyncInProgress&&(!owner||useRemote))throw new Error('REMOTE_SYNC_INCOMPLETE');
+  if(root.data()?.personalDeleteInProgress)throw new Error('PERSONAL_DELETE_IN_PROGRESS');
   const version=rootSignature(root.data());
   const known=localStorage.getItem(CLOUD_KEY+uid);
+  if(!useRemote&&!intoEmpty&&owner===uid&&!root.exists()&&known&&known!==rootSignature(undefined)&&hasPersonalData(state))throw new Error('REMOTE_RECORDS_REMOVED');
   // The account changed since this device last confirmed it. Usually another device; but if the app closed
   // while this device's own write was in flight, the write landed and only its confirmation was lost.
   const unconfirmed=!useRemote&&owner===uid&&root.exists()&&known!==version;
@@ -84,7 +86,7 @@ export async function prepareSchoolParkAccount(state: CamelliaState, uid: string
   }
   if(useRemote&&!root.exists())throw new Error('REMOTE_RESTORE_UNAVAILABLE');
   if (schoolParkAuth.currentUser?.uid !== uid) throw new Error('ACCOUNT_CHANGED');
-  if(useRemote){localStorage.removeItem(`${CONFLICT_KEY}:${uid}`);localStorage.removeItem(`${SENT_KEY}:${uid}`);}
+  if(useRemote||intoEmpty){localStorage.removeItem(`${CONFLICT_KEY}:${uid}`);localStorage.removeItem(`${SENT_KEY}:${uid}`);}
   localStorage.setItem(CLOUD_KEY+uid,version);
   localStorage.setItem(OWNER_KEY,uid);
   preparedUid = uid;
@@ -169,6 +171,7 @@ async function performSync() {
     const version=await runTransaction(schoolParkDb,async transaction=>{
       const current=await transaction.get(rootRef);
       if(schoolParkAuth.currentUser?.uid!==uid||preparedUid!==uid)throw new Error('ACCOUNT_CHANGED');
+      if(current.data()?.personalDeleteInProgress)throw new Error('PERSONAL_DELETE_IN_PROGRESS');
       const expected=localStorage.getItem(CLOUD_KEY+uid);
       if(rootSignature(current.data())!==expected)throw new Error('SYNC_CONFLICT');
       part.forEach(entry=>transaction.set(reference(uid,entry.path),entry.data,{merge:true}));
@@ -252,10 +255,13 @@ export async function deleteSyncedCamelliaData(clearLocalData: () => void) {
       latestState = null;
       await assertCurrentUid();
       const root = doc(schoolParkDb, 'camellia_users', uid);
+      // Lock the root before enumerating records. Existing CAS writers fail their revision check.
+      await runTransaction(schoolParkDb,async transaction=>{const current=await transaction.get(root);await assertCurrentUid();if(current.exists())transaction.set(root,{personalDeleteInProgress:true,syncRevision:crypto.randomUUID()},{merge:true});});
       const records = await Promise.all(CAMELLIA_SYNC_DELETE_COLLECTIONS.map((kind) =>
         getDocs(collection(schoolParkDb, 'camellia_users', uid, kind)),
       ));
       await assertCurrentUid();
+      if(records[CAMELLIA_SYNC_DELETE_COLLECTIONS.indexOf('partner_shares')]?.size){const token=await schoolParkAuth.currentUser?.getIdToken();const response=await fetch('/api/camellia/share',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({operation:'revokeAll'}),signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('SHARE_REVOCATION_FAILED');await assertCurrentUid();}
       const refs = records.flatMap((snapshot) => snapshot.docs.map((item) => item.ref));
       refs.push(root);
       for (let offset = 0; offset < refs.length; offset += 400) {
