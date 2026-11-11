@@ -1,8 +1,9 @@
+import os
 """Local actual UI + synthetic auth. No real listing or analytics transmission."""
 from pathlib import Path
 import json
 from playwright.sync_api import sync_playwright,expect
-OUT=Path('/workspace/outputs/camellia-quality-20261110');results=[]
+OUT=Path(os.environ.get('CAMELLIA_EVIDENCE_DIR','/workspace/outputs/camellia-quality-20261110'));results=[]
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
  for width in [375,390,412,768,1280]:
