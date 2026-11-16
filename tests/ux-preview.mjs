@@ -10,6 +10,7 @@ import { dirname, resolve } from 'node:path';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const qualityLinks=process.env.CIRCLE_LINKS_FIXTURE==='on';
 if(qualityLinks){process.env.VITE_CIRCLE_ENABLED='true';process.env.VITE_PLACE_ENABLED='true';process.env.VITE_CIRCLE_PLACE_LINKS_ENABLED='true';}
+process.env.VITE_FREE_BASIC_USAGE=process.env.FREE_USE_FIXTURE==='on'?'true':'off';
 const checkFirst = process.env.CHECK_FIRST_FIXTURE === 'on';
 // Historical browser fixtures keep their original entry. The new journey opts in explicitly.
 process.env.VITE_CHECK_FIRST_ONBOARDING = checkFirst ? 'true' : 'off';
@@ -99,7 +100,7 @@ const server = await createServer({
         next();
       });
       s.middlewares.use((req, res, next) => {
-        if (req.url?.split('?')[0] !== '/api/camellia/chat') return next();
+        if (!['/api/camellia/chat','/api/camellia/free-chat'].includes(req.url?.split('?')[0])) return next();
         res.setHeader('Content-Type', req.method === 'GET' ? 'application/json' : 'text/event-stream');
         if (req.method === 'GET') return res.end(JSON.stringify({ enabled: true }));
         let raw = ''; req.on('data', chunk => { raw += chunk; });

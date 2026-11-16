@@ -5,15 +5,15 @@ import {safeConversationTiming,safeConversationTimeline,type ConversationTiming}
 import type {ConversationModelId} from '@/types';
 export type ChatError='rate_limited'|'timeout'|'network'|'provider_error'|'disabled'|'invalid_request'|'safety_block'|'invalid_response';
 export type ChatResponse={reply:string;provider:'gemini'|'fallback';responseTimeMs?:number;safety?:boolean;actionId?:string;modelId?:ConversationModelId;timing?:ConversationTiming;transport?:'sse'|'json';timeline?:Record<string,number>};
-export async function requestGemini(message:string,history:Array<{role:'user'|'assistant';text:string}>,modelId:ConversationModelId,options:{signal?:AbortSignal;onText?:(text:string)=>void;onRequest?:()=>void;batch?:boolean}={}):Promise<ChatResponse>{
+export async function requestGemini(message:string,history:Array<{role:'user'|'assistant';text:string}>,modelId:ConversationModelId,options:{signal?:AbortSignal;onText?:(text:string)=>void;onRequest?:()=>void;batch?:boolean;free?:boolean}={}):Promise<ChatResponse>{
  const user=schoolParkAuth.currentUser;
- if(!user)throw Object.assign(new Error('AUTH_REQUIRED'),{category:'provider_error'});
- const token=await user.getIdToken();
+ if(!options.free&&!user)throw Object.assign(new Error('AUTH_REQUIRED'),{category:'provider_error'});
+ const token=options.free?null:await user!.getIdToken();
  options.signal?.throwIfAborted();options.onRequest?.();
  let response:Response;
  try{
-  response=await fetch('/api/camellia/chat',{method:'POST',credentials:'same-origin',cache:'no-store',
-   headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`,Accept:options.batch?'application/json':'text/event-stream'},
+  response=await fetch(options.free?'/api/camellia/free-chat':'/api/camellia/chat',{method:'POST',credentials:'same-origin',cache:'no-store',
+   headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`} : {}),Accept:options.batch?'application/json':'text/event-stream'},
    body:JSON.stringify({message,history,modelId,requestId:crypto.randomUUID()}),signal:AbortSignal.any([AbortSignal.timeout(40000),...(options.signal?[options.signal]:[])]),
   });
  }catch(error){throw Object.assign(new Error('REQUEST_FAILED'),{category:error&&typeof error==='object'&&'name'in error&&error.name==='TimeoutError'?'timeout':'network'});}

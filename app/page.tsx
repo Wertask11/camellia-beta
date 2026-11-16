@@ -1,5 +1,6 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
+import {ExperienceEntry} from '@/components/ExperienceEntry';
 import {captureReferralRegistration} from '@/lib/referral/client';
 import {PlaceOperatorScreen} from '@/screens/PlaceOperatorScreen';
 import {operatorIntent} from '@/lib/place/operator-intent';
@@ -69,12 +70,12 @@ export default function Page(){
  const [operator,setOperator]=useState<boolean|null>(null);
  useEffect(()=>{let active=true,managing=new URL(location.href).searchParams.get('open')==='place-operator';try{managing=operatorIntent(new URL(location.href),localStorage);}catch{/* The normal storage recovery screen handles unavailable storage. */}const open=()=>{if(active)setOperator(managing);};if(managing)queueMicrotask(open);else void captureReferralRegistration().catch(()=>{}).finally(open);return()=>{active=false;};},[]);
  if(operator===null)return <main className="app-shell" aria-busy="true"><p>Camelliaを開いています…</p></main>;
- return operator?<PlaceOperatorScreen/>:<CamelliaPage/>;
+ return operator?<PlaceOperatorScreen/>:<ExperienceEntry account={<CamelliaPage/>}/>;
 }
 function CamelliaPage() {
   const store = useCamelliaStore();
   const currentTime=useCurrentTime(store.state.checkins);
-  const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app' | 'guest'>('welcome');
+  const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app' | 'guest'>(()=>{try{return sessionStorage.getItem('camellia-id-entry')==='1'?'account':'welcome';}catch{return 'welcome';}});
   const [guest,setGuest]=useState<GuestDraft>();
   const guestResume=useRef('');
   useEffect(()=>{
@@ -310,7 +311,7 @@ function CamelliaPage() {
       onTrack={(name,properties)=>{if((name==='daily_reflection_view'&&markGuestShown('result'))||(name==='save_prompt_view'&&markGuestShown('prompt')))store.track(name,{...properties,...guestEventProperties()});}}
       onOpenAction={()=>{}} onIntent={()=>{}} onTalk={()=>{}} onFortune={()=>{}} onTree={()=>{}} onComplete={()=>{}} onFeedback={()=>{}} onProposals={()=>{}}/>
     </div>;
-  if(!accountUser)return <AccountScreen {...authHandlers} returning={returning} notice={authNotice} onBack={()=>setEntry('welcome')}/>;
+  if(!accountUser)return <AccountScreen {...authHandlers} returning={returning} notice={authNotice} onBack={()=>{sessionStorage.removeItem('camellia-id-entry');setEntry('welcome');window.dispatchEvent(new Event('camellia-free-return'));}}/>;
   if(accessFor===undefined)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accessFor?.suspended)return <div className="app-shell"><SuspendedScreen onLogout={logoutToAccount} onTrack={name=>store.track(name)}/></div>;
   if(accessFor?.needsInvite)return <div className="app-shell"><InviteScreen initialCode={pendingInvite()} initialResult={access?.inviteResult} onTrack={(name,properties)=>store.track(name,properties)} onLogout={logoutToAccount} onAccepted={result=>{

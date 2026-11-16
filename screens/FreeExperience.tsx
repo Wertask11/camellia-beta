@@ -1,0 +1,52 @@
+'use client';
+import {useMemo,useState} from 'react';
+import {useCamelliaStore,FREE_STORAGE_KEY} from '@/hooks/useCamelliaStore';
+import {useCurrentTime} from '@/hooks/useCurrentTime';
+import {recommend} from '@/lib/recommendation';
+import {actionPlaceIntent,type PlaceIntent} from '@/lib/place/recommendation';
+import {LIVE_DESTINATIONS} from '@/lib/features';
+import {PLACE_DEMO_DATA} from '@/data/place-demo';
+import {BottomNav,type MainTab} from '@/components/BottomNav';
+import {ActionSheet} from '@/components/ActionSheet';
+import {StorageRecovery} from '@/components/StorageRecovery';
+import {PartnerShareDialog,type ShareDraft} from '@/components/PartnerShareDialog';
+import {PlusOffer} from '@/components/PlusOffer';
+import {TodayScreen} from './TodayScreen';
+import {DiscoverScreen} from './DiscoverScreen';
+import {ConversationWorkspace} from './ConversationWorkspace';
+import {FortuneScreen} from './FortuneScreen';
+import {TreeScreen} from './TreeScreen';
+import {MyScreen} from './MyScreen';
+import {PrivacyScreen} from './PrivacyScreen';
+import {ProfileScreen} from './ProfileScreen';
+import {PlaceScreen} from './PlaceScreen';
+import type {Category,Recommendation,TreeLeaf} from '@/types';
+
+/** A separate device journal. Never hydrate or sync a previously signed-in person's cache here. */
+export function FreeExperience({onIdentity}:{onIdentity:()=>void}){
+ const store=useCamelliaStore({deviceOnly:true});
+ const now=useCurrentTime(store.state.checkins),recs=useMemo(()=>recommend(store.state,now),[store.state,now]);
+ const [tab,setTab]=useState<MainTab>('today'),[feature,setFeature]=useState<'fortune'|'tree'|'place'|'circle'|'privacy'|'profile'>();
+ const [category,setCategory]=useState<Category>(),[chosen,setChosen]=useState<Recommendation>();
+ const [placeIntent,setPlaceIntent]=useState<PlaceIntent>(),[treeContext,setTreeContext]=useState<TreeLeaf>();
+ const [share,setShare]=useState<ShareDraft>(),[plus,setPlus]=useState(false);
+ const places=(intent?:PlaceIntent)=>{setPlaceIntent(intent);setFeature('place');};
+ const navigate=(next:MainTab)=>{setFeature(undefined);setTab(next);};
+ const open=(r:Recommendation)=>{if(r.action.opens==='camellia'){navigate('camellia');return;}setChosen(r);};
+ const back=()=>setFeature(undefined);
+ if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage} storageKeys={[FREE_STORAGE_KEY]}/>;
+ if(!store.ready)return <output className="loading">Camelliaを開いています…</output>;
+ const dialogs=<>{chosen&&<ActionSheet action={chosen.action} onClose={()=>setChosen(undefined)} onStart={()=>{store.startAction(chosen.action);setChosen(undefined);}} onSave={timing=>{store.saveAction(chosen.action,timing);setChosen(undefined);}} onDone={()=>{store.doneAction(chosen.action);setChosen(undefined);}} onSkip={()=>setChosen(undefined)} onPlace={()=>{places(actionPlaceIntent(chosen.action));setChosen(undefined);}} onShare={()=>{setShare({kind:'action',actionId:chosen.action.id});setChosen(undefined);}}/>}{share&&<PartnerShareDialog draft={share} onClose={()=>setShare(undefined)} onTrack={store.track}/>} {plus&&<PlusOffer source="place" onClose={()=>setPlus(false)} onTrack={store.track}/>}</>;
+ let content;
+ if(feature==='privacy')content=<PrivacyScreen onBack={back}/>;
+ else if(feature==='profile')content=<ProfileScreen existing profile={store.state.profile} onBack={back} onSave={patch=>{store.updateProfile(patch);back();}}/>;
+ else if(feature==='fortune')content=<FortuneScreen state={store.state} recommendations={recs} onBack={back} onDecide={()=>navigate('discover')} onSave={store.setFortune} onTrack={store.track} onAction={open}/>;
+ else if(feature==='tree')content=<TreeScreen deviceOnly leaves={store.state.treeLeaves} onBack={back} onAdd={store.addTreeLeaf} onUpdate={store.updateTreeLeaf} onRemove={store.removeTreeLeaf} onReflect={store.addTreeReflection} onTrack={store.track} onTalk={leaf=>{setTreeContext(leaf);navigate('camellia');}}/>;
+ else if(feature==='place')content=<PlaceScreen contextState={store.state} initialIntent={placeIntent} demoPlaces={LIVE_DESTINATIONS.has('place')?undefined:PLACE_DEMO_DATA} onBack={back} onTrack={store.track} onSelectPlace={(place,demo)=>store.choosePlace({slug:place.slug,title:place.name,demo})} onOpenPlus={()=>setPlus(true)} onSharePlace={(p,demo)=>setShare({kind:'place',placeSlug:p.slug,placeTitle:p.name,demo})}/>;
+ else if(feature==='circle')content=<main className="screen"><button className="back" onClick={back}>← 戻る</button><h1>Circle</h1><p>同じ気持ちや関心の人と、少しつながる場所。</p><p>基本利用は無料です。投稿・コメントと参加者の安全を守るため、Circleへの参加にはCamellia IDでの確認が必要です。</p><a href="/community-guidelines.html" target="_blank" rel="noopener">Community Guidelines</a><button className="primary" onClick={onIdentity}>無料のCamellia IDで参加する</button></main>;
+ else if(tab==='today')content=<TodayScreen state={store.state} recommendations={recs} onCheckView={store.viewCheck} onCheckStart={store.startCheck} onCheckin={store.addCheckin} onOpenAction={open} onChoose={r=>store.startAction(r.action)} onMy={()=>navigate('my')} onIntent={()=>navigate('discover')} onTalk={()=>navigate('camellia')} onPlace={()=>places()} onFortune={()=>{store.track('fortune_open');setFeature('fortune');}} onTree={()=>setFeature('tree')} onComplete={store.completeAction} onFeedback={store.addFeedback} onProposals={store.recordProposals} onTrack={store.track}/>;
+ else if(tab==='discover')content=<DiscoverScreen state={store.state} category={category} onCategory={setCategory} onTrack={store.track} onOpenAction={r=>{store.track('discover_action_selected',{actionId:r.action.id});open(r);}} onOpenSecondary={destination=>destination==='place'?places():setFeature('circle')}/>;
+ else if(tab==='camellia')content=<ConversationWorkspace freeMode state={store.state} recommendations={recs} treeContext={treeContext} onClearTreeContext={()=>setTreeContext(undefined)} onTree={()=>setFeature('tree')} onRemember={store.remember} onTrack={store.track} onOpenAction={open} onNavigate={destination=>destination==='place'?places():destination==='circle'?setFeature('circle'):navigate('discover')} onSaveConversation={store.addConversation} onPendingConversation={store.pendingConversation} onReplaceConversationAssistant={store.replaceConversationAssistant} onSelectConversationModel={store.selectConversationModel}/>;
+ else content=<MyScreen deviceOnly onIdentity={onIdentity} state={store.state} devNight={false} onDevNight={()=>{}} onEditProfile={()=>setFeature('profile')} onForget={store.forget} onReset={store.reset} onInsight={store.feedbackInsight} onPrivacy={()=>setFeature('privacy')} onTree={()=>setFeature('tree')} onRestoreBackup={store.restorePersonalBackup} onComplete={store.completeAction} onReflectPlace={store.reflectPlace} onRemoveExperience={store.removePlaceExperience} onExplorePlaces={()=>places()} onPlaces={()=>places()} onCircles={()=>setFeature('circle')} onTrack={store.track} onRenameCharacter={name=>store.updateProfile({characterName:name})}/>;
+ return <div className="app-shell"><span className="beta-badge">Camellia β2</span>{content}{dialogs}<BottomNav active={tab} onChange={navigate}/></div>;
+}

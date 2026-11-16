@@ -34,7 +34,7 @@ function redactKnownNamesForState(value: string, state: CamelliaState) {
 }
 
 export function CamelliaScreen({
-  guestMode=false,
+  guestMode=false,freeMode=false,
   onShareFeeling,
   conversationId,
   state,
@@ -54,6 +54,7 @@ export function CamelliaScreen({
   onRenameCharacter,
 }: {
   guestMode?:boolean;
+  freeMode?:boolean;
   onShareFeeling?:()=>void;
   conversationId?: string;
   state: CamelliaState;
@@ -111,7 +112,7 @@ export function CamelliaScreen({
   const [chatError, setChatError] = useState<ChatError | null>(recovered?'provider_error':null);
   useEffect(() => {
     if(guestMode)return;
-    void fetch('/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
+    void fetch(freeMode?'/api/camellia/free-chat':'/api/camellia/chat', { method: 'GET', cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) })
       .then(async (response): Promise<{ enabled?: boolean; dataPolicy?: string }> => {
         if (!response.ok) throw new Error('STATUS_UNAVAILABLE');
         const status = await response.json();
@@ -124,7 +125,7 @@ export function CamelliaScreen({
       // A failed status probe does not mean the server feature flag is OFF.
       // POST is authoritative and still enforces the flag before external transmission.
       .catch(() => setAvailability('unavailable'));
-  }, [guestMode]);
+  }, [guestMode,freeMode]);
 
   useEffect(() => {
     if (availability === 'checking' || !firstInSession('camellia-conversation-open')) return;
@@ -187,7 +188,7 @@ export function CamelliaScreen({
     if(wait>0)await new Promise(resolve=>setTimeout(resolve,wait));
     clearTimeout(draftTimer.current);draftTimer.current=undefined;heldDraft.current=undefined;
   };
-  const streamOptions=(controller:AbortController)=>({signal:controller.signal,onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)showDraft(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
+  const streamOptions=(controller:AbortController)=>({free:freeMode,signal:controller.signal,onText:(text:string)=>{if(mounted.current&&!controller.signal.aborted)showDraft(text);},onRequest:()=>{if(measurement.current)measurement.current.request=monotonicNow()-measurement.current.start;},batch:previewBatchTransport()});
   const send = async (value = input) => {
     const pressedAt=monotonicNow();
     const clean = value.trim();
@@ -336,6 +337,7 @@ export function CamelliaScreen({
             <span className="chat-mascot-name" aria-hidden="true">{characterName(characterNameSetting)}{thinking?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
           </button>
         </div></header>
+      {freeMode&&<p className="meta">入力した文と、この会話の直近最大8件を外部AIへ送ります。提供条件によってはサービス改善に使われる場合があります。MemoryやMy Treeは自動送信しません。<a href="/privacy.html" target="_blank" rel="noopener">データの扱い</a></p>}
       {guestMode?<output className="meta">登録前は端末内のお試し会話です。外部AIへ送信せず、会話は記録に残りません。</output>:availability==='disabled'&&!treeContext&&<output className="meta">今は共通の返答でお話ししています。</output>}
       {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。記録を参照している間は、共通の話し方でお返しします。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
