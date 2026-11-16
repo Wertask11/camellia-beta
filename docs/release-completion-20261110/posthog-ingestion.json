@@ -1,0 +1,150 @@
+{
+  "project": 594848,
+  "projectTimezone": "UTC",
+  "periodJst": "2026-11-04–2026-11-10 (completed calendar dates)",
+  "scope": "production hostname only; raw event counts include operator/test traffic; not people, conversion or retention",
+  "metricCatalog": "data_catalog:read unavailable; noncanonical diagnostic aggregate",
+  "query": {
+    "series": [
+      {
+        "kind": "EventsNode",
+        "event": "session_start"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "check_complete"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "conversation_open"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "conversation_message_sent"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "conversation_response_received"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "conversation_error"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "discover_view"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "place_view"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "place_selected"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "my_view"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "partner_share_view"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "plus_offer_view"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "circle_view"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "circle_post_create"
+      },
+      {
+        "kind": "EventsNode",
+        "event": "tree_open"
+      }
+    ],
+    "dateRange": {
+      "date_from": "2026-11-03T15:00:00.000Z",
+      "date_to": "2026-11-10T14:59:59.999Z"
+    },
+    "interval": "day",
+    "filterTestAccounts": false,
+    "properties": [
+      {
+        "key": "$host",
+        "operator": "exact",
+        "type": "event",
+        "value": [
+          "camellia-beta.vercel.app"
+        ]
+      }
+    ]
+  },
+  "url": "https://us.posthog.com/project/594848/insights/new#q=%7B%22kind%22%3A%22InsightVizNode%22%2C%22source%22%3A%7B%22dateRange%22%3A%7B%22date_from%22%3A%222026-11-03T15%3A00%3A00.000Z%22%2C%22date_to%22%3A%222026-11-10T14%3A59%3A59.999Z%22%7D%2C%22filterTestAccounts%22%3Afalse%2C%22interval%22%3A%22day%22%2C%22kind%22%3A%22TrendsQuery%22%2C%22properties%22%3A%5B%7B%22key%22%3A%22%24host%22%2C%22operator%22%3A%22exact%22%2C%22type%22%3A%22event%22%2C%22value%22%3A%5B%22camellia-beta.vercel.app%22%5D%7D%5D%2C%22series%22%3A%5B%7B%22event%22%3A%22session_start%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22check_complete%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22conversation_open%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22conversation_message_sent%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22conversation_response_received%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22conversation_error%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22discover_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22place_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22place_selected%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22my_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22partner_share_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22plus_offer_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22circle_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22circle_post_create%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22tree_open%22%2C%22kind%22%3A%22EventsNode%22%7D%5D%7D%7D",
+  "counts": [
+    {
+      "event": "session_start",
+      "count": 57
+    },
+    {
+      "event": "check_complete",
+      "count": 10
+    },
+    {
+      "event": "conversation_open",
+      "count": 5
+    },
+    {
+      "event": "conversation_message_sent",
+      "count": 2
+    },
+    {
+      "event": "conversation_response_received",
+      "count": 1
+    },
+    {
+      "event": "conversation_error",
+      "count": 0
+    },
+    {
+      "event": "discover_view",
+      "count": 17
+    },
+    {
+      "event": "place_view",
+      "count": 3
+    },
+    {
+      "event": "place_selected",
+      "count": 1
+    },
+    {
+      "event": "my_view",
+      "count": 15
+    },
+    {
+      "event": "partner_share_view",
+      "count": 1
+    },
+    {
+      "event": "plus_offer_view",
+      "count": 3
+    },
+    {
+      "event": "circle_view",
+      "count": 3
+    },
+    {
+      "event": "circle_post_create",
+      "count": 0
+    },
+    {
+      "event": "tree_open",
+      "count": 0
+    }
+  ]
+}

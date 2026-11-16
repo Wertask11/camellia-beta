@@ -1,0 +1,177 @@
+{
+  "recordedDateJst": "2026-11-16",
+  "project": 594848,
+  "projectTimezone": "UTC",
+  "scope": "read-only diagnostic aggregate; no invented events, private bodies, users or conversion metrics",
+  "fixedPreviewHost": "camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app",
+  "strictHostQuery": {
+    "dateRange": {
+      "date_from": "-1d"
+    },
+    "filterTestAccounts": false,
+    "interval": "hour",
+    "kind": "TrendsQuery",
+    "properties": [
+      {
+        "key": "$host",
+        "operator": "exact",
+        "type": "event",
+        "value": [
+          "camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app"
+        ]
+      }
+    ],
+    "series": [
+      {
+        "event": "session_start",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "my_view",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "place_view",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "place_selected",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "experience_feedback",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "conversation_message_sent",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "conversation_response_received",
+        "kind": "EventsNode"
+      }
+    ]
+  },
+  "strictHostCounts": [
+    {
+      "event": "session_start",
+      "count": 0
+    },
+    {
+      "event": "my_view",
+      "count": 0
+    },
+    {
+      "event": "place_view",
+      "count": 0
+    },
+    {
+      "event": "place_selected",
+      "count": 0
+    },
+    {
+      "event": "experience_feedback",
+      "count": 0
+    },
+    {
+      "event": "conversation_message_sent",
+      "count": 0
+    },
+    {
+      "event": "conversation_response_received",
+      "count": 0
+    }
+  ],
+  "strictHostQueryUrl": "https://us.posthog.com/project/594848/insights/new#q=%7B%22kind%22%3A%22InsightVizNode%22%2C%22source%22%3A%7B%22dateRange%22%3A%7B%22date_from%22%3A%22-1d%22%7D%2C%22filterTestAccounts%22%3Afalse%2C%22interval%22%3A%22hour%22%2C%22kind%22%3A%22TrendsQuery%22%2C%22properties%22%3A%5B%7B%22key%22%3A%22%24host%22%2C%22operator%22%3A%22exact%22%2C%22type%22%3A%22event%22%2C%22value%22%3A%5B%22camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app%22%5D%7D%5D%2C%22series%22%3A%5B%7B%22event%22%3A%22session_start%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22my_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22place_view%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22place_selected%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22experience_feedback%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22conversation_message_sent%22%2C%22kind%22%3A%22EventsNode%22%7D%2C%7B%22event%22%3A%22conversation_response_received%22%2C%22kind%22%3A%22EventsNode%22%7D%5D%7D%7D",
+  "hostComparisonQuery": {
+    "breakdownFilter": {
+      "breakdown_limit": 25,
+      "breakdowns": [
+        {
+          "property": "$host",
+          "type": "event"
+        }
+      ]
+    },
+    "dateRange": {
+      "date_from": "2026-11-11T08:43:36.000Z",
+      "date_to": "2026-11-16T06:40:00.000Z"
+    },
+    "filterTestAccounts": false,
+    "interval": "day",
+    "kind": "TrendsQuery",
+    "properties": [],
+    "series": [
+      {
+        "event": "session_start",
+        "kind": "EventsNode"
+      }
+    ]
+  },
+  "hostComparisonCounts": [
+    {
+      "host": [
+        "camellia-beta.vercel.app"
+      ],
+      "count": 9
+    },
+    {
+      "host": [
+        "$$_posthog_breakdown_null_$$"
+      ],
+      "count": 31
+    }
+  ],
+  "urlComparisonQuery": {
+    "dateRange": {
+      "date_from": "2026-11-11T08:43:36.000Z",
+      "date_to": "2026-11-16T06:45:00.000Z"
+    },
+    "filterTestAccounts": false,
+    "interval": "day",
+    "kind": "TrendsQuery",
+    "properties": [
+      {
+        "key": "$current_url",
+        "operator": "icontains",
+        "type": "event",
+        "value": "camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app"
+      }
+    ],
+    "series": [
+      {
+        "event": "session_start",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "conversation_response_received",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "place_view",
+        "kind": "EventsNode"
+      }
+    ]
+  },
+  "urlComparisonCounts": [
+    {
+      "event": "session_start",
+      "count": 0
+    },
+    {
+      "event": "conversation_response_received",
+      "count": 0
+    },
+    {
+      "event": "place_view",
+      "count": 0
+    }
+  ],
+  "conclusion": "Fixed Preview ingestion NOT VERIFIED. Null-host events cannot be attributed to this Preview; do not treat zero matching events as zero usage or an app failure.",
+  "limits": [
+    "DNT/opt-out/tracker blocking and actual deployed destination config not inspected",
+    "Schema event_property_values for host unavailable; no immediate retry",
+    "Local real SDK supplies host/URL metadata; do not change code or Production settings based only on absent cloud matches",
+    "Current UI success is owner-reported, not provider receipt/token/invoice verification"
+  ]
+}
