@@ -1,6 +1,6 @@
 # Free・メールCamellia ID・Plus再設計 最終報告
 
-2026-11-17 JST。**総合 PARTIAL**。機能source：`305713796a68ba44d8a5c354673ce25271aadd26`。文書だけの後続commitと区別する。mainは `91e95bac4237f5349d6c35e7a0ae7b24087dd5d3`、Productionは未変更。
+2026-11-17 JST。**総合 PARTIAL**。主要体験の本人受入source：`305713796a68ba44d8a5c354673ce25271aadd26`。最新の機能sourceは `80c2881cea9e71911e9247c16afeb36b08980183`（Preview専用診断と日次予約の混雑処理を追加）。文書だけの後続commitと区別する。mainは `91e95bac4237f5349d6c35e7a0ae7b24087dd5d3`、Productionは未変更。
 
 ## 1. 調査で確認した現行仕様
 
@@ -40,7 +40,7 @@ Productionの公開GETは200、chat enabled=true/auth設定present/shared Firest
 
 ## 6. 未解決
 
-実メールの受信/確認/旧IDへの追加、別端末での新移行、Free APIのVercel実環境/SSE/30回境界、既存LINE/Googleの最新受入、新イベントのPostHog着信が未検証。写真CDNも接続制限で未確認。実店舗/決済/Plus会話拡張・紹介運用数値・通知driver・保持/実削除job・実請求は準備待ち。分類は [external-dependencies.md](external-dependencies.md)。
+本人操作でメール確認→明示移行→保存確認、同じメールIDによるPC→AndroidのCheck復元、ログアウトしたPCでYURA/Lactone両方の段階表示を確認。旧IDへのメール追加、実30回/JST境界、既存LINE/Googleの最新受入、新イベントのPostHog着信は未検証。写真CDNも接続制限で未確認。実店舗/決済/Plus会話拡張・紹介運用数値・通知driver・保持/実削除job・実請求は準備待ち。分類は [external-dependencies.md](external-dependencies.md)。
 
 ## 7. 追加費用・運用リスク
 
@@ -56,4 +56,20 @@ Productionの公開GETは200、chat enabled=true/auth設定present/shared Firest
 
 ## 固定Previewの配信
 
-2026-11-17、既存branch `codex/camellia-alpha-release-candidate` を0b85594→3057137へfast-forward。Vercel check success（03:20:48 UTC＝12:20:48 JST）。URLは従来と同じ：https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/ 。新しいLINE callbackは追加していない。build成功と実メール/API受入は別で、本人へ新メール/引継ぎの確認を依頼中。Productionは未変更。
+2026-11-17、既存branch `codex/camellia-alpha-release-candidate` を0b85594→3057137へfast-forward。Vercel check success（03:20:48 UTC＝12:20:48 JST）。URLは従来と同じ：https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/ 。新しいLINE callbackは追加していない。build成功と実メール/API受入は別で、本人から新メール/引継ぎの保存確認、Androidでの同じCheck復元、登録不要での両話し方の段階表示の成功報告を受領。ネットワーク受領書や使用token/請求は独立確認していない。Productionは未変更。
+
+新しい本人受入は [owner-acceptance.json](evidence/owner-acceptance.json)。PostHogは固定Previewホスト＋event_schema=2の03:20:48〜07:24:58 UTCの技術照合では5イベントすべて0件で、着信済みとは報告しない。送信先・抑止設定と条件を調査中。
+
+## 本人受入後の追加診断
+
+機能source3057137の主要操作は本人報告PASS。30d09b7では送信の可否・DNT/opt-out・自動操作ブラウザ判定・標準送信先との一致・直近の計測状態・UTC時計だけを、明示URL `?diagnostics=analytics` のPreview内Myへ追加した。本番ではcompile-time無効、キー/本文/メール/IDを返さず設定も変更しない。計測送信そのものの挙動は変更していない。
+
+PostHog594848のactive contextと既存標準tokenの一致を秘密値を表示せず照合した。新しいID/移行イベントは日付範囲を広げても未着信。host/計測版が不明なsession6件は、新Preview着信に数えない。実SDK→ローカル専用endpointの5幅試験はschema2/host/UUID/許可属性/受領を確認し、DNTでは送信0件。実プロジェクトへ合成イベントを送っていない。[PostHog照合](evidence/posthog-new-ingestion.json)・[実SDK合成試験](evidence/analytics-sdk-browser.json)。
+
+同じ固定Previewの最新機能sourceは30d09b7、Vercel success 2026-11-17 08:05:50 UTC（17:05:50 JST）。新しいLINE callback、Production、Rules、claims、環境変数の変更なし。本人にF12なしの安全な確認結果のコピーを依頼中。
+
+## CIで検出した予約競合の修正
+
+30d09b7のローカル全試験はPASSだったが、GitHub run44043664151では日次枠34件同時試験がcode10 ABORTEDで失敗した。ログをGitHub接続で取得して原因を確認し、結果を合格に読み替えていない。80c2881では競合で予約できなければfalseを返し、AIへ送らず一時的な枠不足として扱う。権限エラー等は隠さない。
+
+34同時という条件を維持して受入30以下を確認し、その後に単独で残枠を利用でき、計30件で次を拒否することを確認。最終ローカルrunは20件を同時受入・14件を一時拒否、その後30件まで残枠を受入、31件目拒否。新しい実行sourceで64unit/15emulator/lint/typecheck/buildを再実行してPASS。[証拠](evidence/quota-contention.json)。最新GitHub CIはPR headのCheckを確認する。

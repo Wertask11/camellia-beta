@@ -45,4 +45,12 @@ Chromiumで実コンポーネント/localStorage/File APIを操作。375/390/412
 
 ## 本人受入
 
-以前のAndroid/PC・LINE・v4同期・export/restore・削除・Circle確認は `../release-completion-20261110/owner-acceptance.json` の旧sourceの履歴。今回のメール/Freeの合格として使用しない。新しい本人受入は新sourceに対して別記録し、未確認を未確認のまま残す。
+以前のAndroid/PC・LINE・v4同期・export/restore・削除・Circle確認は `../release-completion-20261110/owner-acceptance.json` の旧sourceの履歴。今回のメール/Freeの合格として使用しない。新しい本人受入は [owner-acceptance.json](evidence/owner-acceptance.json)：実メール/明示移行/保存確認、PC→AndroidのメールID復元、IDなしのYURA/Lactone段階表示が本人報告PASS。使用token/請求、実30回境界、Googleは未確認。
+
+## 計測診断の追加（source30d09b7）
+
+[追加の全チェック](evidence/diagnostic-commands.json)：64unit/15emulator/lint/typecheck/build PASS。通常Free/メール5幅も再実行。`python tests/analytics-sdk-browser.py` は実posthog-jsと端末store/HTTP受領をローカル専用token/endpointで確認し、5幅の診断欄にキー・ID・本文が出ないこと、DNTでHTTP送信0件を検証。通常ブラウザを模したfixtureでは自動操作フラグをfalseにしており、製品のbot判定や実利用者のDNT/opt-outを解除していない。合成試験を実PostHog着信と呼ばない。
+
+## GitHub CIの競合失敗と再検証（source80c2881）
+
+30d09b7のGitHub CIは上限試験のtransaction lock timeoutで失敗し、build段階へ進まなかった。ローカルPASSとは別記録。80c2881で予約競合を安全に拒否する処理と試験を追加し、権限エラーは拒否として隠さず伝える。34同時の受入は最大30、残枠は単独で利用できることを検証する（34同時すべての成功保証ではない）。[最新の5コマンド](evidence/quota-commands.json) と [失敗/修正/最終20件同時受入の記録](evidence/quota-contention.json)。以前の「同時30件受入」というローカル結果を今回の一律保証に使わない。

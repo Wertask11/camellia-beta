@@ -1,0 +1,16 @@
+{
+  "failedGithubRun": 44043664151,
+  "failedSource": "30d09b78540adf60dc40397c1198b4811e82cb71",
+  "stage": "free daily quota emulator concurrent reservation",
+  "failure": "gRPC code10 ABORTED transaction lock timeout",
+  "change": "Only contention refuses reservation; no generation; permission/unknown failures still propagate. Burst stays at34; admissions<=30, remainder uses sequential available capacity; request31 denied.",
+  "localFinalSource": "80c2881cea9e71911e9247c16afeb36b08980183",
+  "localBurst": {
+    "requests": 34,
+    "admitted": 20,
+    "safeTemporaryRefusals": 14,
+    "afterSequentialRefill": 30,
+    "nextDenied": true
+  },
+  "latestGithubRun": "pending after source push"
+}
