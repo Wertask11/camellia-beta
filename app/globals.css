@@ -1368,3 +1368,5 @@ details {
 .free-intro{padding:30px 20px 0}.free-intro h1{font-size:22px;line-height:1.5;margin:0 0 8px}.free-intro p{font-size:13px;line-height:1.8;color:var(--muted,#75676f);margin:0}
 .identity-screen{max-width:460px;margin:auto;padding-bottom:40px}.identity-screen .check-row{display:flex;align-items:flex-start;gap:12px;font-size:13px;line-height:1.8;margin:16px 0}.identity-screen .check-row input{flex:0 0 auto;width:22px;height:22px;margin-top:3px}.identity-screen details{margin-top:24px}.identity-screen summary{padding:14px 0;cursor:pointer}.identity-screen form input[type=email]{width:100%;min-height:48px}.identity-screen .back{min-height:44px}
 .free-handover{margin:30px 16px 0}.free-handover button{min-height:44px}.free-handover output{display:block;font-size:13px;line-height:1.7}.app-notice-wrap output{font-size:13px}
+
+.analytics-support-result{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12px;background:#fff;padding:12px;border:1px solid #ead9df;border-radius:12px}
