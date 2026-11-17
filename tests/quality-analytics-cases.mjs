@@ -74,7 +74,7 @@ try {
     }).properties.$current_url,
     'https://example.org/',
   );
-  assert.deepEqual(QUALITY_KPIS.retention.days, [7, 30]);
+  assert.deepEqual(QUALITY_KPIS.retention.days, [1, 7, 30]);
   assert.ok(!QUALITY_KPIS.discovery.includes('check_complete'));
   assert.ok(QUALITY_KPIS.plus.includes('plus_complete'));
   console.log(

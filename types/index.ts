@@ -233,6 +233,7 @@ export type ReflectionStage =
   | 'recent'
   | 'weekly';
 export type AnalyticsEventName =
+  | 'camellia_id_prompt_view' | 'camellia_id_start' | 'camellia_id_complete' | 'camellia_id_error' | 'record_transfer_complete' | 'record_transfer_error' | 'reflection_saved' | 'place_comparison_view'
   | 'discover_action_selected' | 'place_recommendation_view' | 'place_selected' | 'my_view'
   | 'partner_share_view' | 'partner_share_created' | 'partner_share_sent' | 'partner_share_revoked' | 'partner_share_open'
   | 'plus_offer_view' | 'plus_start' | 'plus_complete'

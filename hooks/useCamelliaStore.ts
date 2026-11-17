@@ -1,5 +1,6 @@
 /* oxlint-disable react-compiler -- localStorage hydration and state transitions are intentionally centralized in this prototype store */
 'use client';
+import {useUsageAnalytics} from '@/hooks/useUsageAnalytics';
 import {clearUnadoptedFreeTransfer} from '@/lib/free/handover';
 import {mergePersonalBackup,preserveBeforeRestore} from '@/lib/storage/backup';
 import {clearPendingReferral} from '@/lib/referral/client';
@@ -47,6 +48,7 @@ export function useCamelliaStore(options:{deviceOnly?:boolean;accountReady?:bool
  const accountReady=options.accountReady!==false;
  const deviceOnly=options.deviceOnly===true,key=deviceOnly?FREE_STORAGE_KEY:STORAGE_KEY;
  const[state,setState]=useState<CamelliaState>(()=>emptyState());const[ready,setReady]=useState(false);const[storageError,setStorageError]=useState('');const skipNextSync=useRef(false);const hydrated=useRef(false);const storageHealthy=useRef(false);
+ const usage=useUsageAnalytics(deviceOnly,accountReady);
  const deviceTab=useRef(uid());
  const expectedDeviceRaw=useRef<string|null>(null);
  const readProtected=useCallback(()=>{try{const loaded=load(key);if(deviceOnly)expectedDeviceRaw.current=localStorage.getItem(key);setState(loaded);setStorageError('');}catch(error){storageHealthy.current=false;analyticsDelivery.setAnalyticsDeliveryAllowed?.(false);if(error instanceof LocalDataRecoveryError)setState(error.recovered);setStorageError('LOCAL_DATA_UNREADABLE');}},[key,deviceOnly]);
@@ -73,52 +75,52 @@ export function useCamelliaStore(options:{deviceOnly?:boolean;accountReady?:bool
  },[ready,state,storageError,accountReady]);
  const sessionEvents=useCallback(()=>{
   const session=analyticsSession(deliveryOwner.current);
-  return {session,events:session.fresh?[{id:uid(),name:'session_start' as const,properties:{...sessionAttribution(),entry_session:session.id},createdAt:analyticsTimestamp(),sessionId:session.id}]:[]};
- },[]);
+  return {session,events:session.fresh?[{id:uid(),name:'session_start' as const,properties:{...sessionAttribution(),...usage.current,entry_session:session.id},createdAt:analyticsTimestamp(),sessionId:session.id}]:[]};
+ },[usage]);
  const track=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>{
   const {session,events}=sessionEvents();
   if(name==='session_start'&&!events.length)return;
-  const event={id:uid(),name,properties:{...properties,...sessionAttribution()},createdAt:analyticsTimestamp(),sessionId:session.id};
+  const event={id:uid(),name,properties:{...properties,...sessionAttribution(),...usage.current},createdAt:analyticsTimestamp(),sessionId:session.id};
   setState(s=>({...s,analyticsEvents:[...s.analyticsEvents,...events,...(name==='session_start'?[]:[event])]}));
   if(session.fresh)window.dispatchEvent(new Event(ANALYTICS_SESSION_CHANGED));
- },[sessionEvents]);
+ },[sessionEvents,usage]);
  useEffect(()=>{
-  if(!ready||storageError)return;
+  if(!ready||!accountReady||storageError)return;
   const resume=()=>{if(document.visibilityState!=='hidden')track('session_start');};resume();
   window.addEventListener('focus',resume);window.addEventListener('pointerdown',resume);window.addEventListener('keydown',resume);document.addEventListener('visibilitychange',resume);
   return()=>{window.removeEventListener('focus',resume);window.removeEventListener('pointerdown',resume);window.removeEventListener('keydown',resume);document.removeEventListener('visibilitychange',resume);};
- },[ready,track,storageError,state.profile.id]);
+ },[ready,accountReady,track,storageError,state.profile.id]);
  const viewCheck=useCallback(()=>track('check_view'),[track]);
  const startCheck=useCallback((properties:Record<string,string>={})=>{
   const {session,events}=sessionEvents();const now=analyticsTimestamp();
   setState(s=>{const last=[...s.analyticsEvents].reverse().find(e=>e.name==='check_start'||e.name==='check_complete');
    if(last?.name==='check_start'&&last.sessionId===session.id)return s;
-   return{...s,analyticsEvents:[...s.analyticsEvents,...events,{id:uid(),name:'check_start',properties:{...properties,...sessionAttribution()},createdAt:now,sessionId:session.id}]};});
+   return{...s,analyticsEvents:[...s.analyticsEvents,...events,{id:uid(),name:'check_start',properties:{...properties,...sessionAttribution(),...usage.current},createdAt:now,sessionId:session.id}]};});
   if(session.fresh)window.dispatchEvent(new Event(ANALYTICS_SESSION_CHANGED));
- },[sessionEvents]);
+ },[sessionEvents,usage]);
  const memory=(s:CamelliaState,actionId:string,event:'proposed'|'saved'|'dismissed'|'started'|'completed'|'feedback',extra:Record<string,unknown>={})=>({id:uid(),actionId,event,context:captureContext(s),createdAt:stamp(),...extra});
  const updateProfile=useCallback((p:Partial<Profile>)=>setState(s=>({...s,profile:{...s.profile,...p,updatedAt:stamp()}})),[]);const completeOnboarding=useCallback(()=>setState(s=>({...s,onboardingComplete:true})),[]);
- const addCheckin=useCallback((v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>{const now=stamp();setState(s=>({...s,checkins:[...s.checkins,{id:uid(),...v,createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'check_complete',sessionId:analyticsSession(deliveryOwner.current).id,properties:{...sessionAttribution(),hasDetails:Boolean(v.sleep!==undefined||v.body||v.stress||v.periodDays!==undefined)},createdAt:analyticsTimestamp()}]}))},[]);
+ const addCheckin=useCallback((v:{mood:Mood}&Partial<Omit<Checkin,'id'|'mood'|'createdAt'|'updatedAt'>>)=>{const now=stamp();setState(s=>({...s,checkins:[...s.checkins,{id:uid(),...v,createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'check_complete',sessionId:analyticsSession(deliveryOwner.current).id,properties:{...sessionAttribution(),...usage.current,hasDetails:Boolean(v.sleep!==undefined||v.body||v.stress||v.periodDays!==undefined)},createdAt:analyticsTimestamp()}]}))},[usage]);
  // The guest already completed Check. Preserve its ID/time and never emit check_complete a second time.
  const adoptGuestCheck=useCallback((value:Checkin,profileId:string,isCurrentAccount:()=>boolean,properties:Record<string,string>,journey:JourneyChoices={})=>{
   const check=guestCheckValue(value);if(!check)return;
   const choices=safeJourney(journey);
-  setState(s=>s.profile.id!==profileId||!profileComplete(s.profile)||!s.onboardingComplete||!isCurrentAccount()||s.checkins.some(c=>c.id===check.id)?s:{...s,checkins:[...s.checkins,check],actions:[...s.actions,...(choices.actions??[]).filter(a=>!s.actions.some(old=>old.id===a.id))],savedActions:[...s.savedActions,...(choices.savedActions??[]).filter(a=>!s.savedActions.some(old=>old.id===a.id))],placeChoices:[...(s.placeChoices??[]),...(choices.placeChoices??[]).filter(a=>!s.placeChoices?.some(old=>old.id===a.id))],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'guest_check_saved',properties:{...properties,...sessionAttribution(),storage:'device'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]});
- },[]);
+  setState(s=>s.profile.id!==profileId||!profileComplete(s.profile)||!s.onboardingComplete||!isCurrentAccount()||s.checkins.some(c=>c.id===check.id)?s:{...s,checkins:[...s.checkins,check],actions:[...s.actions,...(choices.actions??[]).filter(a=>!s.actions.some(old=>old.id===a.id))],savedActions:[...s.savedActions,...(choices.savedActions??[]).filter(a=>!s.savedActions.some(old=>old.id===a.id))],placeChoices:[...(s.placeChoices??[]),...(choices.placeChoices??[]).filter(a=>!s.placeChoices?.some(old=>old.id===a.id))],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'guest_check_saved',properties:{...properties,...sessionAttribution(),...usage.current,storage:'device'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]});
+ },[usage]);
  const adoptGuestJourney=useCallback((journey:JourneyChoices,journeyId:string,profileId:string,isCurrentAccount:()=>boolean,properties:Record<string,string>)=>{
-  setState(s=>{if(s.profile.id!==profileId||!profileComplete(s.profile)||!s.onboardingComplete||!isCurrentAccount())return s;const eventId=`guest-choices-${journeyId}`;if(s.analyticsEvents.some(e=>e.id===eventId))return s;const merged=mergeJourney(s,journey);return {...merged,analyticsEvents:[...s.analyticsEvents,{id:eventId,name:'guest_choices_saved',properties:{...properties,...sessionAttribution(),storage:'device'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]};});
- },[]);
+  setState(s=>{if(s.profile.id!==profileId||!profileComplete(s.profile)||!s.onboardingComplete||!isCurrentAccount())return s;const eventId=`guest-choices-${journeyId}`;if(s.analyticsEvents.some(e=>e.id===eventId))return s;const merged=mergeJourney(s,journey);return {...merged,analyticsEvents:[...s.analyticsEvents,{id:eventId,name:'guest_choices_saved',properties:{...properties,...sessionAttribution(),...usage.current,storage:'device'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]};});
+ },[usage]);
  const hasPersistedJourney=useCallback((journey:JourneyChoices,profileId:string)=>{try{return containsJourney(JSON.parse(localStorage.getItem(STORAGE_KEY)||'null'),journey,profileId);}catch{return false;}},[]);
  const removePlaceExperience=useCallback((id:string)=>setState(s=>({...s,placeExperiences:s.placeExperiences?.map(e=>e.id===id?{id:e.id,choiceId:'',placeSlug:'',placeName:'',demo:false,status:'removed',text:'',createdAt:e.createdAt,updatedAt:stamp()}:e)})),[]);
- const reflectPlace=useCallback((input:ExperienceInput)=>setState(s=>{const next=addPlaceExperience(s,input);if(next===s||!input.value)return next;return {...next,analyticsEvents:[...next.analyticsEvents,{id:uid(),name:'experience_feedback',properties:{value:input.value,experience_status:input.actual?'self_reported':'considering',catalog:s.placeChoices?.find(c=>c.id===input.choiceId)?.demo?'demo':'published'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]};}),[]);
+ const reflectPlace=useCallback((input:ExperienceInput)=>setState(s=>{const next=addPlaceExperience(s,input);if(next===s)return next;return {...next,analyticsEvents:[...next.analyticsEvents,{id:uid(),name:'reflection_saved',properties:{...usage.current,catalog:s.placeChoices?.find(c=>c.id===input.choiceId)?.demo?'demo':'published'},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id},...(input.value?[{id:uid(),name:'experience_feedback' as const,properties:{value:input.value,experience_status:input.actual?'self_reported':'considering',catalog:s.placeChoices?.find(c=>c.id===input.choiceId)?.demo?'demo':'published',...usage.current},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]:[])]};}),[usage]);
  const choosePlace=useCallback((value:Omit<PlaceChoice,'id'|'createdAt'|'updatedAt'>)=>setState(s=>{const now=stamp();return {...s,placeChoices:[...(s.placeChoices??[]),{...value,id:uid(),createdAt:now,updatedAt:now}]};}),[]);
  const hasPersistedCheck=useCallback((id:string,profileId:string)=>{
   try{const stored=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');return stored?.profile?.id===profileId&&Array.isArray(stored.checkins)&&stored.checkins.some((c:{id?:unknown})=>c?.id===id);}catch{return false;}
  },[]);
  const resumeGuestCheck=useCallback((id:string,profileId:string,properties:Record<string,string>)=>setState(s=>{
   const eventId=`guest-resume-${id}`;
-  return s.profile.id!==profileId||s.analyticsEvents.some(e=>e.id===eventId)?s:{...s,analyticsEvents:[...s.analyticsEvents,{id:eventId,name:'today_flow_resume',properties:{...properties,...sessionAttribution()},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]};
- }),[]);
+  return s.profile.id!==profileId||s.analyticsEvents.some(e=>e.id===eventId)?s:{...s,analyticsEvents:[...s.analyticsEvents,{id:eventId,name:'today_flow_resume',properties:{...properties,...sessionAttribution(),...usage.current},createdAt:analyticsTimestamp(),sessionId:analyticsSession(s.profile.id).id}]};
+ }),[usage]);
  const recordProposals=useCallback((ids:string[])=>setState(s=>{const today=new Date().toDateString();const add=ids.filter(id=>!s.contextualMemory.some(m=>m.actionId===id&&m.event==='proposed'&&new Date(m.createdAt).toDateString()===today)).map(id=>memory(s,id,'proposed'));return add.length?{...s,contextualMemory:[...s.contextualMemory,...add]}:s}),[]);
  const startAction=useCallback((a:ActionDefinition)=>{const now=stamp();setState(s=>({...s,actions:[...s.actions,{id:uid(),actionId:a.id,title:a.title,category:a.category,status:'started',startedAt:now,createdAt:now,updatedAt:now}],contextualMemory:[...s.contextualMemory,memory(s,a.id,'started')]}))},[]);
  // Done right here (an in-place action): one record, started and completed together, so feedback can follow.
@@ -133,11 +135,11 @@ export function useCamelliaStore(options:{deviceOnly?:boolean;accountReady?:bool
  const selectConversationModel=useCallback((conversationId:string,modelId:ConversationModelId,markerId:string)=>{if(!isConversationModel(modelId))return;const now=stamp();setState(s=>({...s,profile:{...s.profile,lastConversationModel:modelId,updatedAt:now},aiConversations:switchConversationModel(s.aiConversations,conversationId,modelId,defaultConversationModel(s.profile.lastConversationModel),now,markerId)}))},[]);
  const syncInsights=useCallback((items:Insight[])=>setState(s=>({...s,insights:items})),[]);const feedbackInsight=useCallback((key:string,verdict:InsightFeedback['verdict'])=>{const now=stamp();setState(s=>({...s,insightFeedback:[...s.insightFeedback,{id:uid(),insightKey:key,verdict,createdAt:now,updatedAt:now}],insights:s.insights.map(i=>i.key===key?{...i,confidence:verdict==='incorrect'?Math.max(0,i.confidence-.5):Math.min(1,i.confidence+.15),updatedAt:now}:i)}))},[]);
  const setFortune=useCallback((fortune:DailyFortune)=>setState(s=>({...s,fortunes:[...s.fortunes.filter(f=>f.date!==fortune.date),fortune]})),[]);
- const addTreeLeaf=useCallback((leaf:Omit<TreeLeaf,'id'|'createdAt'|'updatedAt'|'reflections'|'status'>)=>{const now=stamp();setState(s=>({...s,treeLeaves:[...s.treeLeaves,{...leaf,id:uid(),status:'active',reflections:[],createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_add_complete',properties:{category:leaf.category,tagCount:leaf.meaningTags.length},createdAt:analyticsTimestamp()}]}))},[]);
+ const addTreeLeaf=useCallback((leaf:Omit<TreeLeaf,'id'|'createdAt'|'updatedAt'|'reflections'|'status'>)=>{const now=stamp();setState(s=>({...s,treeLeaves:[...s.treeLeaves,{...leaf,id:uid(),status:'active',reflections:[],createdAt:now,updatedAt:now}],analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_add_complete',properties:{category:leaf.category,tagCount:leaf.meaningTags.length,...usage.current},createdAt:analyticsTimestamp()}]}))},[usage]);
  const updateTreeLeaf=useCallback((id:string,patch:Partial<TreeLeaf>)=>setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,...patch,updatedAt:stamp()}:l)})),[]);
  // Deleting a person erases what was written about them; the empty record carries the deletion to Firestore (sync only writes).
  const removeTreeLeaf=useCallback((id:string)=>setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,name:'',note:'',meaningTags:[],reflections:[],status:'removed' as const,updatedAt:stamp()}:l)})),[]);
- const addTreeReflection=useCallback((id:string,text:string)=>{const now=stamp();setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,reflections:[...l.reflections,{id:uid(),text,createdAt:now,updatedAt:now}],updatedAt:now}:l),analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_reflection_add',createdAt:analyticsTimestamp()}]}))},[]);
+ const addTreeReflection=useCallback((id:string,text:string)=>{const now=stamp();setState(s=>({...s,treeLeaves:s.treeLeaves.map(l=>l.id===id?{...l,reflections:[...l.reflections,{id:uid(),text,createdAt:now,updatedAt:now}],updatedAt:now}:l),analyticsEvents:[...s.analyticsEvents,{id:uid(),name:'tree_reflection_add',properties:{...usage.current},createdAt:analyticsTimestamp()}]}))},[usage]);
  const remember=useCallback((text:string)=>setState(s=>{const clean=text.trim().slice(0,500);if(!clean)return s;const now=stamp();return{...s,personalMemories:[...(s.personalMemories??[]),{id:uid(),text:clean,createdAt:now,updatedAt:now,source:'explicit_conversation' as const}]}}),[]);
  const forget=useCallback((id:string)=>setState(s=>({...s,personalMemories:(s.personalMemories??[]).map(item=>item.id===id?{...item,text:'',status:'removed' as const,updatedAt:stamp()}:item)})),[]);
  const prepareAccount=useCallback(async(accountUid:string,choice:AccountChoice|false=false)=>{if(deviceOnly)throw new Error('DEVICE_ONLY');const restored=await prepareSchoolParkAccount(load(),accountUid,choice,emptyState());const safe=validateStoredState(restored,emptyState());if(safe.issues.length)throw new Error('REMOTE_ARCHIVE_INVALID');setState(safe.state)},[deviceOnly]);

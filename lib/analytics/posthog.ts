@@ -14,6 +14,7 @@ import type {
 } from '@/types';
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
+  camellia_id_prompt_view:['entry_session'],camellia_id_start:['method','entry_session'],camellia_id_complete:['method','entry_session'],camellia_id_error:['method','reason','entry_session'],record_transfer_complete:['entry_session'],record_transfer_error:['reason','entry_session'],reflection_saved:['catalog'],place_comparison_view:['catalog','personalized'],
   discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
   partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
   plus_offer_view:['source'],plus_start:['source'],plus_complete:['currency','amount'],
@@ -84,6 +85,7 @@ let initialized = false;
 for(const event of ['conversation_open','conversation_message_sent','discover_view','discover_action_selected','place_view','place_recommendation_view','place_selected','my_view','partner_share_view','plus_offer_view'] as const){
   SAFE_PROPERTIES[event]=[...SAFE_PROPERTIES[event],'entry_flow','entry_session'];
 }
+for(const event of Object.keys(SAFE_PROPERTIES) as AnalyticsEventName[])SAFE_PROPERTIES[event]=[...SAFE_PROPERTIES[event],'plan','id_state','experience_version'];
 let identifiedId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
 /** SDK-added URL metadata must not include auth callback query/hash, including nested metadata. */
@@ -238,7 +240,7 @@ export function sanitizeEventProperties(
     utm_content: '',
     ...sanitizeAttribution(source),
     $insert_id: event.id,
-    event_schema: 1,
+    event_schema: source.experience_version==='free_id_v1'?2:1,
     app_version: 'beta-v3',
     usage_cohort: check
       ? fortune
@@ -262,6 +264,7 @@ export function forwardEvent(event: AnalyticsEvent, state: CamelliaState, onDeli
 }
 
 const AUTH_EVENT_PROPERTIES = {
+  camellia_id_prompt_view:['entry_session','experience_version','id_state','plan','id_operation'],camellia_id_start:['method','entry_session','experience_version','id_state','plan','id_operation'],camellia_id_complete:['method','entry_session','experience_version','id_state','plan','id_operation'],camellia_id_error:['method','reason','entry_session','experience_version','id_state','plan','id_operation'],
   login_view: ['authenticated', 'entry_flow', 'entry_session'],
   auth_method_selected: ['method', 'auth_method', 'entry_flow', 'entry_session'],
   auth_returned: ['method', 'auth_flow', 'entry_flow', 'entry_session'],
@@ -271,7 +274,7 @@ const AUTH_EVENT_PROPERTIES = {
   account_link_success: ['auth_method'],
 } as const;
 
-const AUTH_METHODS = ['line', 'google', 'schoolpark'] as const;
+const AUTH_METHODS = ['line', 'google', 'schoolpark', 'email'] as const;
 const AUTH_FLOWS = ['redirect', 'popup'] as const;
 const AUTH_STAGES = ['provider_open', 'provider_return', 'firebase_signin', 'callback', 'account_conflict', 'cancelled'] as const;
 const AUTH_REASONS = ['user_cancelled', 'popup_blocked', 'provider_error', 'account_conflict', 'network', 'unknown'] as const;
@@ -285,7 +288,7 @@ export function sanitizeAuthEventProperties(
     const value = properties[key];
     if (typeof value === 'boolean' && (key === 'authenticated' || key === 'needs_profile')) safe[key] = value;
     if (typeof value !== 'string') continue;
-    if ((key === 'entry_flow' || key === 'entry_session') && validProperty(key, value)) safe[key] = value;
+    if ((['id_operation','experience_version','id_state','plan','entry_flow','entry_session'].includes(key)) && validProperty(key, value)) safe[key] = value;
     if ((key === 'method' || key === 'auth_method') && AUTH_METHODS.includes(value as (typeof AUTH_METHODS)[number])) safe[key] = value;
     if (key === 'auth_flow' && AUTH_FLOWS.includes(value as (typeof AUTH_FLOWS)[number])) safe[key] = value;
     if (key === 'stage' && AUTH_STAGES.includes(value as (typeof AUTH_STAGES)[number])) safe[key] = value;
@@ -304,11 +307,12 @@ export function captureAuthEvent(
   const event: AnalyticsEvent = { id, name, createdAt: analyticsTimestamp() };
   return captureDurably(event, {
     ...sanitizeAuthEventProperties(name, properties), ...sanitizeAttribution(properties),
-    $insert_id: id, event_schema: 1, app_version: 'beta-v3', $process_person_profile: false,
+    $insert_id: id, event_schema: properties.experience_version==='free_id_v1'?2:1, app_version: 'beta-v3', $process_person_profile: false,
   });
 }
 
 const ENUMS: Record<string, readonly string[]> = {
+  id_operation:['access','link'],plan:['free','plus'],id_state:['none','obtained','legacy_external'],experience_version:['free_id_v1'],
   catalog:['demo','published'],share_kind:['feeling','action','place'],share_result:['sent','copied','cancelled','failed'],source:['place','partner','my'],currency:['JPY'],
   experience_status:['considering','self_reported'],
   entry_flow: ['check_first', 'login_first', 'explore_first'], storage: ['device'],

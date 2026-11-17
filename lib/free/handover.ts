@@ -1,3 +1,4 @@
+import {currentAnalyticsSession} from '../analytics/session';
 import {validateStoredState} from '../storage/validation';
 import {mergePersonalBackup} from '../storage/backup';
 import {FREE_STORAGE_KEY} from './storage-key';
@@ -5,7 +6,7 @@ import type {CamelliaState} from '@/types';
 export const FREE_TRANSFER_KEY='camellia-free-transfer-v1';
 const PREFIX='camellia-free-transfer-source:';
 const TTL=10*60*1000;
-export type FreeTransfer={version:1;nonce:string;method:'email'|'line'|'google';sourceProfileId:string;at:number;expiresAt:number;stage:'awaiting'|'bound'|'applying'|'applied';uid?:string};
+export type FreeTransfer={entrySession?:string;version:1;nonce:string;method:'email'|'line'|'google';sourceProfileId:string;at:number;expiresAt:number;stage:'awaiting'|'bound'|'applying'|'applied';uid?:string};
 export function readFreeTransfer(storage:Storage):FreeTransfer|undefined{
  try{const p=JSON.parse(storage.getItem(FREE_TRANSFER_KEY)||'null');if(p?.version===1&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(p.nonce)&&typeof p.sourceProfileId==='string'&&['email','line','google'].includes(p.method)&&['awaiting','bound','applying','applied'].includes(p.stage)&&typeof p.at==='number'&&typeof p.expiresAt==='number'&&p.expiresAt<=p.at+TTL&&(p.stage==='awaiting'||typeof p.uid==='string'))return p;}catch{/* Preserve personal source even when transient metadata cannot be read. */}
 }
@@ -15,7 +16,7 @@ export function beginFreeTransfer(method:FreeTransfer['method'],storage:Storage,
  const raw=storage.getItem(FREE_STORAGE_KEY);if(!raw)return;
  const value=JSON.parse(raw);if(typeof value?.profile?.id!=='string')throw new Error('TRANSFER_INVALID_SOURCE');
  if(previous&&previous.sourceProfileId!==value.profile.id)throw new Error('TRANSFER_SOURCE_CHANGED');
- const p:FreeTransfer={version:1,nonce:previous?previous.nonce:crypto.randomUUID(),method,sourceProfileId:value.profile.id,at:now,expiresAt:now+TTL,stage:'awaiting'};
+ const p:FreeTransfer={version:1,nonce:previous?previous.nonce:crypto.randomUUID(),method,sourceProfileId:value.profile.id,...(/^[0-9a-f-]{36}$/.test(currentAnalyticsSession())?{entrySession:currentAnalyticsSession()}:{}),at:now,expiresAt:now+TTL,stage:'awaiting'};
  storage.setItem(PREFIX+p.nonce,raw);storage.setItem(FREE_TRANSFER_KEY,JSON.stringify(p));return p;
 }
 export function bindFreeTransfer(uid:string,method:FreeTransfer['method'],storage:Storage,now=Date.now()){
