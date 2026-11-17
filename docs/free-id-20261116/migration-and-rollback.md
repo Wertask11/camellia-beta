@@ -5,7 +5,7 @@
 - 既存 `camellia-prototype-v3` と、登録前の `camellia-free-device-v1` は別。既存v3/v4 readerとlazy v4保存を維持。全Firestore recordの一括migrationはしない。
 - Freeはブラウザへ継続保存。ブラウザ削除・プライベートモード・容量不足・共有端末は制約。保存できない場合は原本/書込み提案の控えを保護して停止し、成功表示しない。localStorageの比較/書込みは原子的ではないため各タブの提案控えも保持する。
 - 移行は本人が入口を選び、認証した現在UIDへ固定し、対象件数を確認した後に追加。メール一致を根拠に別IDを合併しない。既存IDのメール追加はFirebase linkで同じUIDを保つ。
-- 当前IDの設定・tombstone・有料/試用権利を保護。過去の操作イベントを再送せず、JST同日のFortuneを重複作成しない。
+- 現在のIDの設定・tombstone・有料/試用権利を保護。過去の操作イベントを再送せず、JST同日のFortuneを重複作成しない。
 
 ## 途中失敗の復旧
 

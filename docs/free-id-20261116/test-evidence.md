@@ -54,3 +54,9 @@ Chromiumで実コンポーネント/localStorage/File APIを操作。375/390/412
 ## GitHub CIの競合失敗と再検証（source80c2881）
 
 30d09b7のGitHub CIは上限試験のtransaction lock timeoutで失敗し、build段階へ進まなかった。ローカルPASSとは別記録。80c2881で予約競合を安全に拒否する処理と試験を追加し、権限エラーは拒否として隠さず伝える。34同時の受入は最大30、残枠は単独で利用できることを検証する（34同時すべての成功保証ではない）。[最新の5コマンド](evidence/quota-commands.json) と [失敗/修正/最終20件同時受入の記録](evidence/quota-contention.json)。以前の「同時30件受入」というローカル結果を今回の一律保証に使わない。
+
+## テスト入力の非決定性の修正
+
+d5dc4d2のCI run44045572751はunitの「source変更拒否」試験で失敗した。fixtureが空配列を再代入し、更新時刻をnow+1msへ変えるだけだったため、CIの時計解像度によって元のJSONと同じ内容になる場合があった。2b82852でプロフィールの実値を確実に変更し、元のJSONと異なること自体もassertしてから拒否を検証するよう修正。製品の引継ぎ条件を緩めていない。64unit/lint/typecheck/buildはローカル再PASS。アプリ・サーバーのソースは80c2881から変更していない。最新CIで15emulatorも再確認する。
+
+GitHub最終コード確認：run44046516911 / head2b82852で全qualityチェックPASS。実行source80c2881との製品コード差分なし。[ci-final.json](evidence/ci-final.json)。文書更新の後続commitは実装の新規受入とは分ける。

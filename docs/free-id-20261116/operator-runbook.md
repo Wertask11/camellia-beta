@@ -11,3 +11,7 @@
 7. PostHogはschema2と本番/Previewホスト、demo/published、planとID状態を分ける。メール・本文・認証コードを送らない。UUID重複排除、JST境界、D1/D7/D30の観測完了cohortを確認。既存insightを上書きしない。実決済以外でplus_completeを作らない。
 8. Rulesは現在の本番版を取得し、Camellia owner部分のverified email差分だけをreview・emulator・承認後に適用。テストfixture全文を共用SchoolPark本番Rulesへdeployしない。operator/moderator claimも別の本人承認なく付与しない。
 9. Preview実受入→PRをstack順に検証/統合→本番反映承認→デプロイ後の実操作確認。Code完成で正式公開・課金・紹介・通知を同時に始めない。
+
+## main統合中の中間版を公開しない
+
+mainへの更新でProduction自動デプロイが動く構成なら、stackの最初のPRをmergeする前に、運営承認のもと配信保留または検証済み最終commitだけを昇格する手順を決める。Phase Bだけ先に公開するとPrivacy/メール移行がそろわないため、各PRの独立reviewと本番配信の単位を混同しない。今回、自動配信設定や環境変数は変更していない。Rulesも個別承認と復旧を伴う別の操作とする。

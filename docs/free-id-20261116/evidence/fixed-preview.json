@@ -1,12 +1,12 @@
 {
   "branch": "codex/camellia-alpha-release-candidate",
-  "source": "30d09b78540adf60dc40397c1198b4811e82cb71",
+  "source": "80c2881cea9e71911e9247c16afeb36b08980183",
   "url": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/",
   "update": "fast-forward; no force",
   "vercelStatus": "success",
-  "vercelUpdatedUTC": "2026-11-17T08:05:50Z",
-  "vercelURL": "https://vercel.com/school-park/camellia-beta/8iKfQKLgsr9z63kmFzHFWCyBJCJX",
+  "vercelUpdatedUTC": "2026-11-17T08:18:49Z",
+  "vercelURL": "https://vercel.com/school-park/camellia-beta/HBV781gwbhte8boMU8DvFxVQacqC",
   "runtimeFromExecutor": "unverified: CONNECT403",
-  "ownerAcceptance": "core3057137PASS; read-only analytics30d09b7pending",
+  "ownerAcceptance": "core3057137PASS; read-only analytics diagnosis pending",
   "productionChanged": false
 }

@@ -12,5 +12,6 @@
     "afterSequentialRefill": 30,
     "nextDenied": true
   },
-  "latestGithubRun": "pending after source push"
+  "latestGithubRun": 44046516911,
+  "latestGithubConclusion": "success"
 }

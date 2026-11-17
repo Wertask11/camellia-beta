@@ -73,3 +73,7 @@ PostHog594848のactive contextと既存標準tokenの一致を秘密値を表示
 30d09b7のローカル全試験はPASSだったが、GitHub run44043664151では日次枠34件同時試験がcode10 ABORTEDで失敗した。ログをGitHub接続で取得して原因を確認し、結果を合格に読み替えていない。80c2881では競合で予約できなければfalseを返し、AIへ送らず一時的な枠不足として扱う。権限エラー等は隠さない。
 
 34同時という条件を維持して受入30以下を確認し、その後に単独で残枠を利用でき、計30件で次を拒否することを確認。最終ローカルrunは20件を同時受入・14件を一時拒否、その後30件まで残枠を受入、31件目拒否。新しい実行sourceで64unit/15emulator/lint/typecheck/buildを再実行してPASS。[証拠](evidence/quota-contention.json)。最新GitHub CIはPR headのCheckを確認する。
+
+## 最新CIの確認
+
+GitHub run44046516911（tested head2b82852）はlint/typecheck/64unit/15emulator/buildの全て成功。アプリ・APIの最終source80c2881からは文書と非決定的fixtureの修正だけで、製品コードの差分なし。[CI証拠](evidence/ci-final.json)。固定Previewは80c2881のVercel success（2026-11-17 17:18:49 JST）。PostHogの本人診断結果は待機中。正式判定PARTIAL、本番未反映を維持。
