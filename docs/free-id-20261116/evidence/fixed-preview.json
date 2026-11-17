@@ -1,0 +1,13 @@
+{
+  "branch": "codex/camellia-alpha-release-candidate",
+  "from": "0b85594ba2370fade15d019b9881c536812c68c1",
+  "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+  "url": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/",
+  "update": "fast-forward; no force",
+  "vercelStatus": "success",
+  "vercelUpdatedUTC": "2026-11-17T03:20:48Z",
+  "vercelURL": "https://vercel.com/school-park/camellia-beta/8NpkJtV8AHNwn6gzSUHJJDSj6Laf",
+  "runtimeFromExecutor": "unverified: CONNECT403",
+  "ownerAcceptance": "pending",
+  "productionChanged": false
+}
