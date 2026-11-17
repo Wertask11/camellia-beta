@@ -1,3 +1,5 @@
+import {adoptedFreeBackupKeys} from '@/lib/free/handover';
+import {schoolParkAuth} from '@/lib/schoolpark/firebase';
 import {EmailIdSettings} from '@/components/EmailIdSettings';
 import {PersonalBackupRestore} from '@/components/PersonalBackupRestore';
 import {ReferralPreparation} from '@/components/ReferralPreparation';
@@ -30,8 +32,9 @@ export function MyScreen({deviceOnly=false,onIdentity,onRestoreBackup,onNotifica
   const completed=state.actions.filter(action=>action.status==='completed').slice(-5).reverse();
   const exportPersonal=()=>{const {analyticsEvents: _events,...personal}=state;const url=URL.createObjectURL(new Blob([JSON.stringify({scope:'この端末のCamellia個人記録。Circle本文とPlaceのサーバー保存記録は含みません。',...serializeConversationState(personal)},null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-personal-records.json';link.click();URL.revokeObjectURL(url);};
   const sync=useSyncExternalStore(subscribeSyncStatus,getSyncStatus,getSyncStatus);
-  const backups=typeof window==='undefined'?[]:Object.keys(localStorage).filter(key=>key.startsWith('camellia-local-backup:'));
-  const exportBackups=()=>{const data=backups.filter(key=>!deviceOnly||key.startsWith(`camellia-local-backup:${state.profile.id}:`)).map(key=>({key,data:JSON.parse(localStorage.getItem(key)||'null')}));const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-preserved-records.json';link.click();URL.revokeObjectURL(url);};
+  const ownedBackups=(()=>{try{return !deviceOnly&&schoolParkAuth.currentUser?new Set(adoptedFreeBackupKeys(schoolParkAuth.currentUser.uid,localStorage)):new Set<string>();}catch{return new Set<string>();}})();
+  const backups=typeof window==='undefined'?[]:Object.keys(localStorage).filter(key=>key.startsWith(`camellia-local-backup:${state.profile.id}:`)||ownedBackups.has(key));
+  const exportBackups=()=>{const data=backups.map(key=>({key,data:JSON.parse(localStorage.getItem(key)||'null')}));const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='camellia-preserved-records.json';link.click();URL.revokeObjectURL(url);};
   const [experienceChoice,setExperienceChoice]=useState<PlaceChoice>();
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [lessExplain,setLessExplain]=useState(readLessExplain);

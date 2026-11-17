@@ -33,7 +33,7 @@ export async function takeFreeDaily(db:Firestore,identity:{uid:string;networkKey
  const collection=db.collection(`${SERVER_ROOT}/free_chat_days`),day=freeDay(time);
  const refs=[collection.doc(`device-${identity.uid}-${day}`),collection.doc(`network-${identity.networkKey}-${day}`),collection.doc(`request-${digest(identity.networkKey,identity.uid+':'+requestId)}-${day}`)];
  return db.runTransaction(async tx=>{
-  const snapshots=await Promise.all(refs.map(r=>tx.get(r)));if(snapshots[2].exists)return false;
+  const snapshots=await tx.getAll(...refs);if(snapshots[2].exists)return false;
   if(snapshots.slice(0,2).some(s=>Number(s.data()?.count??0)>=FREE_DAILY_LIMIT))return false;
   const createdAt=new Date(time),expiresAt=new Date(freeDayEnd(time));
   refs.forEach((ref,i)=>tx.set(ref,{count:i===2?1:Number(snapshots[i].data()?.count??0)+1,createdAt:snapshots[i].data()?.createdAt??createdAt,expiresAt}));

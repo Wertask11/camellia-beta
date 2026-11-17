@@ -23,7 +23,7 @@ export function CamelliaIdentityScreen({onDone,onBack}:{onDone:()=>void;onBack:(
    return;
   }
   if(new URL(url).searchParams.has('code')||new URL(url).searchParams.has('camellia_passport_ticket')){
-   setBusy(true);void finishAuthCallback().then(result=>{const user=schoolParkAuth.currentUser;if(!result||!user||user.isAnonymous||result.method==='schoolpark')throw new Error('EMAIL_AUTH_CHANGED');done(user.uid,result.method);}).catch(e=>{setError(emailIdError(e));setBusy(false);});
+   setBusy(true);void finishAuthCallback().then(result=>{const user=schoolParkAuth.currentUser;if(!result||!user||user.isAnonymous||result.method==='schoolpark')throw new Error('EMAIL_AUTH_CHANGED');done(user.uid,result.method,result.linked===true);}).catch(e=>{setError(emailIdError(e));setBusy(false);});
   }
   }catch(e){identityEvent('camellia_id_error');setError(emailIdError(e));setBusy(false);}
  },[done,completeEmail]);

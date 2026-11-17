@@ -31,7 +31,7 @@ export default async function notificationSettings(req: Req, res: Res) {
           : '';
     if (req.method === 'DELETE') {
       const owner = await deps.auth.verifyIdToken(token, true);
-      if (owner.firebase?.sign_in_provider === 'anonymous')
+      if (owner.firebase?.sign_in_provider === 'anonymous'||owner.firebase?.sign_in_provider==='password'&&owner.email_verified!==true)
         return res.status(401).json({ error: 'LOGIN_REQUIRED' });
       return res
         .status(200)
