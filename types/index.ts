@@ -59,6 +59,8 @@ export interface Profile {
   womenServiceAcknowledged?: boolean;
   /** "I am a woman" (self-declared). Required from 2026-10-24; Camellia is for women only. */
   womanSelfDeclared?: boolean;
+  emailIdSetup?: boolean;
+  ageRangeSelfDeclared?: boolean;
   womanSelfDeclaredAt?: string;
   agreedAt?: string;
   agreedVersion?: string;

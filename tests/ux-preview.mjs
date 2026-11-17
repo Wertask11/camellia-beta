@@ -18,6 +18,7 @@ process.env.VITE_CHOICE_ACTION_FLOW = process.env.CHOICE_FLOW_FIXTURE === 'on' ?
 const state = `
 const listeners=new Set();
 export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:sessionStorage.getItem('ux-auth-uid')||'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})}:null};
+schoolParkAuth.authStateReady=async()=>{};
 export function setUser(user){if(user)sessionStorage.setItem('ux-auth-uid',user.uid);else sessionStorage.removeItem('ux-auth-uid');schoolParkAuth.currentUser=user;user?sessionStorage.setItem('ux-signed-in','1'):sessionStorage.removeItem('ux-signed-in');listeners.forEach(fn=>fn(user));}
 export function onAuthStateChanged(auth,fn){listeners.add(fn);queueMicrotask(()=>fn(auth.currentUser));return()=>listeners.delete(fn);}
 // Google login (added after this harness was written). Popups never open here; LINE is the synthetic login.
@@ -32,6 +33,14 @@ export async function signInWithPopup(){
  throw Object.assign(new Error('synthetic harness'),{code:'auth/popup-blocked'});
 }
 export const linkWithPopup=signInWithPopup;
+export class EmailAuthProvider{static credentialWithLink(email,url){return {email,url};}}
+export const isSignInWithEmailLink=(_auth,url)=>url.includes('oobCode=ux-email');
+export async function sendSignInLinkToEmail(_auth,email,settings){if(sessionStorage.getItem('ux-email-error')==='1')throw Object.assign(new Error('local failure'),{code:'auth/operation-not-allowed'});sessionStorage.setItem('ux-email-request',JSON.stringify({email,settings}));}
+const emailUser=(uid,email)=>({uid,email,isAnonymous:false,emailVerified:true,providerData:[{providerId:'password'}],reload:async()=>{},getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'password',claims:{email_verified:true}})});
+export async function signInWithEmailLink(_auth,email,url){if(!url.includes('oobCode=ux-email'))throw Object.assign(new Error('local invalid'),{code:'auth/invalid-action-code'});const user=emailUser(sessionStorage.getItem('ux-login-uid')||'synthetic-email-user',email);sessionStorage.setItem('ux-auth-provider','password');sessionStorage.setItem('ux-email-address',email);setUser(user);return {user};}
+export async function linkWithCredential(user,credential){const linked={...user,...emailUser(user.uid,credential.email)};sessionStorage.setItem('ux-auth-provider','password');sessionStorage.setItem('ux-email-address',credential.email);setUser(linked);return {user:linked};}
+if(schoolParkAuth.currentUser&&sessionStorage.getItem('ux-auth-provider')==='password')schoolParkAuth.currentUser=emailUser(schoolParkAuth.currentUser.uid,sessionStorage.getItem('ux-email-address')||'local@example.test');
+
 export const signOut=async()=>setUser(null);
 export const signInAnonymously=async()=>{throw new Error('unused synthetic anonymous login');};
 export const signInWithCustomToken=async()=>{throw new Error('unused synthetic token exchange');};
@@ -67,7 +76,8 @@ export const prepareSchoolParkAccount=async(s,uid)=>{const raw=sessionStorage.ge
 export const deleteSyncedCamelliaData=async clear=>{clear();return{cloudDeleted:false}};
 export const getSyncStatus=()=>status;
 export const subscribeSyncStatus=()=>()=>{};
-export const flushSchoolParkSync=async()=>{};`,
+export const flushSchoolParkSync=async()=>{};
+export const cloudContainsState=async()=>sessionStorage.getItem('ux-cloud-confirm')==='1';`,
   '@/lib/analytics/posthog': `export const resetAnalyticsIdentity=()=>{};
 export const forwardEvent=()=>true;
 export const captureAuthEvent=(name,properties)=>{if(${checkFirst})window.dispatchEvent(new CustomEvent('ux-auth-event',{detail:{name,properties}}));return true;};
