@@ -1,3 +1,4 @@
+import {clearFortuneReflections} from '../fortune/reflection';
 import {currentAnalyticsSession} from '../analytics/session';
 import {validateStoredState} from '../storage/validation';
 import {mergePersonalBackup} from '../storage/backup';
@@ -47,7 +48,7 @@ export function markFreeTransferApplied(uid:string,nonce:string,storage:Storage)
 /** Only after a separate cloud containment check; expiresAt alone must never erase the private backup. */
 export function finishFreeTransfer(uid:string,nonce:string,storage:Storage,targetProfileId:string){const p=readFreeTransfer(storage);if(p?.uid!==uid||p.nonce!==nonce||p.stage!=='applied')throw new Error('TRANSFER_AUTH_MISMATCH');if(!targetProfileId)throw new Error('TRANSFER_AUTH_MISMATCH');const receipts=readAdoptedFreeSources(uid,storage);storage.setItem(ADOPTED_PREFIX+uid,JSON.stringify([...receipts.filter(r=>r.sourceProfileId!==p.sourceProfileId),{sourceProfileId:p.sourceProfileId,targetProfileId}]));storage.removeItem(PREFIX+p.nonce);storage.removeItem(FREE_TRANSFER_KEY);}
 export function cancelFreeTransfer(storage:Storage){const p=readFreeTransfer(storage);if(!p||p.stage==='applying'||p.stage==='applied')return;if(storage.getItem(FREE_STORAGE_KEY)!==storage.getItem(PREFIX+p.nonce))return;storage.removeItem(PREFIX+p.nonce);storage.removeItem(FREE_TRANSFER_KEY);}
-export function clearOwnedFreeTransfer(uid:string,storage:Storage){for(const key of adoptedFreeBackupKeys(uid,storage))storage.removeItem(key);storage.removeItem(ADOPTED_PREFIX+uid);const p=readFreeTransfer(storage);if(p?.uid!==uid)return;storage.removeItem(PREFIX+p.nonce);storage.removeItem(FREE_TRANSFER_KEY);}
+export function clearOwnedFreeTransfer(uid:string,storage:Storage){for(const source of readAdoptedFreeSources(uid,storage))clearFortuneReflections(source.sourceProfileId,storage);for(const key of adoptedFreeBackupKeys(uid,storage))storage.removeItem(key);storage.removeItem(ADOPTED_PREFIX+uid);const p=readFreeTransfer(storage);if(p?.uid!==uid)return;storage.removeItem(PREFIX+p.nonce);storage.removeItem(FREE_TRANSFER_KEY);}
 
 export function clearUnadoptedFreeTransfer(sourceProfileId:string,storage:Storage){const p=readFreeTransfer(storage);if(p?.sourceProfileId!==sourceProfileId||p.stage==='applying'||p.stage==='applied')return;storage.removeItem(PREFIX+p.nonce);storage.removeItem(FREE_TRANSFER_KEY);}
 
