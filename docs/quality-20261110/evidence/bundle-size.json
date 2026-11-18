@@ -1,0 +1,44 @@
+{
+  "main91e95ba": {
+    "allClientJsGzipBytes": 478718,
+    "largest": [
+      {
+        "name": "page-CECqgjUV.js",
+        "bytes": 1201371,
+        "gzipBytes": 362277
+      },
+      {
+        "name": "index-DIG8baYg.js",
+        "bytes": 192299,
+        "gzipBytes": 55580
+      },
+      {
+        "name": "framework-D_rUT4EX.js",
+        "bytes": 190152,
+        "gzipBytes": 58938
+      }
+    ]
+  },
+  "candidate": {
+    "allClientJsGzipBytes": 488180,
+    "largest": [
+      {
+        "name": "page-Bh2UcQh9.js",
+        "bytes": 1237121,
+        "gzipBytes": 371740
+      },
+      {
+        "name": "index-B6yzheip.js",
+        "bytes": 192299,
+        "gzipBytes": 55581
+      },
+      {
+        "name": "framework-D_rUT4EX.js",
+        "bytes": 190152,
+        "gzipBytes": 58938
+      }
+    ]
+  },
+  "scope": "Same installed dependencies and default OFF feature settings. All emitted client JavaScript compressed with gzip, not a measured initial request graph or real mobile timing.",
+  "deltaAllClientGzipBytes": 9462
+}

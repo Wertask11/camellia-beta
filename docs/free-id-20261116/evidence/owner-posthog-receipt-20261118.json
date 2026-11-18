@@ -1,0 +1,120 @@
+{
+  "observedClockUTC": "2026-11-18T02:23:34.698Z",
+  "projectId": 594848,
+  "sourceCommit": "8359d9098e5b098218e53eee05db1301f68729c5",
+  "scope": "Owner-reported read-only browser diagnostic plus independent PostHog receipt. Current operation is an existing external-ID account (legacy_external), NOT proof of unregistered or email-ID ingestion.",
+  "diagnostic": {
+    "sdkReady": true,
+    "automatedBrowser": false,
+    "dnt": false,
+    "optedOut": false,
+    "deliveryAllowed": true,
+    "standardDestination": true,
+    "acceptedEvents": [
+      "session_start",
+      "check_view",
+      "check_start",
+      "check_complete",
+      "daily_reflection_view",
+      "my_view"
+    ]
+  },
+  "query": {
+    "dateRange": {
+      "date_from": "2026-11-18T02:16:45Z",
+      "date_to": "2026-11-18T02:25:30Z"
+    },
+    "filterTestAccounts": false,
+    "interval": "hour",
+    "kind": "TrendsQuery",
+    "properties": [
+      {
+        "key": "experience_version",
+        "operator": "exact",
+        "type": "event",
+        "value": [
+          "free_id_v1"
+        ]
+      },
+      {
+        "key": "$host",
+        "operator": "exact",
+        "type": "event",
+        "value": [
+          "camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app"
+        ]
+      }
+    ],
+    "series": [
+      {
+        "event": "session_start",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "check_view",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "check_start",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "check_complete",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "daily_reflection_view",
+        "kind": "EventsNode"
+      },
+      {
+        "event": "my_view",
+        "kind": "EventsNode"
+      }
+    ]
+  },
+  "counts": [
+    {
+      "event": "session_start",
+      "count": 1
+    },
+    {
+      "event": "check_view",
+      "count": 1
+    },
+    {
+      "event": "check_start",
+      "count": 1
+    },
+    {
+      "event": "check_complete",
+      "count": 1
+    },
+    {
+      "event": "daily_reflection_view",
+      "count": 1
+    },
+    {
+      "event": "my_view",
+      "count": 1
+    }
+  ],
+  "safeRows": "timestamp|event|sdk_version|event_schema|experience_version|plan|id_state\n2026-11-18T02:22:45.698000Z|session_start|1.450.0|2.0|free_id_v1|(null)|legacy_external\n2026-11-18T02:22:46.658000Z|check_view|1.450.0|2.0|free_id_v1|(null)|legacy_external\n2026-11-18T02:22:53.263000Z|check_start|1.450.0|2.0|free_id_v1|free|legacy_external\n2026-11-18T02:23:11.834000Z|check_complete|1.450.0|2.0|free_id_v1|free|legacy_external\n2026-11-18T02:23:12.053000Z|daily_reflection_view|1.450.0|2.0|free_id_v1|free|legacy_external\n2026-11-18T02:23:21.930000Z|my_view|1.450.0|2.0|free_id_v1|free|legacy_external",
+  "notProven": [
+    "Cause of earlier missing events",
+    "Anonymous conversation ingestion",
+    "Real camellia_id_complete ingestion after fix",
+    "Real record_transfer_complete ingestion",
+    "Gemini provider/token/cost validation"
+  ],
+  "ci": {
+    "head": "8359d9098e5b098218e53eee05db1301f68729c5",
+    "status": "PASS",
+    "url": "https://github.com/Wertask11/camellia-beta/actions/runs/44221825372/job/134525299908"
+  },
+  "preview": {
+    "head": "8359d9098e5b098218e53eee05db1301f68729c5",
+    "status": "Vercel success",
+    "readyAtUTC": "2026-11-18T02:16:45Z",
+    "url": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/"
+  }
+}

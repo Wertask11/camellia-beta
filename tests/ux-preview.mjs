@@ -1,12 +1,19 @@
 /** Isolated browser harness: real screens/store, synthetic auth, no Firebase/API/PostHog delivery.
  * Run only locally: node tests/ux-preview.mjs. Never use this configuration for a release build. */
+import {attachQualityRoutes} from './quality-http-fixture.mjs';
 import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
+const sdkFixture=process.env.ANALYTICS_SDK_FIXTURE==='on',port=Number(process.env.UX_FIXTURE_PORT??4173);
+if(sdkFixture){process.env.VITE_POSTHOG_HOST=`http://127.0.0.1:${port}`;process.env.VITE_POSTHOG_KEY='phc_local_fixture_only';}
+const analyticsCaptures=[];
 const root = fileURLToPath(new URL('..', import.meta.url));
+const qualityLinks=process.env.CIRCLE_LINKS_FIXTURE==='on';
+if(qualityLinks){process.env.VITE_CIRCLE_ENABLED='true';process.env.VITE_PLACE_ENABLED='true';process.env.VITE_CIRCLE_PLACE_LINKS_ENABLED='true';}
+process.env.VITE_FREE_BASIC_USAGE=process.env.FREE_USE_FIXTURE==='on'?'true':'off';
 const checkFirst = process.env.CHECK_FIRST_FIXTURE === 'on';
 // Historical browser fixtures keep their original entry. The new journey opts in explicitly.
 process.env.VITE_CHECK_FIRST_ONBOARDING = checkFirst ? 'true' : 'off';
@@ -14,6 +21,7 @@ process.env.VITE_CHOICE_ACTION_FLOW = process.env.CHOICE_FLOW_FIXTURE === 'on' ?
 const state = `
 const listeners=new Set();
 export const schoolParkAuth={currentUser:sessionStorage.getItem('ux-signed-in')==='1'?{uid:sessionStorage.getItem('ux-auth-uid')||'synthetic-ux-user',isAnonymous:false,providerData:[],getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'custom',claims:{}})}:null};
+schoolParkAuth.authStateReady=async()=>{};
 export function setUser(user){if(user)sessionStorage.setItem('ux-auth-uid',user.uid);else sessionStorage.removeItem('ux-auth-uid');schoolParkAuth.currentUser=user;user?sessionStorage.setItem('ux-signed-in','1'):sessionStorage.removeItem('ux-signed-in');listeners.forEach(fn=>fn(user));}
 export function onAuthStateChanged(auth,fn){listeners.add(fn);queueMicrotask(()=>fn(auth.currentUser));return()=>listeners.delete(fn);}
 // Google login (added after this harness was written). Popups never open here; LINE is the synthetic login.
@@ -28,6 +36,14 @@ export async function signInWithPopup(){
  throw Object.assign(new Error('synthetic harness'),{code:'auth/popup-blocked'});
 }
 export const linkWithPopup=signInWithPopup;
+export class EmailAuthProvider{static credentialWithLink(email,url){return {email,url};}}
+export const isSignInWithEmailLink=(_auth,url)=>url.includes('oobCode=ux-email');
+export async function sendSignInLinkToEmail(_auth,email,settings){if(sessionStorage.getItem('ux-email-error')==='1')throw Object.assign(new Error('local failure'),{code:'auth/operation-not-allowed'});sessionStorage.setItem('ux-email-request',JSON.stringify({email,settings}));}
+const emailUser=(uid,email)=>({uid,email,isAnonymous:false,emailVerified:true,providerData:[{providerId:'password'}],reload:async()=>{},getIdToken:async()=>'synthetic',getIdTokenResult:async()=>({signInProvider:'password',claims:{email_verified:true}})});
+export async function signInWithEmailLink(_auth,email,url){if(!url.includes('oobCode=ux-email'))throw Object.assign(new Error('local invalid'),{code:'auth/invalid-action-code'});const user=emailUser(sessionStorage.getItem('ux-login-uid')||'synthetic-email-user',email);sessionStorage.setItem('ux-auth-provider','password');sessionStorage.setItem('ux-email-address',email);setUser(user);return {user};}
+export async function linkWithCredential(user,credential){const linked={...user,...emailUser(user.uid,credential.email)};sessionStorage.setItem('ux-auth-provider','password');sessionStorage.setItem('ux-email-address',credential.email);setUser(linked);return {user:linked};}
+if(schoolParkAuth.currentUser&&sessionStorage.getItem('ux-auth-provider')==='password')schoolParkAuth.currentUser=emailUser(schoolParkAuth.currentUser.uid,sessionStorage.getItem('ux-email-address')||'local@example.test');
+
 export const signOut=async()=>setUser(null);
 export const signInAnonymously=async()=>{throw new Error('unused synthetic anonymous login');};
 export const signInWithCustomToken=async()=>{throw new Error('unused synthetic token exchange');};
@@ -63,17 +79,21 @@ export const prepareSchoolParkAccount=async(s,uid)=>{const raw=sessionStorage.ge
 export const deleteSyncedCamelliaData=async clear=>{clear();return{cloudDeleted:false}};
 export const getSyncStatus=()=>status;
 export const subscribeSyncStatus=()=>()=>{};
-export const flushSchoolParkSync=async()=>{};`,
+export const flushSchoolParkSync=async()=>{};
+export const cloudContainsState=async()=>sessionStorage.getItem('ux-cloud-confirm')==='1';`,
   '@/lib/analytics/posthog': `export const resetAnalyticsIdentity=()=>{};
 export const forwardEvent=()=>true;
 export const captureAuthEvent=(name,properties)=>{if(${checkFirst})window.dispatchEvent(new CustomEvent('ux-auth-event',{detail:{name,properties}}));return true;};
 export const setAnalyticsDeliveryAllowed=()=>{};`,
 };
+if(sdkFixture)delete mocks['@/lib/analytics/posthog'];
+else mocks['@/lib/analytics/posthog']+='\nexport const safeAnalyticsDiagnostic=()=>null;';
 const server = await createServer({
   configFile: false, root,
-  cacheDir: root + '/node_modules/.vite-ux-preview-' + (checkFirst ? 'check-first' : 'legacy'),
+  define:{__CAMELLIA_ANALYTICS_DIAGNOSTICS__:JSON.stringify(sdkFixture)},
+  cacheDir: root + '/work/.vite-ux-preview-' + (checkFirst ? 'check-first' : 'legacy')+(sdkFixture?'-sdk':''),
   resolve: { alias: { '@': root }, dedupe: ['react', 'react-dom'] },
-  optimizeDeps: { include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime', 'lucide-react'] },
+  optimizeDeps: { noDiscovery:true, include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime', 'lucide-react'] },
   css: { postcss: { plugins: [tailwindcss()] } },
   plugins: [{
     name: 'isolated-ux-only', enforce: 'pre',
@@ -85,6 +105,8 @@ const server = await createServer({
     },
     load(id) { if (id.startsWith('\0ux:')) return mocks[id.slice(4)]; },
     configureServer(s) {
+      if(qualityLinks)attachQualityRoutes(s);
+      if(sdkFixture)s.middlewares.use((req,res,next)=>{if(req.url==='/batch/'&&req.method==='POST'){let raw='';req.on('data',chunk=>raw+=chunk);req.on('end',()=>{const body=JSON.parse(raw);analyticsCaptures.push(...body.batch);res.setHeader('Content-Type','application/json');res.end(JSON.stringify({status:1}));});return;}if(req.url==='/__ux/analytics-captures'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(analyticsCaptures));return;}next();});
       /* Synthetic invite/suspension answers (lib/auth/access.ts). Cookie ux-access=invite|suspended|open
          chooses the state; the code K7QM2XPA is accepted. Nothing leaves this machine. */
       /* Synthetic conversation: the reply in pieces (lib/conversation/stream.ts), starting quickly so the tests can
@@ -95,7 +117,7 @@ const server = await createServer({
         next();
       });
       s.middlewares.use((req, res, next) => {
-        if (req.url?.split('?')[0] !== '/api/camellia/chat') return next();
+        if (!['/api/camellia/chat','/api/camellia/free-chat'].includes(req.url?.split('?')[0])) return next();
         res.setHeader('Content-Type', req.method === 'GET' ? 'application/json' : 'text/event-stream');
         if (req.method === 'GET') return res.end(JSON.stringify({ enabled: true }));
         let raw = ''; req.on('data', chunk => { raw += chunk; });
@@ -127,7 +149,7 @@ const server = await createServer({
       });
     },
   }, react()],
-  server: { host: '127.0.0.1', port: 4173, strictPort: true, hmr: false },
+  server: { host: '127.0.0.1', port, strictPort: true, hmr: false },
 });
 await server.listen();
-console.log('Isolated UX harness ready on port 4173. Auth/sync/analytics are mocked; no production writes.');
+console.log(`Isolated UX harness on port ${port}. Auth/cloud mocked; analytics ${sdkFixture?'real SDK to LOCAL ONLY':'mocked'}. No production writes.`);

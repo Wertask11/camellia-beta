@@ -22,6 +22,7 @@ export function saveFortuneReflection(profileId:string,date:string,answer:Fortun
   try{localStorage.setItem(key(profileId,date),answer);}catch{/* Optional device-only reflection. */}
 }
 /** Called only inside the existing, ownership-checked personal deletion callback. */
-export function clearFortuneReflections() {
-  for(const k of Object.keys(localStorage))if(k.startsWith(PREFIX))localStorage.removeItem(k);
+export function clearFortuneReflections(profileId?:string,storage:Storage=localStorage) {
+  const prefix=profileId?`${PREFIX}profile:${encodeURIComponent(profileId)}:`:PREFIX;
+  for(const k of Object.keys(storage))if(k.startsWith(prefix))storage.removeItem(k);
 }

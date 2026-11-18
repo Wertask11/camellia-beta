@@ -1,0 +1,56 @@
+{
+  "checkedUtc": "2026-11-16T06:50:56.787443+00:00",
+  "scope": "unauthenticated read-only public GET; existing main91e95ba, not new stack",
+  "routes": [
+    {
+      "path": "/",
+      "status": "200",
+      "exit": 0,
+      "bytes": 11430
+    },
+    {
+      "path": "/api/camellia/chat",
+      "status": "200",
+      "exit": 0,
+      "body": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "path": "/api/camellia/place?status=1",
+      "status": "200",
+      "exit": 0,
+      "body": {
+        "enabled": false
+      }
+    },
+    {
+      "path": "/api/camellia/circle",
+      "status": "401",
+      "exit": 0,
+      "body": {
+        "error": "LOGIN_REQUIRED"
+      }
+    },
+    {
+      "path": "/api/camellia/membership",
+      "status": "200",
+      "exit": 0,
+      "body": {
+        "plan": "free",
+        "trial": false,
+        "paid": false,
+        "checkoutReady": false,
+        "priceYen": 500
+      }
+    }
+  ],
+  "browserPreviousAttempt": {
+    "dateUtc": "2026-11-11",
+    "error": "net::ERR_CERT_AUTHORITY_INVALID; not bypassed",
+    "scope": "not a product error claim"
+  }
+}

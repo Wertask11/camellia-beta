@@ -16,3 +16,8 @@ export function localPlaceIntents(state:CamelliaState,now=new Date()):PlaceInten
 export function rankPlaces(places:Place[],intents:PlaceIntent[]):Place[]{
  return [...places].sort((a,b)=>b.recommendedFor.filter(x=>intents.includes(x as PlaceIntent)).length-a.recommendedFor.filter(x=>intents.includes(x as PlaceIntent)).length||a.slug.localeCompare(b.slug));
 }
+
+/** Public catalog facts and coarse, explicitly allowed wishes only. No health or private text. */
+export function placeMatchReasons(place:Place,intents:PlaceIntent[]):string[]{
+ return [...new Set(intents)].filter(intent=>Object.hasOwn(PLACE_PREFERENCES,intent)&&place.recommendedFor.includes(intent)).slice(0,3).map(intent=>`「${PLACE_PREFERENCES[intent]}」という希望に合う特徴が掲載されています。`);
+}

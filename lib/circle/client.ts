@@ -34,6 +34,9 @@ export async function circleRequest(
     );
   })) as {
     error?: string;
+    placeLinksEnabled?:boolean;
+    merchant?:boolean;
+    places?:Array<{slug:string;name:string}>;
     version?: number;
     circles: CircleSummary[];
     nextCursor?: string;
@@ -56,6 +59,9 @@ export async function circleRequest(
       INVITE_REQUIRED: '招待コードを入力してから利用できます。',
       SUSPENDED: 'このアカウントの利用を止めています。',
       NOT_FOUND: 'この文章は削除されたか、今は表示できません。',
+      PLACE_NOT_AVAILABLE:'選んだPlaceは今は公開されていません。別のPlaceを選んでください。',
+      MERCHANT_EVENT_REQUIRED:'店舗の投稿は、自店に紐づくイベント・体験に限ります。',
+      PLACE_LINKS_UNAVAILABLE:'Placeとの連携は準備中です。',
       NOT_AVAILABLE: 'この文章は今は表示できません。',
       MEMBERSHIP_REQUIRED: '参加してから利用できます。',
       GUIDELINES_REQUIRED: 'ガイドラインを確認してください。',
