@@ -41,3 +41,9 @@ ID操作の `id_operation=access|link` を分ける。ID完了は既存IDへの�
 - プロジェクトUTCとJSTを混同しない。JST 00:00は前日15:00 UTC。旧Insightは維持し、新ファネルを作る際はschema2、Production `$host=camellia-beta.vercel.app`、demo除外等の条件を明記する。
 
 PostHogのmetric catalogはこの接続にread権限がなく、上記はアプリの新しい計測設計であって既存の承認済み事業指標ではない。実人数・継続率・転換率は作っていない。
+
+## 2026-11-18 受領と導線属性の追加確認
+
+[本人操作の実受領](evidence/owner-posthog-receipt-20261118.json)で既存外部IDのCheck6種を各1件確認。SDK1.450.0・schema2・legacy_externalであり、匿名/メールID/移行イベントの受領とは区別する。新しいID完了計測は記録準備後に台帳へ渡す（[追加修正](analytics-followup-20261118.md)）。
+
+[導線属性](journey-session-20261118.md)は、許可済みの新イベントに発生時のsessionIdを使って補完し、明示引き継ぎ値を優先する。旧履歴の書き換えや人物aliasではない。実際の新規人数・継続率・転換率は未実測のまま。

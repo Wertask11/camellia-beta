@@ -60,3 +60,9 @@ Chromiumで実コンポーネント/localStorage/File APIを操作。375/390/412
 d5dc4d2のCI run44045572751はunitの「source変更拒否」試験で失敗した。fixtureが空配列を再代入し、更新時刻をnow+1msへ変えるだけだったため、CIの時計解像度によって元のJSONと同じ内容になる場合があった。2b82852でプロフィールの実値を確実に変更し、元のJSONと異なること自体もassertしてから拒否を検証するよう修正。製品の引継ぎ条件を緩めていない。64unit/lint/typecheck/buildはローカル再PASS。アプリ・サーバーのソースは80c2881から変更していない。最新CIで15emulatorも再確認する。
 
 GitHub最終コード確認：run44046516911 / head2b82852で全qualityチェックPASS。実行source80c2881との製品コード差分なし。[ci-final.json](evidence/ci-final.json)。文書更新の後続commitは実装の新規受入とは分ける。
+
+## 2026-11-18 SDK・取得成功計測
+
+[追加報告](analytics-followup-20261118.md)と [新しい実行証拠](evidence/analytics-followup-20261118.json)。旧64suite等の合格を新sourceに流用せず、新しい65suiteと全Firestore試験、build、5幅を再実行する。追加した実SDK＋メール/移行の結合試験は修正前に `camellia_id_complete` 不在でFAILし、他の受領を取得成功として扱っていない。
+
+source9b60003のGitHub run44224189611は全項目PASS（2026-11-18 11:37:04 JST）。固定Previewは同日11:36:17 JSTに同sourceのデプロイ成功。本人の未登録会話→メールID保存の受入と、会話/ID/移行のPostHog未受領は [個別証拠](evidence/owner-email-flow-20261118.json) に分離した。この追記以降に機能コードの変更はない。

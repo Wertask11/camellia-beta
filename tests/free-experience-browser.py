@@ -1,8 +1,8 @@
 """Actual Free screens/storage, intercepted auth/sync/provider. No cloud operations."""
 from playwright.sync_api import sync_playwright,expect
 from pathlib import Path
-import json,re
-out=Path('/workspace/outputs/camellia-free-id-20261116/free');out.mkdir(parents=True,exist_ok=True);results=[]
+import json,re,os
+out=Path(os.environ.get('CAMELLIA_BROWSER_OUTPUT','/workspace/outputs/camellia-free-id-20261116/free'));out.mkdir(parents=True,exist_ok=True);results=[]
 origin='http://127.0.0.1:4173';key='camellia-free-device-v1'
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])

@@ -14,7 +14,7 @@ import type {
 } from '@/types';
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
-  camellia_id_prompt_view:['entry_session'],camellia_id_start:['method','entry_session'],camellia_id_complete:['method','entry_session'],camellia_id_error:['method','reason','entry_session'],record_transfer_complete:['entry_session'],record_transfer_error:['reason','entry_session'],reflection_saved:['catalog'],place_comparison_view:['catalog','personalized'],
+  camellia_id_prompt_view:['entry_session'],camellia_id_start:['method','entry_session'],camellia_id_complete:['method','entry_session','id_operation'],camellia_id_error:['method','reason','entry_session'],record_transfer_complete:['entry_session'],record_transfer_error:['reason','entry_session'],reflection_saved:['catalog'],place_comparison_view:['catalog','personalized'],
   discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
   partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
   plus_offer_view:['source'],plus_start:['source'],plus_complete:['currency','amount'],
@@ -237,6 +237,9 @@ export function sanitizeEventProperties(
       safe[key] = value;
   }
   const names = new Set(state.analyticsEvents.map((x) => x.name));
+  // Event-time application session, never the current account/session at retry time.
+  // An explicit verified handover may retain its earlier entry_session. Do not retag legacy events.
+  if(source.experience_version==='free_id_v1'&&allowed.includes('entry_session')&&safe.entry_session===undefined&&validProperty('entry_session',event.sessionId))safe.entry_session=event.sessionId!;
   const check = names.has('check_complete'),
     fortune = names.has('fortune_draw'),
     tree = names.has('tree_add_complete');
