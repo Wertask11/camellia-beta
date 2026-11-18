@@ -337,7 +337,7 @@ export function CamelliaScreen({
             <span className="chat-mascot-name" aria-hidden="true">{characterName(characterNameSetting)}{thinking?<small>は考え中です</small>:<small>{mascotForm==='yura'?' · YURA':' · Lactone'}</small>}</span>
           </button>
         </div></header>
-      {freeMode&&<p className="meta">入力した文と、この会話の直近最大8件を外部AIへ送ります。提供条件によってはサービス改善に使われる場合があります。MemoryやMy Treeは自動送信しません。<a href="/privacy.html" target="_blank" rel="noopener">データの扱い</a></p>}
+      {freeMode&&<p className="meta">登録不要の会話は1日30回まで（日本時間）。同じ通信元では利用枠を共有する場合があります。入力した文と、この会話の直近最大8件を外部AIへ送ります。提供条件によってはサービス改善に使われる場合があります。MemoryやMy Treeは自動送信しません。<a href="/privacy.html" target="_blank" rel="noopener">データの扱い</a></p>}
       {guestMode?<output className="meta">登録前は端末内のお試し会話です。外部AIへ送信せず、会話は記録に残りません。</output>:availability==='disabled'&&!treeContext&&<output className="meta">今は共通の返答でお話ししています。</output>}
       {!messages.length && <section className="ai-context"><p>{check?'今日のCheckから気になったことや、その後のこと。今の気持ちから続けてみませんか。':'今日はどんなことがありましたか？聞いてほしいだけでも大丈夫です。'}</p></section>}
       {treeContext && <section className="panel"><p>{treeContext.name}さんについて話しています。この人についての会話では、My Treeに残した記録を端末内で参照します。記録を参照している間は、共通の話し方でお返しします。</p><button className="text-button" onClick={onClearTreeContext}>この人の参照を終える</button></section>}
