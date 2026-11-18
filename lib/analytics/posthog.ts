@@ -237,6 +237,9 @@ export function sanitizeEventProperties(
       safe[key] = value;
   }
   const names = new Set(state.analyticsEvents.map((x) => x.name));
+  // Event-time application session, never the current account/session at retry time.
+  // An explicit verified handover may retain its earlier entry_session. Do not retag legacy events.
+  if(source.experience_version==='free_id_v1'&&allowed.includes('entry_session')&&safe.entry_session===undefined&&validProperty('entry_session',event.sessionId))safe.entry_session=event.sessionId!;
   const check = names.has('check_complete'),
     fortune = names.has('fortune_draw'),
     tree = names.has('tree_add_complete');
