@@ -131,6 +131,7 @@ export function AccountScreen({
             <button className="auth-primary auth-google" onClick={() => void beginGoogle()} disabled={connecting}>
               <span className="auth-brand-icon google-icon" aria-hidden="true">G</span>{connecting ? 'Googleに接続しています…' : savingCheck?'Googleで記録を残す':'Googleで続ける'}
             </button>
+            <button className="auth-primary" disabled={connecting} onClick={()=>window.dispatchEvent(new Event('camellia-email-entry'))}>メールで引き継ぐ</button>
             <p className="account-policy account-consent">ログインまたは登録することで、<a href="/terms.html" target="_blank" rel="noopener">利用規約</a>・<a href="/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意したものとみなします。</p>
             {(notice || error) && <p className="auth-error" role="alert">{notice || error}</p>}
           </>

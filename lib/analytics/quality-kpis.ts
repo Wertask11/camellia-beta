@@ -11,7 +11,7 @@ export const QUALITY_KPIS = {
   retention: {
     start: 'session_start',
     return: 'session_start',
-    days: [7, 30],
+    days: [1, 7, 30],
     period: 'JST calendar day',
     meaning:
       '同じ識別子の再利用。登録済みID・匿名体験・端末変更を区別し、匿名Cookieだけの継続をアカウント継続と断定しない。',
@@ -51,6 +51,7 @@ export const QUALITY_KPIS = {
     'login_success',
     'guest_check_saved',
   ],
+  identity: ['camellia_id_prompt_view','camellia_id_start','camellia_id_complete','record_transfer_complete'],
   plus: ['plus_offer_view', 'plus_start', 'plus_complete'],
 } as const satisfies {
   primary: {
@@ -71,5 +72,6 @@ export const QUALITY_KPIS = {
   circleToPlace: readonly AnalyticsEventName[];
   saveWithoutCheck: readonly AnalyticsEventName[];
   saveWithCheck: readonly AnalyticsEventName[];
+  identity: readonly AnalyticsEventName[];
   plus: readonly AnalyticsEventName[];
 };
