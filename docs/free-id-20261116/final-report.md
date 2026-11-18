@@ -77,3 +77,7 @@ PostHog594848のactive contextと既存標準tokenの一致を秘密値を表示
 ## 最新CIの確認
 
 GitHub run44046516911（tested head2b82852）はlint/typecheck/64unit/15emulator/buildの全て成功。アプリ・APIの最終source80c2881からは文書と非決定的fixtureの修正だけで、製品コードの差分なし。[CI証拠](evidence/ci-final.json)。固定Previewは80c2881のVercel success（2026-11-17 17:18:49 JST）。PostHogの本人診断結果は待機中。正式判定PARTIAL、本番未反映を維持。
+
+## 2026-11-18 計測の追加修正
+
+[追加報告](analytics-followup-20261118.md)。SDK更新に加え、実SDKを組み合わせたメール認証試験で、ID取得成功の計測が画面切り替え時に取り残される不具合を再現・修正した。同じUIDの記録準備後に永続台帳へ追加し、私的UIDを送らず、既存Freeイベントの変更・人物alias・重複送信を避ける。全体の未着信の原因が確定したわけではなく、本人ブラウザの安全な診断結果と実PostHog着信は未確認。総合PARTIAL・本番未反映を維持する。新しいsourceの実行結果は専用証拠に分離する。

@@ -1,5 +1,6 @@
 'use client';
 import {identityEvent} from '@/lib/analytics/identity';
+import {stageIdentityCompletion} from '@/lib/analytics/identity-completion';
 import {CAMELLIA_MESSAGE} from '@/lib/brand';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {GoogleAuthProvider,signInWithPopup} from 'firebase/auth';
@@ -11,7 +12,7 @@ import {beginFreeTransfer,bindFreeTransfer,cancelFreeTransfer} from '@/lib/free/
 export function CamelliaIdentityScreen({onDone,onBack}:{onDone:()=>void;onBack:()=>void}){
  const [email,setEmail]=useState(''),[accepted,setAccepted]=useState(false),[busy,setBusy]=useState(false),[sent,setSent]=useState(false),[error,setError]=useState(''),[returningLink,setReturningLink]=useState('');
  const started=useRef(false),link=useRef(typeof location==='undefined'?'':location.href);
- const done=useCallback((uid:string,method:'email'|'google'|'line',linked=false)=>{if(schoolParkAuth.currentUser?.uid!==uid)throw new Error('EMAIL_AUTH_CHANGED');if(!linked)bindFreeTransfer(uid,method,localStorage);identityEvent('camellia_id_complete',method,linked);sessionStorage.removeItem('camellia-id-entry');onDone();},[onDone]);
+ const done=useCallback((uid:string,method:'email'|'google'|'line',linked=false)=>{if(schoolParkAuth.currentUser?.uid!==uid)throw new Error('EMAIL_AUTH_CHANGED');if(!linked)bindFreeTransfer(uid,method,localStorage);stageIdentityCompletion(uid,method,linked,sessionStorage);sessionStorage.removeItem('camellia-id-entry');onDone();},[onDone]);
  const completeEmail=useCallback(async(url:string,address?:string,consent=false)=>{setBusy(true);setError('');try{const result=await emailIdService().complete(url,address,consent);done(result.uid,'email',result.linked);}catch(e){identityEvent('camellia_id_error');setError(emailIdError(e));setBusy(false);}},[done]);
  useEffect(()=>{
   if(started.current)return;started.current=true;identityEvent('camellia_id_prompt_view');

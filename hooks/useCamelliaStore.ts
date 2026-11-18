@@ -1,6 +1,8 @@
 /* oxlint-disable react-compiler -- localStorage hydration and state transitions are intentionally centralized in this prototype store */
 'use client';
 import {useUsageAnalytics} from '@/hooks/useUsageAnalytics';
+import {schoolParkAuth} from '@/lib/schoolpark/firebase';
+import {readIdentityCompletion,finishIdentityCompletion} from '@/lib/analytics/identity-completion';
 import {clearUnadoptedFreeTransfer} from '@/lib/free/handover';
 import {mergePersonalBackup,preserveBeforeRestore} from '@/lib/storage/backup';
 import {clearPendingReferral} from '@/lib/referral/client';
@@ -58,6 +60,14 @@ export function useCamelliaStore(options:{deviceOnly?:boolean;accountReady?:bool
  const retryStorage=useCallback(()=>{if(deviceOnly&&storageError==='LOCAL_CONFLICT'){try{localStorage.setItem(`camellia-local-backup:${state.profile.id}:conflict-${uid()}`,JSON.stringify(state));readProtected();}catch{setStorageError('LOCAL_CONFLICT');}return;}if(storageError!=='LOCAL_SAVE_FAILED'){readProtected();return;}try{if(deviceOnly&&localStorage.getItem(key)!==expectedDeviceRaw.current){setStorageError('LOCAL_CONFLICT');return;}persistPersonalState({...state,updatedAt:stamp()},key);if(deviceOnly)expectedDeviceRaw.current=localStorage.getItem(key);setStorageError('');}catch{setStorageError('LOCAL_SAVE_FAILED');}},[storageError,state,readProtected,key,deviceOnly]);
  const forwarded = useRef(new Set<string>());
  const deliveryOwner = useRef(state.profile.id); deliveryOwner.current = state.profile.id;
+ useEffect(()=>{
+  if(deviceOnly||!ready||!accountReady||storageError||!storageHealthy.current)return;
+  const user=schoolParkAuth.currentUser;if(!user||user.isAnonymous)return;
+  const event=readIdentityCompletion(user.uid,sessionStorage);if(!event)return;
+  if(state.analyticsEvents.some(e=>e.id===event.id)){finishIdentityCompletion(user.uid,event.id,sessionStorage);return;}
+  const owner=state.profile.id;
+  setState(s=>schoolParkAuth.currentUser?.uid!==user.uid||s.profile.id!==owner||s.analyticsEvents.some(e=>e.id===event.id)?s:{...s,analyticsEvents:[...s.analyticsEvents,event]});
+ },[deviceOnly,ready,accountReady,storageError,state]);
  useEffect(()=>{analyticsDelivery.setAnalyticsDeliveryAllowed?.(ready&&accountReady&&!storageError&&storageHealthy.current);},[ready,storageError,accountReady]);
  useEffect(()=>{
   if(!ready||!accountReady||storageError||!storageHealthy.current)return;
