@@ -1,4 +1,4 @@
-import {jstDate} from '../fortune/engine.js';
+import {jstDate} from '../time/jst-date.js';
 import type {CamelliaState,ActionDefinition} from '@/types';
 import type {Place} from './model';
 export type PlaceIntent='quiet'|'rest'|'try'|'move'|'together';
