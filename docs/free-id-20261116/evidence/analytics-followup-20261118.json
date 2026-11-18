@@ -1,0 +1,92 @@
+{
+  "observedAtUTC": "2026-11-18T02:14:22.650243+00:00",
+  "baseHead": "d2c2d7ce3c024c86011c7cf87fdbf83a7ba075e0",
+  "source": "Files hashed below; see the containing commit for exact tested source. Documentation does not affect runtime.",
+  "fileSha256": {
+    "package.json": "e31dd44b88852d0b91de084b6f4994b3b688e0d6b3faa53c44fe09d34fab3155",
+    "package-lock.json": "118ae4ab2de74953e7516cef05c317811a6d4b74fde2cdb085f11910881f1f4d",
+    "lib/analytics/identity-completion.ts": "7edcf562d1d7dd0c7a48ed207515c54009068bd6d09fa48a959f7289d18181cd",
+    "lib/analytics/posthog.ts": "50008aeac69c46fd0e550ec7125c2902f9893a4aecc29d954613925344dada2b",
+    "hooks/useCamelliaStore.ts": "ddb6ea04238d794e8a29afd878857808f2c2c7278b42aa03a6f20a483009baba",
+    "screens/CamelliaIdentityScreen.tsx": "e7bbed3c298d138583898060262bcad826529db416e7a1a617bc6127e79b8bba",
+    "tests/analytics-sdk-browser.py": "a561cc61d0a40f1891f2da9623cc92e6ead9bf45f49649439ed7712b4b6ca38d",
+    "tests/identity-completion-cases.mjs": "256fda9272db8b6920fc5e8cd81122a9c570f62e35d5e904483b5376d9df9855",
+    "tests/run-unit.mjs": "92c084d2ced4d4f405e4b808f96500defd355309cb6175883160bf15263c7d6c",
+    "tests/free-experience-browser.py": "1d896a0aeeef1117703909c5fc6892524c0d3d4061376931778ef2582f87eaf2",
+    "tests/email-id-browser.py": "18ceaf97eba61ace64a3e168661971b0cad628ec36700a996aee469ce858f8af"
+  },
+  "commands": [
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "logSha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "logSha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "logSha256": "7c85402c671a16585b47d7a805a82a6cce785a98b74515aabc9d2db95c1df0af"
+    },
+    {
+      "command": "npm run test:firestore",
+      "exitCode": 0,
+      "logSha256": "64590bf93af35d796a256f1c6e1bd165349a0fbc265d6c879d453d4d052d17e8"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "logSha256": "920b8f2388430986a988476c6d87adc193460ac1864a73834469f6f25bd75574"
+    }
+  ],
+  "unitSuites": 65,
+  "firestoreScripts": 15,
+  "widths": [
+    375,
+    390,
+    412,
+    768,
+    1280
+  ],
+  "sdk": {
+    "before": "1.434.2",
+    "after": "1.450.0"
+  },
+  "regressionBeforeFix": {
+    "combinedRealSdkAndSyntheticEmailHandover": "FAIL: camellia_id_complete absent despite successful record_transfer_complete receipt",
+    "recordsLost": false
+  },
+  "afterFix": "PASS: same-UID completion receives local HTTP receipt once; repeated read stable, refresh ledger once, no implicit person alias or callback/UID/email transmission. Auth/mail/cloud remain synthetic.",
+  "posthogReceipt": {
+    "projectId": 594848,
+    "fromUTC": "2026-11-17T03:20:48Z",
+    "toUTC": "2026-11-18T01:53:48Z",
+    "filter": "experience_version exact free_id_v1",
+    "events": {
+      "session_start": 0,
+      "check_complete": 0,
+      "camellia_id_start": 0,
+      "camellia_id_complete": 0,
+      "record_transfer_complete": 0,
+      "conversation_response_received": 0
+    },
+    "status": "NOT VERIFIED; zero matching events. Owner-browser read-only diagnosis pending; local HTTP fixture is not real ingestion."
+  },
+  "health": {
+    "activeIngestionWarnings": 0,
+    "activeOutdatedSdkIssues": 1,
+    "sdkIssueId": "01a17297-95ce-7807-8b36-b37069b0fbbc",
+    "manuallyDismissed": false,
+    "meaning": "SDK health warning is not proof of the cause of missing ingestion."
+  },
+  "buildSize": {
+    "meaning": "All static JS files, NOT initial transfer or real-device latency",
+    "jsBytes": 1752839,
+    "jsGzipBytes": 533168
+  },
+  "production": "UNCHANGED; no main merge, Rules, claims, environment changes or feature launches.",
+  "verdict": "PARTIAL"
+}

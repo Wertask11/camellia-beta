@@ -1,0 +1,52 @@
+{
+  "source": "30d09b78540adf60dc40397c1198b4811e82cb71",
+  "realIngestion": false,
+  "scope": "Real SDK to local test-key/endpoint; normal-browser simulation and DNT checks. No fake events sent to project594848.",
+  "results": [
+    {
+      "width": 375,
+      "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+      "privacyAndSchema2": "PASS",
+      "diagnosticNoKeysIdsBody": "PASS",
+      "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+      "privacyAndSchema2": "PASS",
+      "diagnosticNoKeysIdsBody": "PASS",
+      "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+      "pageErrors": []
+    },
+    {
+      "width": 412,
+      "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+      "privacyAndSchema2": "PASS",
+      "diagnosticNoKeysIdsBody": "PASS",
+      "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+      "pageErrors": []
+    },
+    {
+      "width": 768,
+      "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+      "privacyAndSchema2": "PASS",
+      "diagnosticNoKeysIdsBody": "PASS",
+      "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+      "pageErrors": []
+    },
+    {
+      "width": 1280,
+      "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+      "privacyAndSchema2": "PASS",
+      "diagnosticNoKeysIdsBody": "PASS",
+      "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+      "pageErrors": []
+    },
+    {
+      "case": "Do Not Track",
+      "zeroHttpSends": "PASS",
+      "readOnlyDiagnostic": "PASS"
+    }
+  ]
+}

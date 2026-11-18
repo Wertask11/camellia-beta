@@ -1,0 +1,129 @@
+{
+  "collectedAtUTC": "2026-11-18T02:46:18Z",
+  "expectedPreviewHead": "9b60003f4b17f769a3a7e35a03d302fad69c36b1",
+  "sourceScope": "Owner report following the refreshed fixed Preview request. Actual browser request SHA/provider/token usage was not independently inspected.",
+  "ownerReply": "できた",
+  "requestedActions": [
+    "PC logout without record deletion",
+    "Save one Check while unregistered",
+    "Send one test message each to YURA and Lactone",
+    "Use previously tested dedicated email ID in the same Chrome",
+    "Explicitly adopt records and reach cloud save confirmation"
+  ],
+  "uiResult": "PASS — owner reported the requested sequence completed.",
+  "posthog": {
+    "query": {
+      "series": [
+        {
+          "kind": "EventsNode",
+          "event": "conversation_open"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "conversation_model_switched"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "conversation_message_sent"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "conversation_response_received"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "conversation_error"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "camellia_id_start"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "camellia_id_complete"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "record_transfer_complete"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "record_transfer_error"
+        },
+        {
+          "kind": "EventsNode",
+          "event": "camellia_id_error"
+        }
+      ],
+      "dateRange": {
+        "date_from": "2026-11-18T02:16:45Z",
+        "date_to": "2026-11-18T02:44:07Z"
+      },
+      "interval": "hour",
+      "filterTestAccounts": false,
+      "properties": [
+        {
+          "key": "experience_version",
+          "operator": "exact",
+          "type": "event",
+          "value": [
+            "free_id_v1"
+          ]
+        },
+        {
+          "key": "$host",
+          "operator": "exact",
+          "type": "event",
+          "value": [
+            "camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app"
+          ]
+        }
+      ]
+    },
+    "events": [
+      {
+        "event": "conversation_open",
+        "count": 0
+      },
+      {
+        "event": "conversation_model_switched",
+        "count": 0
+      },
+      {
+        "event": "conversation_message_sent",
+        "count": 0
+      },
+      {
+        "event": "conversation_response_received",
+        "count": 0
+      },
+      {
+        "event": "conversation_error",
+        "count": 0
+      },
+      {
+        "event": "camellia_id_start",
+        "count": 0
+      },
+      {
+        "event": "camellia_id_complete",
+        "count": 0
+      },
+      {
+        "event": "record_transfer_complete",
+        "count": 0
+      },
+      {
+        "event": "record_transfer_error",
+        "count": 0
+      },
+      {
+        "event": "camellia_id_error",
+        "count": 0
+      }
+    ],
+    "result": "NOT VERIFIED. The exact Preview/experience query through02:44:07Z returned no conversation/ID/transfer events. Earlier accepted legacy_external Check events remain separately verified."
+  },
+  "next": "Read-only analytics diagnostic after email-ID adoption requested. No second email, logout, Network capture or private values required.",
+  "production": "Unchanged"
+}

@@ -1,0 +1,21 @@
+{
+  "project": 594848,
+  "insight": "26TwFhaG",
+  "url": "https://us.posthog.com/project/594848/insights/26TwFhaG",
+  "saved": true,
+  "deleted": false,
+  "timezone": "UTC",
+  "series": [
+    "session_start",
+    "check_view",
+    "check_start",
+    "check_complete",
+    "fortune_open",
+    "fortune_draw",
+    "fortune_action_selected"
+  ],
+  "window": "1 day",
+  "changesMade": false,
+  "newSourceIngestion": "UNVERIFIED",
+  "note": "Read-only existing definition, not measured new conversion or newly approved KPI."
+}

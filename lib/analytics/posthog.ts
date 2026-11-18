@@ -1,7 +1,7 @@
 import posthog from 'posthog-js';
 import {PERFORMANCE_KEYS} from '@/lib/conversation/performance';
 import { analyticsTimestamp } from './session';
-import { analyticsDiagnostic } from './diagnostics';
+import { analyticsDiagnostic,readAnalyticsDiagnostics,previewAnalyticsDiagnosticEnabled } from './diagnostics';
 import { sanitizeAttribution } from './attribution';
 import { createDeliveryQueue, MAX_DELIVERY_AGE, type DeliveryResult } from './delivery';
 import { ACTIONS } from '@/data/actions';
@@ -14,6 +14,7 @@ import type {
 } from '@/types';
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
+  camellia_id_prompt_view:['entry_session'],camellia_id_start:['method','entry_session'],camellia_id_complete:['method','entry_session','id_operation'],camellia_id_error:['method','reason','entry_session'],record_transfer_complete:['entry_session'],record_transfer_error:['reason','entry_session'],reflection_saved:['catalog'],place_comparison_view:['catalog','personalized'],
   discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
   partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
   plus_offer_view:['source'],plus_start:['source'],plus_complete:['currency','amount'],
@@ -21,7 +22,7 @@ const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
   place_contact_open:['place_id'],
   place_view:['place_id','catalog'], place_save:['place_id'], place_external_open:['place_id'], place_booking_open:['place_id'], place_map_open:['place_id'],
   circle_view: ['circle_id', 'days_since_join'], circle_join: ['circle_id'], circle_leave: ['circle_id'], circle_post_create: ['circle_id'], circle_comment_create: ['circle_id'], circle_reaction: ['circle_id'], circle_report: ['circle_id'], circle_block: [],
-  session_start: [],
+  session_start: ['entry_session'],
   welcome_view: ['period', 'entry_flow', 'entry_session'],
   welcome_continue: ['period', 'entry_flow', 'entry_session'],
   login_view: ['authenticated', 'entry_flow', 'entry_session'],
@@ -84,6 +85,7 @@ let initialized = false;
 for(const event of ['conversation_open','conversation_message_sent','discover_view','discover_action_selected','place_view','place_recommendation_view','place_selected','my_view','partner_share_view','plus_offer_view'] as const){
   SAFE_PROPERTIES[event]=[...SAFE_PROPERTIES[event],'entry_flow','entry_session'];
 }
+for(const event of Object.keys(SAFE_PROPERTIES) as AnalyticsEventName[])SAFE_PROPERTIES[event]=[...SAFE_PROPERTIES[event],'plan','id_state','experience_version'];
 let identifiedId = '';
 const PUBLIC_PROJECT_TOKEN = 'phc_C7uHQF9QnDo497kex9cdZqwKx53hDBiVU54sBSDHPaks';
 /** SDK-added URL metadata must not include auth callback query/hash, including nested metadata. */
@@ -174,7 +176,15 @@ export function resetAnalyticsIdentity(options: { clearPending?: boolean } = { c
   if (initialized) posthog.reset();
   identifiedId = '';
 }
-export function setAnalyticsDeliveryAllowed(allowed: boolean) { queue.allow(allowed); }
+let deliveryAllowed=true;
+export function setAnalyticsDeliveryAllowed(allowed: boolean) { deliveryAllowed=allowed;queue.allow(allowed); }
+/** Read-only Preview diagnosis. Never return keys, IDs, URLs, content, or change opt-out/DNT. */
+export function safeAnalyticsDiagnostic(){
+ if(!previewAnalyticsDiagnosticEnabled())return null;
+ let optedOut:boolean|null=null;try{if(initialized)optedOut=posthog.has_opted_out_capturing();}catch{/* Unknown is not false. */}
+ const dnt=[navigator.doNotTrack,(navigator as Navigator&{msDoNotTrack?:string}).msDoNotTrack,(window as Window&{doNotTrack?:string}).doNotTrack].some(v=>v==='1'||v==='yes');
+ return {clockUTC:new Date().toISOString(),sdkReady:initialized,automatedBrowser:navigator.webdriver===true,dnt,optedOut,deliveryAllowed,standardDestination:token()===PUBLIC_PROJECT_TOKEN&&host()==='https://us.i.posthog.com',recent:readAnalyticsDiagnostics().slice(-12)};
+}
 function captureDurably(event: AnalyticsEvent, properties: Record<string, unknown>, callback?: (result: DeliveryResult) => void) {
   let reason: 'dnt' | 'opt_out' | 'expired' | 'invalid_event' | undefined;
   if (!permitted()) reason = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' ? 'dnt' : 'opt_out';
@@ -189,7 +199,7 @@ function captureDurably(event: AnalyticsEvent, properties: Record<string, unknow
       ...(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.id) ? { uuid: event.id } : {}),
     });
   } finally { preparing = undefined; }
-  if (!prepared) return false; // e.g. SDK bot filtering; not a network success
+  if (!prepared){analyticsDiagnostic(event.name,'sdk_event_unavailable',host());return false;} // e.g. SDK bot filtering; not a network success
   const queued = queue.enqueue({ id: event.id, event: event.name, createdAt: event.createdAt,
     profileKey: identifiedId, destination: destination(), payload: prepared }, result => {
       analyticsDiagnostic(event.name, result.status === 'accepted' ? 'http_accepted' : `suppressed_${result.reason}`, host());
@@ -227,6 +237,9 @@ export function sanitizeEventProperties(
       safe[key] = value;
   }
   const names = new Set(state.analyticsEvents.map((x) => x.name));
+  // Event-time application session, never the current account/session at retry time.
+  // An explicit verified handover may retain its earlier entry_session. Do not retag legacy events.
+  if(source.experience_version==='free_id_v1'&&allowed.includes('entry_session')&&safe.entry_session===undefined&&validProperty('entry_session',event.sessionId))safe.entry_session=event.sessionId!;
   const check = names.has('check_complete'),
     fortune = names.has('fortune_draw'),
     tree = names.has('tree_add_complete');
@@ -238,7 +251,7 @@ export function sanitizeEventProperties(
     utm_content: '',
     ...sanitizeAttribution(source),
     $insert_id: event.id,
-    event_schema: 1,
+    event_schema: source.experience_version==='free_id_v1'?2:1,
     app_version: 'beta-v3',
     usage_cohort: check
       ? fortune
@@ -262,6 +275,7 @@ export function forwardEvent(event: AnalyticsEvent, state: CamelliaState, onDeli
 }
 
 const AUTH_EVENT_PROPERTIES = {
+  camellia_id_prompt_view:['entry_session','experience_version','id_state','plan','id_operation'],camellia_id_start:['method','entry_session','experience_version','id_state','plan','id_operation'],camellia_id_complete:['method','entry_session','experience_version','id_state','plan','id_operation'],camellia_id_error:['method','reason','entry_session','experience_version','id_state','plan','id_operation'],
   login_view: ['authenticated', 'entry_flow', 'entry_session'],
   auth_method_selected: ['method', 'auth_method', 'entry_flow', 'entry_session'],
   auth_returned: ['method', 'auth_flow', 'entry_flow', 'entry_session'],
@@ -271,7 +285,7 @@ const AUTH_EVENT_PROPERTIES = {
   account_link_success: ['auth_method'],
 } as const;
 
-const AUTH_METHODS = ['line', 'google', 'schoolpark'] as const;
+const AUTH_METHODS = ['line', 'google', 'schoolpark', 'email'] as const;
 const AUTH_FLOWS = ['redirect', 'popup'] as const;
 const AUTH_STAGES = ['provider_open', 'provider_return', 'firebase_signin', 'callback', 'account_conflict', 'cancelled'] as const;
 const AUTH_REASONS = ['user_cancelled', 'popup_blocked', 'provider_error', 'account_conflict', 'network', 'unknown'] as const;
@@ -285,7 +299,7 @@ export function sanitizeAuthEventProperties(
     const value = properties[key];
     if (typeof value === 'boolean' && (key === 'authenticated' || key === 'needs_profile')) safe[key] = value;
     if (typeof value !== 'string') continue;
-    if ((key === 'entry_flow' || key === 'entry_session') && validProperty(key, value)) safe[key] = value;
+    if ((['id_operation','experience_version','id_state','plan','entry_flow','entry_session'].includes(key)) && validProperty(key, value)) safe[key] = value;
     if ((key === 'method' || key === 'auth_method') && AUTH_METHODS.includes(value as (typeof AUTH_METHODS)[number])) safe[key] = value;
     if (key === 'auth_flow' && AUTH_FLOWS.includes(value as (typeof AUTH_FLOWS)[number])) safe[key] = value;
     if (key === 'stage' && AUTH_STAGES.includes(value as (typeof AUTH_STAGES)[number])) safe[key] = value;
@@ -304,11 +318,12 @@ export function captureAuthEvent(
   const event: AnalyticsEvent = { id, name, createdAt: analyticsTimestamp() };
   return captureDurably(event, {
     ...sanitizeAuthEventProperties(name, properties), ...sanitizeAttribution(properties),
-    $insert_id: id, event_schema: 1, app_version: 'beta-v3', $process_person_profile: false,
+    $insert_id: id, event_schema: properties.experience_version==='free_id_v1'?2:1, app_version: 'beta-v3', $process_person_profile: false,
   });
 }
 
 const ENUMS: Record<string, readonly string[]> = {
+  id_operation:['access','link'],plan:['free','plus'],id_state:['none','obtained','legacy_external'],experience_version:['free_id_v1'],
   catalog:['demo','published'],share_kind:['feeling','action','place'],share_result:['sent','copied','cancelled','failed'],source:['place','partner','my'],currency:['JPY'],
   experience_status:['considering','self_reported'],
   entry_flow: ['check_first', 'login_first', 'explore_first'], storage: ['device'],
