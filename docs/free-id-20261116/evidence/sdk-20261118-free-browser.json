@@ -1,0 +1,47 @@
+[
+  {
+    "width": 375,
+    "unregisteredCheckFortuneTreeMemoryReflectionConversationReload": "PASS",
+    "foreignAccountCacheUntouched": "PASS",
+    "privateTreeNotTransmitted": "PASS",
+    "staleTabProtection": "not repeated",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "unregisteredCheckFortuneTreeMemoryReflectionConversationReload": "PASS",
+    "foreignAccountCacheUntouched": "PASS",
+    "privateTreeNotTransmitted": "PASS",
+    "staleTabProtection": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "unregisteredCheckFortuneTreeMemoryReflectionConversationReload": "PASS",
+    "foreignAccountCacheUntouched": "PASS",
+    "privateTreeNotTransmitted": "PASS",
+    "staleTabProtection": "not repeated",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "unregisteredCheckFortuneTreeMemoryReflectionConversationReload": "PASS",
+    "foreignAccountCacheUntouched": "PASS",
+    "privateTreeNotTransmitted": "PASS",
+    "staleTabProtection": "not repeated",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "unregisteredCheckFortuneTreeMemoryReflectionConversationReload": "PASS",
+    "foreignAccountCacheUntouched": "PASS",
+    "privateTreeNotTransmitted": "PASS",
+    "staleTabProtection": "not repeated",
+    "overflow": false,
+    "pageErrors": []
+  }
+]

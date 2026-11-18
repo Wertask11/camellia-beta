@@ -1,0 +1,42 @@
+[
+  {
+    "command": "npm run lint",
+    "result": "PASS",
+    "source": "80c2881cea9e71911e9247c16afeb36b08980183",
+    "log": "work/quota-lint.log",
+    "sha256": "c38ec40a6d2b68aa87ae77633031df90fa8121b32625af8708322ba19eadcb48",
+    "finishedJST": "2026-11-17T17:12:03.238950+09:00"
+  },
+  {
+    "command": "npm run typecheck",
+    "result": "PASS",
+    "source": "80c2881cea9e71911e9247c16afeb36b08980183",
+    "log": "work/quota-types.log",
+    "sha256": "a9d8237eb907557ee336b5c5a3194fa64cc22e096b3b2433316f852a8316f974",
+    "finishedJST": "2026-11-17T17:12:07.570961+09:00"
+  },
+  {
+    "command": "npm test",
+    "result": "PASS",
+    "source": "80c2881cea9e71911e9247c16afeb36b08980183",
+    "log": "work/quota-unit.log",
+    "sha256": "82d9c3b268d847fa2789fc1f28b757cc36ce19fb47513071e11cfb088220bc4a",
+    "finishedJST": "2026-11-17T17:13:01.767151+09:00"
+  },
+  {
+    "command": "npm run test:firestore",
+    "result": "PASS",
+    "source": "80c2881cea9e71911e9247c16afeb36b08980183",
+    "log": "work/quota-firestore.log",
+    "sha256": "76aa6d3994afa82132310f40960d6a84e82ddf9aa18dd7d08ae613319782220e",
+    "finishedJST": "2026-11-17T17:14:48.779398+09:00"
+  },
+  {
+    "command": "npm run build",
+    "result": "PASS",
+    "source": "80c2881cea9e71911e9247c16afeb36b08980183",
+    "log": "work/quota-build.log",
+    "sha256": "fa7cd7a384695756f1f62d14c5185f52845f080dff7de6cfe9756d488cca4944",
+    "finishedJST": "2026-11-17T17:14:58.111422+09:00"
+  }
+]

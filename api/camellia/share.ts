@@ -25,7 +25,7 @@ export default async function share(req:Req,res:Res){
   if(!token)return res.status(401).json({error:'LOGIN_REQUIRED'});
   let user;
   // Owners can revoke after expiry, suspension or personal deletion. Creation remains eligibility-gated.
-  if(['revoke','revokeAll','list'].includes(String(body.operation))){try{user=await deps.auth.verifyIdToken(token,true);}catch{return res.status(401).json({error:'LOGIN_REQUIRED'});}if(user.firebase?.sign_in_provider==='anonymous')return res.status(401).json({error:'LOGIN_REQUIRED'});}
+  if(['revoke','revokeAll','list'].includes(String(body.operation))){try{user=await deps.auth.verifyIdToken(token,true);}catch{return res.status(401).json({error:'LOGIN_REQUIRED'});}if(user.firebase?.sign_in_provider==='anonymous'||user.firebase?.sign_in_provider==='password'&&user.email_verified!==true)return res.status(401).json({error:'LOGIN_REQUIRED'});}
   else user=await requireEligibleUser(token,deps);
   if(!await limit.take(`owner:${user.uid}`))return res.status(429).json({error:'SHARE_LIMIT'});
   if(body.operation==='list')return res.status(200).json({shares:await service.list(user.uid)});
