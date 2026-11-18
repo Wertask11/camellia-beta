@@ -20,6 +20,22 @@ try{
  analytics.forwardEvent({id:crypto.randomUUID(),name:'session_start',createdAt:now,properties:{entry_session:entrySession,uid:'PRIVATE_UID',text:'PRIVATE_TEXT'}},state,value=>sessionResult=value);
  await new Promise(r=>setTimeout(r,40));assert.equal(sessionResult.status,'accepted');const sessionSent=payloads.at(-1).batch[0];assert.equal(sessionSent.properties.entry_session,entrySession);assert.ok(!JSON.stringify(sessionSent).includes('PRIVATE_'));
  assert.equal(analytics.sanitizeEventProperties({id:crypto.randomUUID(),name:'session_start',properties:{entry_session:'PRIVATE_UID'}},state).entry_session,undefined);
+ const {usageProperties}=await server.ssrLoadModule('/lib/analytics/usage.ts');
+ assert.deepEqual(usageProperties(true,null),{experience_version:'free_id_v1',plan:'free',id_state:'none'});
+ const oldUser={providerData:[{providerId:'google.com'}],emailVerified:true};assert.equal(usageProperties(false,oldUser,'plus').id_state,'legacy_external');assert.equal(usageProperties(false,oldUser).plan,undefined,'unresolved membership is never relabeled Free');
+ const mailUser={providerData:[{providerId:'password'}],emailVerified:true};assert.equal(usageProperties(false,mailUser,'free').id_state,'obtained');
+ for(const name of ['camellia_id_prompt_view','camellia_id_start','camellia_id_complete','camellia_id_error','record_transfer_complete','record_transfer_error','reflection_saved','place_comparison_view']){
+  const safe=analytics.sanitizeEventProperties({id:crypto.randomUUID(),name,properties:{...usageProperties(true,null),method:'email',reason:'unknown',entry_session:entrySession,catalog:'demo',email:'PRIVATE_EMAIL',text:'PRIVATE_BODY',uid:'PRIVATE_UID',health:'PRIVATE_CHECK'}},state);assert.equal(safe.event_schema,2);assert.equal(safe.plan,'free');assert.equal(safe.id_state,'none');assert.ok(!JSON.stringify(safe).includes('PRIVATE_'));
+ }
+ const priorSession=crypto.randomUUID(),nextSession=crypto.randomUUID();
+ const journeyEvent={id:crypto.randomUUID(),name:'check_complete',sessionId:priorSession,properties:{...usageProperties(true,null)}};
+ assert.equal(analytics.sanitizeEventProperties(journeyEvent,state).entry_session,priorSession,'use immutable event-time session, not current SDK identity');
+ assert.equal(analytics.sanitizeEventProperties({...journeyEvent,sessionId:'PRIVATE_UID'},state).entry_session,undefined);
+ assert.equal(analytics.sanitizeEventProperties({...journeyEvent,properties:{}},state).entry_session,undefined,'do not retrofit old schema events');
+ assert.equal(analytics.sanitizeEventProperties({...journeyEvent,name:'camellia_id_complete',sessionId:nextSession,properties:{...usageProperties(true,null),entry_session:priorSession}},state).entry_session,priorSession,'explicit verified bridge takes precedence');
+ assert.equal(analytics.sanitizeEventProperties({id:'invalid',name:'session_start',properties:{plan:'admin',id_state:'PRIVATE_EMAIL',experience_version:'PRIVATE_BODY'}},state).plan,undefined);
+ let newReceipt;analytics.forwardEvent({id:crypto.randomUUID(),name:'reflection_saved',createdAt:now,properties:{...usageProperties(true,null),catalog:'demo',text:'PRIVATE_BODY'}},state,v=>newReceipt=v);await new Promise(r=>setTimeout(r,40));assert.equal(newReceipt.status,'accepted');assert.equal(payloads.at(-1).batch[0].properties.event_schema,2);
+ const emailAuth=analytics.sanitizeAuthEventProperties('camellia_id_start',{method:'email',id_operation:'link',...usageProperties(false,mailUser),email:'PRIVATE_EMAIL',oobCode:'PRIVATE_CODE'});assert.equal(emailAuth.method,'email');assert.equal(emailAuth.id_operation,'link');assert.ok(!JSON.stringify(emailAuth).includes('PRIVATE_'));
  analytics.resetAnalyticsIdentity();assert.ok(!Object.keys(localStorage).some(key=>key.startsWith('camellia-analytics-delivery-v1:')));
  console.log('PASS public SDK hook/HTTP receipt contract, identity switch/logout, stable UUID/timestamp, final SDK allowlist, nested URL stripping, privacy enums, model/Circle/Place sanitization, optout suppression/delete. SDK and HTTP are isolated, not live ingestion.');
 }finally{await server.close();await dom.happyDOM.close();}

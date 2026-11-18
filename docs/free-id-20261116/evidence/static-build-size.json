@@ -1,0 +1,23 @@
+{
+  "meaning": "Static build files, NOT initial transfer/LCP or actual mobile performance",
+  "allFilesBytes": 5133433,
+  "jsBytes": 1687389,
+  "jsGzipBytes": 508789,
+  "largestJs": [
+    {
+      "file": "_next/static/chunks/page-DM0QecIx.js",
+      "bytes": 1301806,
+      "gzipBytes": 392348
+    },
+    {
+      "file": "_next/static/chunks/index-0dEOYc62.js",
+      "bytes": 192299,
+      "gzipBytes": 55579
+    },
+    {
+      "file": "_next/static/chunks/framework-D_rUT4EX.js",
+      "bytes": 190152,
+      "gzipBytes": 58938
+    }
+  ]
+}

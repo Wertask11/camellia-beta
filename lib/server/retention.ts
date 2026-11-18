@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { SERVER_ROOT } from './admin.js';
 /** Fixed operational collections only. Never a user-supplied Firestore path or personal archive. */
 export const EXPIRY_COLLECTIONS = [
+  'free_chat_days',
   'rate_windows',
   'partner_rate_windows',
   'place_rate_windows',
