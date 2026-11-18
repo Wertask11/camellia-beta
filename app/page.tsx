@@ -1,5 +1,11 @@
 /* oxlint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, react-hooks/exhaustive-deps -- modal backdrop is pointer-dismissable; auth callback intentionally runs once */
 'use client';
+import {FreeRecordHandover} from '@/components/FreeRecordHandover';
+import {readVerifiedEmailIntent,EMAIL_VERIFIED_KEY} from '@/lib/auth/email-id';
+import {ExperienceEntry} from '@/components/ExperienceEntry';
+import {captureReferralRegistration} from '@/lib/referral/client';
+import {PlaceOperatorScreen} from '@/screens/PlaceOperatorScreen';
+import {operatorIntent} from '@/lib/place/operator-intent';
 import { useCallback,useEffect, useMemo, useRef, useState } from 'react';
 import { StorageRecovery } from '@/components/StorageRecovery';
 import { ActionSheet } from '@/components/ActionSheet';
@@ -62,10 +68,19 @@ function viewingPublicPlaceDemo() {
 }
 
 const ignoreDemoTrack=()=>{};
-export default function Page() {
-  const store = useCamelliaStore();
+export default function Page(){
+ const [operator,setOperator]=useState<boolean|null>(null);
+ useEffect(()=>{let active=true,managing=new URL(location.href).searchParams.get('open')==='place-operator';try{managing=operatorIntent(new URL(location.href),localStorage);}catch{/* The normal storage recovery screen handles unavailable storage. */}const open=()=>{if(active)setOperator(managing);};if(managing)queueMicrotask(open);else void captureReferralRegistration().catch(()=>{}).finally(open);return()=>{active=false;};},[]);
+ if(operator===null)return <main className="app-shell" aria-busy="true"><p>Camelliaを開いています…</p></main>;
+ return operator?<PlaceOperatorScreen/>:<ExperienceEntry account={<CamelliaPage/>}/>;
+}
+function CamelliaPage() {
+  const [accountUser,setAccountUser]=useState<User|null>(null);
+  const [accountReady,setAccountReady]=useState(false);
+  const [accountError,setAccountError]=useState('');
+  const store = useCamelliaStore({accountReady:accountReady&&Boolean(accountUser)&&!accountError});
   const currentTime=useCurrentTime(store.state.checkins);
-  const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app' | 'guest'>('welcome');
+  const [entry, setEntry] = useState<'welcome' | 'account' | 'onboarding' | 'app' | 'guest'>(()=>{try{return sessionStorage.getItem('camellia-id-entry')==='1'?'account':'welcome';}catch{return 'welcome';}});
   const [guest,setGuest]=useState<GuestDraft>();
   const guestResume=useRef('');
   useEffect(()=>{
@@ -78,12 +93,9 @@ export default function Page() {
   const trackGuest=useCallback((name:AnalyticsEventName,properties?:Record<string,string|number|boolean>)=>{if(name==='daily_reflection_view'&&!markGuestShown('result'))return;if(name==='save_prompt_view'&&!markGuestShown('prompt'))return;recordGuestEvent(name,{...properties,...guestEventProperties()});},[recordGuestEvent]);
   const guestCheck=guest?.check;
   const previewState=useMemo(()=>{const initial=emptyState();return {...initial,checkins:guestCheck?[guestCheck]:[]};},[guestCheck]);
-  const [accountUser,setAccountUser]=useState<User|null>(null);
-  const [accountReady,setAccountReady]=useState(false);
   const popupAuthReturned=useRef<'line'|'google'|'schoolpark'|undefined>(undefined);
   const sentAuthAnalytics=useRef<object|undefined>(undefined);
   const [pendingAuthAnalytics,setPendingAuthAnalytics]=useState<{method:'line'|'google'|'schoolpark';flow:'redirect'|'popup';linked?:boolean;entryProperties?:Record<string,string>}>();
-  const [accountError,setAccountError]=useState('');
   const [authNotice,setAuthNotice]=useState('');
   const [editingProfile,setEditingProfile]=useState(false);
   /* Women only, by invite (lib/auth/access.ts). status null = unknown (offline, server waking up): let her
@@ -149,7 +161,10 @@ export default function Page() {
   const accessFor=accountUser&&access?.uid===accountUser.uid?access.status:undefined;
   const accessBlocked=accessFor===undefined||Boolean(accessFor?.suspended||accessFor?.needsInvite);
   const waitingForGuest = CHECK_FIRST_ONBOARDING && (guest?.phase==='pending'||(guest?.phase==='bound'&&(!accessFor||access?.verified!==true)));
-  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !accessBlocked && !waitingForGuest && !editingProfile && !firstProfileComplete(store.state.profile));
+  let emailSetup:ReturnType<typeof readVerifiedEmailIntent>;try{if(accountUser&&!store.storageError)emailSetup=readVerifiedEmailIntent(accountUser.uid,localStorage);}catch{/* Storage recovery keeps the records. */}
+  const emailSetupPending=Boolean(emailSetup&&!profileComplete(store.state.profile)&&!store.state.profile.birthDate&&!store.state.onboardingComplete);
+  useEffect(()=>{if(!emailSetupPending||!emailSetup||!accountUser||!accountReady||accountError||accessBlocked||store.storageError)return;store.updateProfile({emailIdSetup:true,ageRangeSelfDeclared:true,womanSelfDeclared:true,agreedAt:emailSetup.agreedAt,agreedVersion:'email-id-20261117'});store.completeOnboarding();try{localStorage.removeItem(EMAIL_VERIFIED_KEY);}catch{/* No record is removed on failure. */}},[emailSetupPending,emailSetup,accountUser,accountReady,accountError,accessBlocked,store.storageError,store.updateProfile,store.completeOnboarding]);
+  const showingFirstProfile = Boolean(store.ready && !store.storageError && accountReady && !accountError && accountUser && !accessBlocked && !waitingForGuest && !editingProfile && !emailSetupPending && !firstProfileComplete(store.state.profile));
   useEffect(() => {
     if (!viewingPublicPlaceDemo() && showingFirstProfile && firstInSession('camellia-profile-view')) store.track('profile_view',guest?.phase==='bound'?guestEventProperties(guest):{});
   }, [showingFirstProfile, store.track, placeDemo, guest]);
@@ -265,7 +280,7 @@ export default function Page() {
   const onLoginFailure=(method:'line'|'google',reason:string,stage:string)=>{const draft=readGuestDraft(),properties=draft?guestEventProperties(draft):{};if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup',...properties},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage,...properties},store.state.profile.id);if(draft)cancelGuestLogin();};
   const authHandlers={onSelect:onLoginSelect,onAuthReturned,onLoginSuccess,onLoginFailure,onContinue:()=>setEntry('app')};
   const dialogs=<>{shareDraft&&<PartnerShareDialog draft={shareDraft} onClose={()=>setShareDraft(undefined)} onTrack={store.track}/>} {plusSource&&<PlusOffer source={plusSource} onClose={()=>setPlusSource(undefined)} onTrack={store.track}/>}</>;
-  if(publicShareToken!==null)return <div className="app-shell"><PartnerShareScreen token={publicShareToken} onTrack={store.track} onBack={()=>{setPublicShareToken(null);history.replaceState({},'',location.pathname);}}/></div>;
+  if(publicShareToken!==null)return <div className="app-shell"><PartnerShareScreen token={publicShareToken} onTrack={store.track} onBack={()=>{setPublicShareToken(null);history.replaceState({},'',location.pathname);window.dispatchEvent(new Event('camellia-free-return'));}}/></div>;
   if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={CHOICE_ACTION_FLOW?store.track:ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
   if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage}/>;
   if(!store.ready||!accountReady)return <output className="loading">Camelliaの記録を確認しています…</output>;
@@ -273,10 +288,13 @@ export default function Page() {
     const resolve=(choice:'remote'|'adopt'|'fresh')=>{setAccountReady(false);void store.prepareAccount(accountUser.uid,choice).then(()=>{setAccountError('');setAccountReady(true);}).catch(error=>{setAccountError(error instanceof Error?error.message:'RESTORE_FAILED');setAccountReady(true);});};
     // Always leave a way out: logging in with the method used before is often all that is needed.
     const leave=()=>{setAccountReady(false);void logoutCamellia().catch(()=>{}).finally(()=>{setAccountError('');setAccountUser(null);setEntry('account');setAccountReady(true);});};
+    const removed=accountError==='REMOTE_RECORDS_REMOVED',deletingRemote=accountError==='PERSONAL_DELETE_IN_PROGRESS';
     const empty=accountError==='IDENTITY_CONFLICT_EMPTY_ACCOUNT';
     const conflict=['IDENTITY_CONFLICT','SYNC_CONFLICT'].includes(accountError);
     return <main className="screen"><h1>記録を守るため、確認が必要です</h1><p>この端末とアカウントの記録を、自動で上書き・結合していません。</p>
-      <p role="alert">{empty?'このアカウントには、まだ記録がありません。この端末には、別のアカウントで使っていた記録があります。':conflict?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p>
+      <p role="alert">{deletingRemote?'このアカウントでは個人記録の削除が途中です。端末の原本はそのまま残しています。':removed?'アカウントの記録が別の操作で削除されています。この端末の記録を自動で送り直していません。':empty?'このアカウントには、まだ記録がありません。この端末には、別のアカウントで使っていた記録があります。':conflict?'別のアカウント、または別端末の記録が見つかりました。':'記録を確認できませんでした。通信を確認して再度お試しください。'}</p>
+      {deletingRemote&&<button className="danger-link" onClick={()=>{if(!window.confirm('このアカウントの個人記録の削除を再開しますか？Circleの文章や他サービスのアカウントは削除しません。'))return;setAccountReady(false);void store.reset().then(()=>{setAccountError('');setAccountReady(true);}).catch(()=>{setAccountError('PERSONAL_DELETE_IN_PROGRESS');setAccountReady(true);});}}>個人記録の削除を再開する</button>}
+      {removed&&<button className="secondary-button" onClick={()=>resolve('fresh')}>この端末に控えを残して、空の記録で再開する</button>}
       {empty?<>
         <p>前に使ったLINEまたはGoogleでログインし直すと、これまでの記録に戻れます。</p>
         <button className="primary" onClick={leave}>ログアウトして、前の方法でログインする</button>
@@ -298,7 +316,7 @@ export default function Page() {
       onTrack={(name,properties)=>{if((name==='daily_reflection_view'&&markGuestShown('result'))||(name==='save_prompt_view'&&markGuestShown('prompt')))store.track(name,{...properties,...guestEventProperties()});}}
       onOpenAction={()=>{}} onIntent={()=>{}} onTalk={()=>{}} onFortune={()=>{}} onTree={()=>{}} onComplete={()=>{}} onFeedback={()=>{}} onProposals={()=>{}}/>
     </div>;
-  if(!accountUser)return <AccountScreen {...authHandlers} returning={returning} notice={authNotice} onBack={()=>setEntry('welcome')}/>;
+  if(!accountUser)return <AccountScreen {...authHandlers} returning={returning} notice={authNotice} onBack={()=>{sessionStorage.removeItem('camellia-id-entry');setEntry('welcome');window.dispatchEvent(new Event('camellia-free-return'));}}/>;
   if(accessFor===undefined)return <output className="loading">Camelliaの記録を確認しています…</output>;
   if(accessFor?.suspended)return <div className="app-shell"><SuspendedScreen onLogout={logoutToAccount} onTrack={name=>store.track(name)}/></div>;
   if(accessFor?.needsInvite)return <div className="app-shell"><InviteScreen initialCode={pendingInvite()} initialResult={access?.inviteResult} onTrack={(name,properties)=>store.track(name,properties)} onLogout={logoutToAccount} onAccepted={result=>{
@@ -307,6 +325,7 @@ export default function Page() {
   }}/></div>;
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='pending')return <output className="loading">今日のCheckを確認しています…</output>;
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.ownerUid===accountUser.uid&&(!accessFor||access?.verified!==true))return <main className="screen"><h1>今日の記録を残す前に</h1><output>利用できることを確認しています。時間がかかる場合は、通信を確かめてお試しください。Checkは一時的に保持しています。</output><button className="primary" onClick={()=>{const uid=accountUser.uid;setAccess(undefined);void Promise.race([fetchAccess(),new Promise<null>(resolve=>setTimeout(()=>resolve(null),5000))]).then(status=>{if(schoolParkAuth.currentUser?.uid===uid)setAccess({uid,status,verified:Boolean(status)});});}}>もう一度確認する</button><button className="text-button" onClick={logoutToAccount}>ログアウトする</button></main>;
+  if(emailSetupPending)return <output className="loading">記録を引き継ぐ準備をしています…</output>;
   if(!profileComplete(store.state.profile)||editingProfile)return <div className="app-shell"><ProfileScreen profile={store.state.profile} hasGuestCheck={Boolean(guest?.phase==='bound'&&guest.check&&guest.ownerUid===accountUser.uid)} hasGuestJourney={Boolean(guest?.phase==='bound'&&!guest.check&&guest.ownerUid===accountUser.uid)} existing={store.state.onboardingComplete} onBack={editingProfile?()=>setEditingProfile(false):undefined} onSave={patch=>{if(!firstProfileComplete(store.state.profile))store.track('profile_complete',guest?.phase==='bound'?guestEventProperties(guest):{});store.updateProfile(patch);store.completeOnboarding();setEditingProfile(false);setEntry('app');setTab('today');}}/></div>;
   if(CHECK_FIRST_ONBOARDING&&guest?.phase==='bound'&&guest.check&&guest.ownerUid===accountUser.uid&&!store.state.checkins.some(check=>check.id===guest.check!.id))return <output className="loading">今日の記録を引き継いでいます…</output>;
   const openAction = (r: Recommendation,source='today') => {
@@ -422,6 +441,7 @@ export default function Page() {
           <button className="text-button" onClick={() => setAuthNotice('')}>閉じる</button>
         </p></div>
       )}
+      <FreeRecordHandover store={store} uid={accountUser.uid}/>
       {tab === 'today' && (
         <TodayScreen
           state={store.state}
@@ -485,7 +505,7 @@ export default function Page() {
         />
       )}
       {tab === 'my' && (
-        <MyScreen onNotifications={value=>store.updateProfile({notificationPreferences:value})} onRemoveExperience={store.removePlaceExperience} onReflectPlace={store.reflectPlace} onPrepareCircle={slug=>{setPlaceEntry({slug});setSecondary('circle');}} onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
+        <MyScreen onRestoreBackup={store.restorePersonalBackup} onNotifications={value=>store.updateProfile({notificationPreferences:value})} onRemoveExperience={store.removePlaceExperience} onReflectPlace={store.reflectPlace} onPrepareCircle={slug=>{setPlaceEntry({slug});setSecondary('circle');}} onExplorePlaces={()=>{setPlaceEntry(undefined);setSecondary('place');}} onShareFeeling={CHOICE_ACTION_FLOW?()=>setShareDraft({kind:'feeling'}):undefined} onRenameCharacter={characterName=>store.updateProfile({characterName})} onTrack={(name,properties)=>store.track(name,properties)} onPlaces={()=>{setPlaceEntry({savedOnly:true});setSecondary('place');}} onCircles={()=>{setCircleEntry({joinedOnly:true});setSecondary('circle');}}
           state={store.state}
           devNight={devNight}
           onForget={store.forget}

@@ -854,23 +854,29 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function camelliaVerifiedOwner(uid) {
+      return isMe(uid)
+        && (request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'password'
+            || request.auth.token.get('email_verified', false) == true);
+    }
+
     match /camellia_users/{uid} {
-      allow read: if isMe(uid);
+      allow read: if camelliaVerifiedOwner(uid);
       /* 生年月日と同意。同意した記録は、あとから書き換えられる。
          年齢の判定はサーバーとアプリで行う。ルールでは形だけ確かめる。 */
       /* Camellia ID は、一度決まったら変えられない。
          変えられると、それまでの記録との結び付きが切れ、
          管理画面から追えなくなる。作り直して身元を洗うこともできてしまう。 */
-      allow create: if isMe(uid)
+      allow create: if camelliaVerifiedOwner(uid)
         && request.resource.data.get('birthDate', '') is string
         && request.resource.data.get('agreedAt', '') is string
         && request.resource.data.get('camelliaId', '') is string;
-      allow update: if isMe(uid)
+      allow update: if camelliaVerifiedOwner(uid)
         && request.resource.data.get('birthDate', '') is string
         && request.resource.data.get('agreedAt', '') is string
         && (resource.data.get('camelliaId', '') == ''
             || request.resource.data.get('camelliaId', '') == resource.data.get('camelliaId', ''));
-      allow delete: if isMe(uid);
+      allow delete: if camelliaVerifiedOwner(uid);
 
       /* 日々の記録・性格・設定。文書のIDで種類を分ける。
            daily/{2026-09-02}   その日の記録
@@ -879,7 +885,7 @@ service cloud.firestore {
            profile/personality  性格の結果
          中身の形はアプリ側で変わっていくので、ここでは持ち主だけを見る。 */
       match /{kind}/{docId} {
-        allow read, write: if isMe(uid) && kind != 'admin';
+        allow read, write: if camelliaVerifiedOwner(uid) && kind != 'admin';
       }
 
       /* 運営が決めたこと（7つの機構の入り切り）。
@@ -890,13 +896,13 @@ service cloud.firestore {
          本人が読めるようにしてあるのは、画面に効かせるため。
          そして「運営が変えた」と本人に見せるため。 */
       match /admin/{docId} {
-        allow read: if isMe(uid);
+        allow read: if camelliaVerifiedOwner(uid);
         allow write: if false;
       }
       /* その下（運営からの返信など）も同じ。本人は読めるが書けない。
          書けると、運営が書いた返事を本人が差し替えられてしまう。 */
       match /admin/{docId}/{sub=**} {
-        allow read: if isMe(uid);
+        allow read: if camelliaVerifiedOwner(uid);
         allow write: if false;
       }
     }
@@ -911,7 +917,7 @@ service cloud.firestore {
        いちど置いた投稿は書き換えられない（あとから中身をすり替えられないように）。
        消せるのは、本人と運営。 */
     function camelliaMember() {
-      return signedIn()
+      return signedIn() && camelliaVerifiedOwner(request.auth.uid)
         && exists(/databases/$(database)/documents/camellia_users/$(request.auth.uid));
     }
 

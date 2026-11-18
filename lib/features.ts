@@ -20,3 +20,6 @@ export const ADAPTIVE_STAGE_UI = on(env.VITE_ADAPTIVE_STAGE_UI);
 
 /** New integration remains separately reviewable; existing Circle visibility is unchanged. */
 export const CIRCLE_PLACE_LINKS_ENABLED=env.VITE_CIRCLE_PLACE_LINKS_ENABLED==='true';
+
+/** Restore the previous Check-first entry without deleting either journal. */
+export const FREE_BASIC_USAGE=on(env.VITE_FREE_BASIC_USAGE);

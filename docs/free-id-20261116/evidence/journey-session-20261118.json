@@ -1,0 +1,63 @@
+{
+  "observedAtUTC": "2026-11-18T02:33:46.780133+00:00",
+  "baseHead": "8359d9098e5b098218e53eee05db1301f68729c5",
+  "source": "Exact runtime/tests identified by the hashes below and the containing commit.",
+  "fileSha256": {
+    "lib/analytics/posthog.ts": "c3d7ccd16256c469cc1ca3e19f0d2b5766dad0c47978e5a07aa25766932f3520",
+    "tests/analytics-pipeline-cases.mjs": "73aa2fc922dc398268c189d2510441bd756cc906b2e90dabd854d6474c4e000c",
+    "tests/analytics-sdk-browser.py": "a187a9d1b8e390338a4e557429c88872bd9164e2edc15b317fb5e42d0013ea47"
+  },
+  "commands": [
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "logSha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "logSha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "logSha256": "f02335beaf0a90ed93d45a94a289d36a2c31cf0408e60c4df09f644d240c09fa"
+    },
+    {
+      "command": "npm run test:firestore",
+      "exitCode": 0,
+      "logSha256": "ed77cbbe82ab194a42a62bf7e03e4aefe29ebd3a9d5de8ec0b01807f9fe87ebc"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "logSha256": "16c33af5df72387911a4f69f5b38c7df443e6d3d4e3c84c25b6bc190094ff602"
+    }
+  ],
+  "unitSuites": 65,
+  "firestoreScripts": 15,
+  "widths": [
+    375,
+    390,
+    412,
+    768,
+    1280
+  ],
+  "browserEvidence": [
+    "docs/free-id-20261116/evidence/journey-20261118-analytics-browser.json",
+    "docs/free-id-20261116/evidence/journey-20261118-free-browser.json",
+    "docs/free-id-20261116/evidence/journey-20261118-email-browser.json"
+  ],
+  "assertions": [
+    "New permitted events use validated event-time session UUID",
+    "Explicit verified handover attribution takes precedence",
+    "Legacy events are not retroactively tagged",
+    "Invalid session IDs rejected",
+    "Real SDK local HTTP Check/ID-complete/transfer-complete share one entry_session",
+    "Pre-ID and account person IDs remain different; no alias",
+    "DNT zero sends; no SDK side-channel requests"
+  ],
+  "scope": "Local browser uses actual SDK/UI, synthetic Auth/mail/cloud/provider, LOCAL-only HTTP ingestion. Independent real receipt in owner-posthog-receipt-20261118.json is source8359d90 legacy_external only. No inference of live anonymous/email-ID receipt from local tests.",
+  "verdict": "PARTIAL",
+  "production": "Unchanged; main remains91e95bac, no Rules/claim/env/payment/share/referral/notification changes."
+}

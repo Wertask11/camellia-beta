@@ -1,6 +1,6 @@
 export function ReferralPreparation() {
   return (
-    <details>
+    <details className="my-feature-preferences">
       <summary>紹介とPlus体験（準備中）</summary>
       <section className="panel">
         <h2>好きな体験を、誰かに伝える</h2>
