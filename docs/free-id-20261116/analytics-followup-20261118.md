@@ -27,3 +27,11 @@ PostHog 594848の技術照合では、2026-11-17T03:20:48Z〜2026-11-18T01:53:48
 Production・main・Rules・claims・キー・環境変数は変更しない。課金・共有送信・紹介・通知の停止も維持。40項目の対応表と正式公開の外部条件は既存文書を引き継ぐ。
 
 実行結果：lint / typecheck / 65 unit suites / 15 Firestore emulator scripts / build はすべてPASS。375 / 390 / 412 / 768 / 1280で実SDK・Free・メールIDの3群を確認。実SDKのメール移行結合とDNT試験もPASS。ブラウザ証拠は専用JSON3件へ保存した。
+
+## 11:23 JST 本人診断と実PostHog受領
+
+本人の確認結果はSDK ready・通常ブラウザ・DNT/opt-outなし・送信許可・標準送信先一致。6種類のイベントがhttp_acceptedとなっていた。独立にProject594848で固定Previewホスト＋free_id_v1、2026-11-18T02:16:45Z〜02:25:30Zを照合し、session_start / check_view / check_start / check_complete / daily_reflection_view / my_viewを各1件確認。SDK1.450.0、schema2、ID状態legacy_external。後半4件のplanはfreeで、最初の2件は権利未確認のためnullという現行設計どおりだった。
+
+これは今回の既存外部IDのCheck導線の受領PASSであり、未登録会話・実メールID完了・実移行完了の着信とは区別する。以前の未着信の原因を断定しない。診断待ちという前節の状態はこの時点で解消した。証拠は `evidence/owner-posthog-receipt-20261118.json`。
+
+8359d9098e5b098218e53eee05db1301f68729c5 のGitHub CIは全項目成功、固定Previewも2026-11-18 11:16:45 JSTにVercel success。PR #80は未merge。本人の結果に認証ID・キー・メール・本文は含まれない。
