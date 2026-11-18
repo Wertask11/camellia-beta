@@ -1,10 +1,11 @@
+import {validPlaceExperience} from '@/lib/place/experience';
 import {decodeConversation,validStoredSwitches} from '@/lib/conversation/persistence';
 import type {AIConversation} from '@/types';
 import type { CamelliaState } from '@/types';
 import { validConversationEntry } from '@/lib/conversation/entries';
-const groups = {checkin:'checkins',action:'actions','action-feedback':'actionFeedback','saved-action':'savedActions','place-choice':'placeChoices',conversation:'aiConversations','context-memory':'contextualMemory','personal-memory':'personalMemories',insight:'insights','insight-feedback':'insightFeedback',fortune:'fortunes','tree-leaf':'treeLeaves',analytics:'analyticsEvents'} as const;
+const groups = {'place-experience':'placeExperiences',checkin:'checkins',action:'actions','action-feedback':'actionFeedback','saved-action':'savedActions','place-choice':'placeChoices',conversation:'aiConversations','context-memory':'contextualMemory','personal-memory':'personalMemories',insight:'insights','insight-feedback':'insightFeedback',fortune:'fortunes','tree-leaf':'treeLeaves',analytics:'analyticsEvents'} as const;
 export function hasPersonalData(state: CamelliaState) {
-  return Boolean(state.placeChoices?.length || state.profile.name || state.profile.birthDate || state.profile.age || state.profile.lifestyle || state.profile.priority || state.profile.interests.length || state.profile.periodEnabled || state.profile.region || state.profile.livingSituation || state.profile.concerns || state.profile.purposes?.length || state.profile.usualSleep!==undefined || state.checkins.length || state.actions.length || state.savedActions.length || state.actionFeedback.length || state.aiConversations.length || state.contextualMemory.length || state.treeLeaves.length || state.fortunes.length || state.insights.length || state.insightFeedback.length || state.personalMemories?.length);
+  return Boolean(state.placeExperiences?.length || state.placeChoices?.length || state.profile.name || state.profile.birthDate || state.profile.age || state.profile.lifestyle || state.profile.priority || state.profile.interests.length || state.profile.periodEnabled || state.profile.region || state.profile.livingSituation || state.profile.concerns || state.profile.purposes?.length || state.profile.usualSleep!==undefined || state.checkins.length || state.actions.length || state.savedActions.length || state.actionFeedback.length || state.aiConversations.length || state.contextualMemory.length || state.treeLeaves.length || state.fortunes.length || state.insights.length || state.insightFeedback.length || state.personalMemories?.length);
 }
 /** Reconstruct the existing per-record archive, without synthesizing records or merging devices. */
 export function restoreArchive(entries: Array<Record<string,unknown>>, base: CamelliaState): CamelliaState | null {
@@ -36,7 +37,8 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
       if(typeof value.id!=='string'||typeof value.name!=='string'||!Array.isArray(value.interests)) throw new Error('REMOTE_PROFILE_INVALID');
       state.profile={id:'',name:'',age:'',interests:[],lifestyle:'',priority:'',periodEnabled:false,createdAt:base.createdAt,updatedAt:base.updatedAt,...value} as CamelliaState['profile'];foundProfile=true;
     } else if(entry.kind==='meta') {
-      if(value.version!==3) throw new Error('REMOTE_VERSION_UNSUPPORTED');
+      if(value.version!==3&&value.version!==4) throw new Error('REMOTE_VERSION_UNSUPPORTED');
+      state.version=value.version as 3|4;
       foundMeta=true;
       if(typeof value.createdAt==='string') state.createdAt=value.createdAt;
       if(typeof value.updatedAt==='string') state.updatedAt=value.updatedAt;
@@ -44,6 +46,7 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
     } else if(typeof entry.kind==='string'&&Object.hasOwn(groups,entry.kind)) {
       const field=groups[entry.kind as keyof typeof groups];
       if(typeof value.createdAt!=='string'||(field==='fortunes'?typeof value.date!=='string':typeof value.id!=='string')) throw new Error('REMOTE_RECORD_INVALID');
+      if(field==='placeExperiences'&&!validPlaceExperience(value))throw new Error('REMOTE_EXPERIENCE_INVALID');
       if(field==='checkins'&&![1,2,3,4,5].includes(value.mood as number)) throw new Error('REMOTE_CHECK_INVALID');
       if(field==='aiConversations'&&!Array.isArray(value.messages)) throw new Error('REMOTE_CONVERSATION_INVALID');
       if(field==='treeLeaves'&&(!Array.isArray(value.meaningTags)||!Array.isArray(value.reflections))) throw new Error('REMOTE_TREE_INVALID');
@@ -53,7 +56,7 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
       if(field==='contextualMemory'&&(!value.context||typeof value.actionId!=='string'||typeof value.event!=='string'))throw new Error('REMOTE_MEMORY_INVALID');
       if(field==='treeLeaves'&&(typeof value.name!=='string'||typeof value.note!=='string'||!['active','memory','removed'].includes(value.status as string)||(value.reflections as Record<string,unknown>[]).some(item=>!item||typeof item.text!=='string'||typeof item.createdAt!=='string')))throw new Error('REMOTE_TREE_INVALID');
       if(field==='fortunes'&&(!['drawn','skipped'].includes(value.status as string)||typeof value.cardId!=='string'))throw new Error('REMOTE_FORTUNE_INVALID');
-      if(field==='personalMemories'&&(typeof value.text!=='string'||value.source!=='explicit_conversation'))throw new Error('REMOTE_MEMORY_INVALID');
+      if(field==='personalMemories'&&(typeof value.text!=='string'||!['explicit_conversation','explicit_place'].includes(String(value.source))))throw new Error('REMOTE_MEMORY_INVALID');
       if(field==='analyticsEvents'&&typeof value.name!=='string')throw new Error('REMOTE_ANALYTICS_INVALID');
       // Restoring another device's history must not replay it or invent an HTTP delivery receipt.
       if(field==='analyticsEvents'&&!value.forwardedAt&&!value.deliverySuppressed)value.deliverySuppressed='restored';
@@ -61,6 +64,7 @@ export function restoreArchive(entries: Array<Record<string,unknown>>, base: Cam
     }
   }
   if((foundProfile&&!foundMeta)||(expected&&seen.size!==expected.size))throw new Error('REMOTE_ARCHIVE_INCOMPLETE');
+  if(state.placeExperiences?.length&&state.version!==4)throw new Error('REMOTE_VERSION_UNSUPPORTED');
   return foundProfile?state:null;
 }
 /** True only when every record the account archive would restore is already on this device, at the same or a

@@ -64,7 +64,7 @@ try{
     result.push([`${stage}: 主役は1件＋1行2件`,html.split('class="plan-main"').length-1===1&&html.split('<li>').length-1===2,'']);
     result.push([`${stage}: Discoverへの動作は「過ごし方を見る」`,html.includes('aria-label="休む過ごし方を見る"'),'']);
     result.push([`${stage}: 改善・悪化と断定しない`,!/改善|悪化|良くなった|悪くなった/.test(text(html)),'']);
-    result.push([`${stage}: 折りたたみの要約`,new RegExp(`今日のCheck · \\d\\d:\\d\\d · ${reflection.historyDays}日目`).test(text(html)),'']);
+    result.push([`${stage}: 折りたたみの要約`,new RegExp(`今日のCheck · \\d\\d:\\d\\d · ${reflection.historyDays}日分の記録`).test(text(html)),'']);
   }
   // 「今週のあなた」 only when the seven records really fall within seven days.
   const spread=stateWith([-20,-15,-10,-6,-3,-1,0].map(d=>check(d)));

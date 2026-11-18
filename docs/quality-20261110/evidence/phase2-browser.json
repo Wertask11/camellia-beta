@@ -1,0 +1,42 @@
+[
+  {
+    "width": 375,
+    "comparisonDialogEscape": "PASS",
+    "strictBudgetAndTime": "PASS",
+    "unknownHoursExcluded": "PASS",
+    "noAutomaticRelaxation": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "comparisonDialogEscape": "PASS",
+    "strictBudgetAndTime": "PASS",
+    "unknownHoursExcluded": "PASS",
+    "noAutomaticRelaxation": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "comparisonDialogEscape": "PASS",
+    "strictBudgetAndTime": "PASS",
+    "unknownHoursExcluded": "PASS",
+    "noAutomaticRelaxation": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "comparisonDialogEscape": "PASS",
+    "strictBudgetAndTime": "PASS",
+    "unknownHoursExcluded": "PASS",
+    "noAutomaticRelaxation": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "comparisonDialogEscape": "PASS",
+    "strictBudgetAndTime": "PASS",
+    "unknownHoursExcluded": "PASS",
+    "noAutomaticRelaxation": "PASS",
+    "pageErrors": []
+  }
+]

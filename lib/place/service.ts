@@ -9,9 +9,9 @@ export class PlaceError extends Error {
     super(code);
   }
 }
-export type PlaceOperator = { uid: string; operator: boolean };
-const permit = (identity: PlaceOperator) => {
-  if (!identity.operator) throw new PlaceError(403, 'OPERATOR_REQUIRED');
+export type PlaceOperator = { uid: string; operator: boolean; managedSlugs?:string[] };
+const permit = (identity: PlaceOperator,slug?:string) => {
+  if (!identity.operator && !(slug?identity.managedSlugs?.includes(slug):identity.managedSlugs?.length)) throw new PlaceError(403, 'OPERATOR_REQUIRED');
 };
 export class PlaceService {
   constructor(private db: Firestore) {}
@@ -22,6 +22,7 @@ export class PlaceService {
     const safe = validatePlace(data);
     return {
       ...safe,
+      ...(data.reviewVersion===2&&typeof data.verifiedAt==='string'?{informationCheckedAt:data.verifiedAt}:{}),
       id,
       status: data.status as Place['status'],
       createdAt: String(data.createdAt),
@@ -35,6 +36,7 @@ export class PlaceService {
     if (operator) permit(operator);
     if (cursor && !validSlug(cursor))
       throw new PlaceError(400, 'INVALID_PLACE');
+    if(operator&&!operator.operator){const slugs=[...(operator.managedSlugs??[])].sort().filter(slug=>!cursor||slug>cursor);const records=slugs.length?await this.db.getAll(...slugs.slice(0,20).map(slug=>this.places().doc(slug))):[];return {places:records.filter(d=>d.exists).map(d=>this.project(d.id,d.data()!)),nextCursor:slugs.length>20?slugs[19]:undefined};}
     let query = operator
       ? this.places().orderBy('slug')
       : this.places().where('status', '==', 'published').orderBy('slug');
@@ -48,7 +50,7 @@ export class PlaceService {
     };
   }
   async detail(slug: string, operator?: PlaceOperator) {
-    if (operator) permit(operator);
+    if (operator) permit(operator,slug);
     if (!validSlug(slug)) throw new PlaceError(400, 'INVALID_PLACE');
     const record = await this.places().doc(slug).get();
     if (!record.exists || (!operator && record.data()?.status !== 'published'))
@@ -117,11 +119,13 @@ export class PlaceService {
         : {};
     const slug = operation === 'save' ? input.slug : body.slug;
     if (!validSlug(slug)) throw new PlaceError(400, 'INVALID_PLACE');
+    permit(identity,slug);if(operation==='publish'&&!identity.operator)throw new PlaceError(403,'OPERATOR_REQUIRED');
     const ref = this.places().doc(slug);
     await this.db.runTransaction(async (tx) => {
       const previous = await tx.get(ref),
         data = previous.data();
       const now = new Date().toISOString();
+      if(operation==='save'&&(body.expectedUpdatedAt===null&&previous.exists||typeof body.expectedUpdatedAt==='string'&&body.expectedUpdatedAt!==data?.updatedAt))throw new PlaceError(409,'INVALID_TRANSITION');
       if (operation === 'save') {
         let safe;
         try {
@@ -140,8 +144,9 @@ export class PlaceService {
         if (operation === 'submit' && data?.status === 'draft')
           tx.update(ref, { status: 'review', updatedAt: now });
         else if (operation === 'publish' && data?.status === 'review') {
+          const review=body.review&&typeof body.review==='object'?body.review as Record<string,unknown>:{};
           if (
-            body.verified !== true ||
+            body.verified !== true || !['realConfirmed','listingPermission','photoPermission','detailsConfirmed'].every(key=>review[key]===true) || !['listingEvidence','photoEvidence'].every(key=>typeof review[key]==='string'&&(review[key] as string).trim().length>0&&(review[key] as string).length<=300) || !data?.experience || !data?.services?.length || !data?.priceRange || !data?.openingHours || (!data?.bookingUrl&&!data?.contactUrl&&!data?.phone&&!data?.officialUrl) ||
             !data?.officialUrl ||
             !data?.address ||
             !data?.imageUrls?.length ||
@@ -154,6 +159,8 @@ export class PlaceService {
             publishedAt: now,
             updatedAt: now,
             verifiedAt: now,
+            reviewVersion:2,
+            review: {realConfirmed:true,listingPermission:true,photoPermission:true,detailsConfirmed:true,listingEvidence:review.listingEvidence,photoEvidence:review.photoEvidence},
           });
         } else if (operation === 'suspend' && data?.status === 'published')
           tx.update(ref, { status: 'suspended', updatedAt: now });
@@ -166,6 +173,9 @@ export class PlaceService {
         createdAt: now,
         verified: body.verified === true,
         partnerConfirmed: body.partnerConfirmed === true,
+        before: data?validatePlace(data):null,
+        ...(operation==='publish'?{review:{realConfirmed:true,listingPermission:true,photoPermission:true,detailsConfirmed:true,listingEvidence:(body.review as Record<string,unknown>).listingEvidence,photoEvidence:(body.review as Record<string,unknown>).photoEvidence}}:{}),
+        after: operation==='save'?validatePlace(input):{...validatePlace(data!),status:operation==='publish'?'published':operation==='submit'?'review':'suspended'},
       });
     });
     return { ok: true };

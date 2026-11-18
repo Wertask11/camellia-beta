@@ -30,7 +30,7 @@
     "firebase-admin": "13.10.0",
     "input-otp": "1.4.2",
     "lucide-react": "1.31.0",
-    "posthog-js": "^1.427.2",
+    "posthog-js": "1.450.0",
     "react": "19.2.6",
     "react-day-picker": "9.8.1",
     "react-dom": "19.2.6",

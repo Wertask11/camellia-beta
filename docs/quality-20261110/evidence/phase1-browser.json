@@ -1,0 +1,47 @@
+[
+  {
+    "width": 375,
+    "method": "LINE",
+    "noSyntheticCheck": true,
+    "selectionSavedOnce": true,
+    "reload": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "method": "Google",
+    "noSyntheticCheck": true,
+    "selectionSavedOnce": true,
+    "reload": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "method": "Google",
+    "noSyntheticCheck": true,
+    "selectionSavedOnce": true,
+    "reload": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "method": "LINE",
+    "noSyntheticCheck": true,
+    "selectionSavedOnce": true,
+    "reload": true,
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "method": "Google",
+    "noSyntheticCheck": true,
+    "selectionSavedOnce": true,
+    "reload": true,
+    "overflow": false,
+    "pageErrors": []
+  }
+]

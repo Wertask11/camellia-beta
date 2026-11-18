@@ -1,0 +1,55 @@
+{
+  "at": "2026-11-11T08:40:13.011860+00:00",
+  "scope": "read-only unauthenticated public smoke",
+  "source": "Production existing main; not new release code",
+  "routes": [
+    {
+      "path": "/",
+      "status": "200",
+      "exit": 0,
+      "bytes": 11430
+    },
+    {
+      "path": "/api/camellia/chat",
+      "status": "200",
+      "exit": 0,
+      "body": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "path": "/api/camellia/place?status=1",
+      "status": "200",
+      "exit": 0,
+      "body": {
+        "enabled": false
+      }
+    },
+    {
+      "path": "/api/camellia/circle",
+      "status": "401",
+      "exit": 0,
+      "body": {
+        "error": "LOGIN_REQUIRED"
+      }
+    },
+    {
+      "path": "/api/camellia/membership",
+      "status": "200",
+      "exit": 0,
+      "body": {
+        "plan": "free",
+        "trial": false,
+        "paid": false,
+        "checkoutReady": false,
+        "priceYen": 500
+      }
+    }
+  ],
+  "browser": {
+    "error": "Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://camellia-beta.vercel.app/\n"
+  }
+}

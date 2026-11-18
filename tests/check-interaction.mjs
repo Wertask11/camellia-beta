@@ -37,7 +37,7 @@ try{
  assert.equal(store.state.checkins.length,1);assert.equal(store.state.checkins[0].sleep,undefined);
  assert.deepEqual(__funnelCaptured.map(e=>e.name).filter(n=>['session_start','check_view','check_start','check_complete'].includes(n)),['session_start','check_view','check_start','check_complete']);
  assert.equal(host.querySelector('.flow-card h2').textContent,'今日のあなた');
- assert.match(host.querySelector('.check-folded').textContent,/今日のCheck · \d\d:\d\d · 1日目/);
+ assert.match(host.querySelector('.check-folded').textContent,/今日のCheck · \d\d:\d\d · 1日分の記録/);
  assert.equal(host.querySelector('.flow-preview'),null,'the preview gives way to the real flow');
  assert.equal(host.querySelectorAll('.moods button').length,0,'completed Check is folded');
  assert.equal(load().checkins.length,1);

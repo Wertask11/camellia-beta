@@ -1,0 +1,47 @@
+[
+  {
+    "width": 375,
+    "network": "150ms,200kB/s down,75kB/s up",
+    "CPU": "4x slowdown",
+    "journey": "PASS",
+    "dialogEscapeFocus": "PASS",
+    "height520Composer": "PASS (viewport simulation, not real OS keyboard)",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "network": "150ms,200kB/s down,75kB/s up",
+    "CPU": "4x slowdown",
+    "journey": "PASS",
+    "dialogEscapeFocus": "PASS",
+    "height520Composer": "PASS (viewport simulation, not real OS keyboard)",
+    "errors": []
+  },
+  {
+    "width": 412,
+    "network": "150ms,200kB/s down,75kB/s up",
+    "CPU": "4x slowdown",
+    "journey": "PASS",
+    "dialogEscapeFocus": "PASS",
+    "height520Composer": "PASS (viewport simulation, not real OS keyboard)",
+    "errors": []
+  },
+  {
+    "width": 768,
+    "network": "150ms,200kB/s down,75kB/s up",
+    "CPU": "4x slowdown",
+    "journey": "PASS",
+    "dialogEscapeFocus": "PASS",
+    "height520Composer": "PASS (viewport simulation, not real OS keyboard)",
+    "errors": []
+  },
+  {
+    "width": 1280,
+    "network": "150ms,200kB/s down,75kB/s up",
+    "CPU": "4x slowdown",
+    "journey": "PASS",
+    "dialogEscapeFocus": "PASS",
+    "height520Composer": "PASS (viewport simulation, not real OS keyboard)",
+    "errors": []
+  }
+]

@@ -74,6 +74,7 @@ export default async function circle(req: Request, res: Response) {
       db,
       process.env.CAMELLIA_CIRCLE_SIGNING_SECRET!,
     );
+    if(req.method==='GET'&&req.query?.postingOptions==='1')return res.status(200).json(await service.postingOptions(identity));
     if (req.method === 'GET') {
       const cursor =
         typeof req.query?.cursor === 'string' ? req.query.cursor : undefined;
@@ -140,7 +141,7 @@ export default async function circle(req: Request, res: Response) {
         result = await service.leave(identity, circleId);
         break;
       case 'post':
-        result = await service.write(identity, circleId, { text: body.text });
+        result = await service.write(identity, circleId, { text: body.text,...(body.placeSlug!==undefined?{placeSlug:body.placeSlug}:{}),...(body.event!==undefined?{event:body.event}:{}) });
         break;
       case 'comment':
         if (typeof body.postId !== 'string')

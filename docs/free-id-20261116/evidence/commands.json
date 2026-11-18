@@ -1,0 +1,42 @@
+[
+  {
+    "command": "npm run lint",
+    "result": "PASS",
+    "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+    "log": "work/final-lint.log",
+    "sha256": "c38ec40a6d2b68aa87ae77633031df90fa8121b32625af8708322ba19eadcb48",
+    "finishedJST": "2026-11-17T12:14:54.665123+09:00"
+  },
+  {
+    "command": "npm run typecheck",
+    "result": "PASS",
+    "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+    "log": "work/final-types.log",
+    "sha256": "a9d8237eb907557ee336b5c5a3194fa64cc22e096b3b2433316f852a8316f974",
+    "finishedJST": "2026-11-17T12:14:58.897132+09:00"
+  },
+  {
+    "command": "npm test",
+    "result": "PASS",
+    "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+    "log": "work/final-unit.log",
+    "sha256": "2854b81d9ed849fd24b9f9ebb56f9e0cce33c560b6c722c41dfa4638384abd84",
+    "finishedJST": "2026-11-17T12:16:02.517275+09:00"
+  },
+  {
+    "command": "npm run test:firestore",
+    "result": "PASS",
+    "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+    "log": "work/final-firestore.log",
+    "sha256": "ef5dc2aa95f32700eaeb6227f66a05ef285546cab9b2ef1aa750e33dc43de2b0",
+    "finishedJST": "2026-11-17T12:17:39.541507+09:00"
+  },
+  {
+    "command": "npm run build",
+    "result": "PASS",
+    "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+    "log": "work/final-build.log",
+    "sha256": "789ceebede52601acae5f78ff259432a7a38dc878dea0755ba53b1051f35409d",
+    "finishedJST": "2026-11-17T12:17:51.253536+09:00"
+  }
+]
