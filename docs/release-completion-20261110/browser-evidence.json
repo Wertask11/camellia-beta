@@ -1,0 +1,148 @@
+{
+  "sourceCommit": "0b85594ba2370fade15d019b9881c536812c68c1",
+  "executedUtcDate": "2026-11-11",
+  "widths": [
+    375,
+    390,
+    412,
+    768,
+    1280
+  ],
+  "scope": "synthetic auth/HTTP/Gemini/sync, actual components/storage/File API; not physical device/OAuth/provider",
+  "viewportScenarioCount": 50,
+  "runnerResults": [
+    {
+      "script": "tests/quality-browser.py",
+      "sourceSha256": "e33548b775f778ab7c41438ed345b31bd9468653dd0c32432221e3f978a171cb",
+      "circlePlaceFixture": "off",
+      "start": "2026-11-11T08:40:09.388339+00:00",
+      "end": "2026-11-11T08:40:33.269497+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/quality-place-browser.py",
+      "sourceSha256": "f203833a9a71690e366e4169e6d204a35efc1359309c8145fb30c05ec0c47544",
+      "circlePlaceFixture": "off",
+      "start": "2026-11-11T08:40:33.269751+00:00",
+      "end": "2026-11-11T08:40:43.787871+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/quality-referral-browser.py",
+      "sourceSha256": "9f8b3c78cff5f9f60fe2ed307cbcb47f5d5b5cdf637b5e8b91359871d269817b",
+      "circlePlaceFixture": "off",
+      "start": "2026-11-11T08:40:43.788576+00:00",
+      "end": "2026-11-11T08:41:08.107205+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/quality-slow-browser.py",
+      "sourceSha256": "f29c8e03e509268d7ca94985fa24174106f227eda94f7be8fa0397cc915d51f1",
+      "circlePlaceFixture": "off",
+      "start": "2026-11-11T08:41:08.107467+00:00",
+      "end": "2026-11-11T08:45:18.821235+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/completion-operator-browser.py",
+      "sourceSha256": "5a892a3fd85832e8deea64a44cc682f729d607d30af60a078c9b254ac2190659",
+      "circlePlaceFixture": "off",
+      "start": "2026-11-11T08:45:18.821554+00:00",
+      "end": "2026-11-11T08:45:27.894520+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/quality-experience-browser.py",
+      "sourceSha256": "0f62e1a9470c9255e97bf8f83905bbc8f10ad55f3d6857740fb29618e796907f",
+      "circlePlaceFixture": "on",
+      "start": "2026-11-11T08:45:28.447375+00:00",
+      "end": "2026-11-11T08:45:48.545782+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/quality-operator-browser.py",
+      "sourceSha256": "7e3b2883200b4f28c3dcf4c846ff2a9a0fcbfd39f3cc4fc23affedc189790b6d",
+      "circlePlaceFixture": "on",
+      "start": "2026-11-11T08:45:48.546416+00:00",
+      "end": "2026-11-11T08:46:05.674337+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/completion-data-browser.py",
+      "sourceSha256": "4426e3f6c1b08a7238e15ee304cbe39d21d7c6eeefe8a5cf5575cf67543f7c9b",
+      "circlePlaceFixture": "on",
+      "start": "2026-11-11T08:46:05.674623+00:00",
+      "end": "2026-11-11T08:46:22.930938+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    },
+    {
+      "script": "tests/completion-tree-browser.py",
+      "sourceSha256": "3b42d9c1967bf18e02b5f60bd470dca5379c5bff97e93e7d416c8d8ee4b0feba",
+      "circlePlaceFixture": "on",
+      "start": "2026-11-11T08:46:22.931555+00:00",
+      "end": "2026-11-11T08:46:39.715007+00:00",
+      "exitCode": 0,
+      "scope": "local Chromium actual components; auth, HTTP and sync fixtures; not physical devices or real provider"
+    }
+  ],
+  "conversationResults": [
+    {
+      "width": 375,
+      "Library_search_pagination_legacy": "PASS",
+      "YURA3_Lactone3_reverse": "PASS",
+      "selector_keyboard_focus_escape_inert": "PASS",
+      "reload_reopen_preference_attribution": "PASS",
+      "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+      "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+      "pageerrors": []
+    },
+    {
+      "width": 390,
+      "Library_search_pagination_legacy": "PASS",
+      "YURA3_Lactone3_reverse": "PASS",
+      "selector_keyboard_focus_escape_inert": "PASS",
+      "reload_reopen_preference_attribution": "PASS",
+      "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+      "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+      "pageerrors": []
+    },
+    {
+      "width": 412,
+      "Library_search_pagination_legacy": "PASS",
+      "YURA3_Lactone3_reverse": "PASS",
+      "selector_keyboard_focus_escape_inert": "PASS",
+      "reload_reopen_preference_attribution": "PASS",
+      "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+      "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+      "pageerrors": []
+    },
+    {
+      "width": 768,
+      "Library_search_pagination_legacy": "PASS",
+      "YURA3_Lactone3_reverse": "PASS",
+      "selector_keyboard_focus_escape_inert": "PASS",
+      "reload_reopen_preference_attribution": "PASS",
+      "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+      "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+      "pageerrors": []
+    },
+    {
+      "width": 1280,
+      "Library_search_pagination_legacy": "PASS",
+      "YURA3_Lactone3_reverse": "PASS",
+      "selector_keyboard_focus_escape_inert": "PASS",
+      "reload_reopen_preference_attribution": "PASS",
+      "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+      "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+      "pageerrors": []
+    }
+  ]
+}

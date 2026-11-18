@@ -15,7 +15,7 @@ import {
   REPORT_REASONS,
   type CircleReactionCounts,
 } from './catalog.js';
-export type CircleIdentity = { uid: string; moderator: boolean };
+export type CircleIdentity = { uid: string; moderator: boolean; merchantEndpoint?:boolean };
 export class CircleError extends Error {
   constructor(
     readonly status: number,
@@ -432,7 +432,8 @@ export class CircleService {
     const ref = this.col(comment ? 'circle_comments' : 'circle_posts').doc();
     const now = new Date().toISOString();
     await this.db.runTransaction(async (tx) => {
-      const member = await this.requireMember(tx, identity, circle);
+      requireValue(CIRCLES.some(c=>c.id===circle));
+      const member=identity.merchantEndpoint?undefined:await this.requireMember(tx,identity,circle);
       let parentData:Record<string,unknown>|undefined;
       if (comment) {
         const parent = await tx.get(
@@ -453,6 +454,7 @@ export class CircleService {
         requireValue(!blocked.exists, 403, 'NOT_AVAILABLE');
       }
       const placeFields=await this.placePost(tx,identity,body,parentData);
+      let businessName:string|undefined;if(identity.merchantEndpoint){requireValue(!comment&&placeFields.authorKind==='place_event',403,'MERCHANT_EVENT_REQUIRED');const place=await tx.get(this.col('places').doc(body.placeSlug as string));businessName=String(place.data()?.name??'').slice(0,100);}
       const recent = await tx.get(
         this.col('circle_write_limits').doc(this.author(identity.uid)),
       );
@@ -464,7 +466,7 @@ export class CircleService {
       tx.set(ref, {
         uid: identity.uid,
         authorId: this.author(identity.uid),
-        displayName: member.displayName,
+        displayName: member?.displayName??businessName,
         circleId: circle,
         ...(comment ? { postId: body.postId } : {}),
         text: content,
@@ -501,8 +503,9 @@ export class CircleService {
       );
       const data = item.data()!;
       requireValue(data.uid === identity.uid, 403, 'NOT_OWNER');
+      if(identity.merchantEndpoint){const scope=await tx.get(this.db.doc(`camellia_users/${identity.uid}/admin/place_scope`));requireValue(data.authorKind==='place_event'&&Array.isArray(scope.data()?.slugs)&&scope.data()!.slugs.includes(data.placeSlug),403,'MERCHANT_EVENT_REQUIRED');}
       if (operation === 'edit') {
-        await this.requireMember(tx, identity, data.circleId);
+        if(!identity.merchantEndpoint)await this.requireMember(tx, identity, data.circleId);
         const placeFields=kind==='post'?await this.placePost(tx,identity,{...body,...(body.placeSlug===undefined&&data.placeSlug?{placeSlug:data.placeSlug}:{}),...(body.event===undefined&&data.event?{event:data.event}:{})}):{};
         tx.update(ref, {
           ...placeFields,

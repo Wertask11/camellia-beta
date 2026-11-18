@@ -1,0 +1,416 @@
+[
+  {
+    "number": 62,
+    "sourceCommit": "e1d2c557225b9ee3dd1c186496aae4c82c0ba12f",
+    "startUtc": "2026-11-16T06:28:11.675000+00:00",
+    "checks": [
+      {
+        "name": "lint",
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:28:11.675018+00:00",
+        "endUtc": "2026-11-16T06:28:14.854815+00:00",
+        "log": "work/original-pr-checks/62-lint.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:28:14.855002+00:00",
+        "endUtc": "2026-11-16T06:28:20.412139+00:00",
+        "log": "work/original-pr-checks/62-typecheck.log"
+      },
+      {
+        "name": "unit",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:28:20.412361+00:00",
+        "endUtc": "2026-11-16T06:28:54.761711+00:00",
+        "log": "work/original-pr-checks/62-unit.log"
+      },
+      {
+        "name": "firestore",
+        "command": [
+          "npm",
+          "run",
+          "test:firestore"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:28:54.761929+00:00",
+        "endUtc": "2026-11-16T06:29:22.815828+00:00",
+        "log": "work/original-pr-checks/62-firestore.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:29:22.816044+00:00",
+        "endUtc": "2026-11-16T06:29:31.624265+00:00",
+        "log": "work/original-pr-checks/62-build.log"
+      }
+    ],
+    "scope": "original independent PR source; local suites/emulator/build, not Production or physical account",
+    "endUtc": "2026-11-16T06:29:31.624706+00:00",
+    "unitSummary": "49/49 suites passed"
+  },
+  {
+    "number": 63,
+    "sourceCommit": "8f633e8ff7cdcaf595acdc852eba8b3874eba91a",
+    "startUtc": "2026-11-16T06:29:31.681162+00:00",
+    "checks": [
+      {
+        "name": "lint",
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:29:31.681179+00:00",
+        "endUtc": "2026-11-16T06:29:34.496836+00:00",
+        "log": "work/original-pr-checks/63-lint.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:29:34.496981+00:00",
+        "endUtc": "2026-11-16T06:29:40.562058+00:00",
+        "log": "work/original-pr-checks/63-typecheck.log"
+      },
+      {
+        "name": "unit",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:29:40.562208+00:00",
+        "endUtc": "2026-11-16T06:30:16.113412+00:00",
+        "log": "work/original-pr-checks/63-unit.log"
+      },
+      {
+        "name": "firestore",
+        "command": [
+          "npm",
+          "run",
+          "test:firestore"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:30:16.113765+00:00",
+        "endUtc": "2026-11-16T06:30:46.957943+00:00",
+        "log": "work/original-pr-checks/63-firestore.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:30:46.958088+00:00",
+        "endUtc": "2026-11-16T06:30:55.863685+00:00",
+        "log": "work/original-pr-checks/63-build.log"
+      }
+    ],
+    "scope": "original independent PR source; local suites/emulator/build, not Production or physical account",
+    "endUtc": "2026-11-16T06:30:55.864034+00:00",
+    "unitSummary": "50/50 suites passed"
+  },
+  {
+    "number": 64,
+    "sourceCommit": "c44c61351ae30e159e026f644d75653ff1c9eded",
+    "startUtc": "2026-11-16T06:30:55.930238+00:00",
+    "checks": [
+      {
+        "name": "lint",
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:30:55.930256+00:00",
+        "endUtc": "2026-11-16T06:30:58.706589+00:00",
+        "log": "work/original-pr-checks/64-lint.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:30:58.706735+00:00",
+        "endUtc": "2026-11-16T06:31:05.223251+00:00",
+        "log": "work/original-pr-checks/64-typecheck.log"
+      },
+      {
+        "name": "unit",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:31:05.223498+00:00",
+        "endUtc": "2026-11-16T06:31:42.136090+00:00",
+        "log": "work/original-pr-checks/64-unit.log"
+      },
+      {
+        "name": "firestore",
+        "command": [
+          "npm",
+          "run",
+          "test:firestore"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:31:42.136534+00:00",
+        "endUtc": "2026-11-16T06:32:13.776646+00:00",
+        "log": "work/original-pr-checks/64-firestore.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:32:13.776888+00:00",
+        "endUtc": "2026-11-16T06:32:22.416272+00:00",
+        "log": "work/original-pr-checks/64-build.log"
+      }
+    ],
+    "scope": "original independent PR source; local suites/emulator/build, not Production or physical account",
+    "endUtc": "2026-11-16T06:32:22.416406+00:00",
+    "unitSummary": "51/51 suites passed"
+  },
+  {
+    "number": 65,
+    "sourceCommit": "d59c2b44a67aa815dfde509c2e9fbd518d3a05ad",
+    "startUtc": "2026-11-16T06:32:22.478179+00:00",
+    "checks": [
+      {
+        "name": "lint",
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:32:22.478197+00:00",
+        "endUtc": "2026-11-16T06:32:25.195250+00:00",
+        "log": "work/original-pr-checks/65-lint.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:32:25.195399+00:00",
+        "endUtc": "2026-11-16T06:32:31.282502+00:00",
+        "log": "work/original-pr-checks/65-typecheck.log"
+      },
+      {
+        "name": "unit",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:32:31.282648+00:00",
+        "endUtc": "2026-11-16T06:33:07.686215+00:00",
+        "log": "work/original-pr-checks/65-unit.log"
+      },
+      {
+        "name": "firestore",
+        "command": [
+          "npm",
+          "run",
+          "test:firestore"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:33:07.686683+00:00",
+        "endUtc": "2026-11-16T06:33:44.353163+00:00",
+        "log": "work/original-pr-checks/65-firestore.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:33:44.353388+00:00",
+        "endUtc": "2026-11-16T06:33:52.903885+00:00",
+        "log": "work/original-pr-checks/65-build.log"
+      }
+    ],
+    "scope": "original independent PR source; local suites/emulator/build, not Production or physical account",
+    "endUtc": "2026-11-16T06:33:52.904096+00:00",
+    "unitSummary": "52/52 suites passed"
+  },
+  {
+    "number": 66,
+    "sourceCommit": "aa66fb3c38418495f6aafb7e7e64a3003f551717",
+    "startUtc": "2026-11-16T06:33:52.965065+00:00",
+    "checks": [
+      {
+        "name": "lint",
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:33:52.965084+00:00",
+        "endUtc": "2026-11-16T06:33:55.605427+00:00",
+        "log": "work/original-pr-checks/66-lint.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:33:55.605700+00:00",
+        "endUtc": "2026-11-16T06:34:02.088723+00:00",
+        "log": "work/original-pr-checks/66-typecheck.log"
+      },
+      {
+        "name": "unit",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:34:02.088956+00:00",
+        "endUtc": "2026-11-16T06:34:39.877394+00:00",
+        "log": "work/original-pr-checks/66-unit.log"
+      },
+      {
+        "name": "firestore",
+        "command": [
+          "npm",
+          "run",
+          "test:firestore"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:34:39.877666+00:00",
+        "endUtc": "2026-11-16T06:35:24.631289+00:00",
+        "log": "work/original-pr-checks/66-firestore.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:35:24.631586+00:00",
+        "endUtc": "2026-11-16T06:35:33.619986+00:00",
+        "log": "work/original-pr-checks/66-build.log"
+      }
+    ],
+    "scope": "original independent PR source; local suites/emulator/build, not Production or physical account",
+    "endUtc": "2026-11-16T06:35:33.620213+00:00",
+    "unitSummary": "53/53 suites passed"
+  },
+  {
+    "number": 67,
+    "sourceCommit": "fcc586c86275f89ddd1e46922626f3ed320275cf",
+    "startUtc": "2026-11-16T06:35:33.679722+00:00",
+    "checks": [
+      {
+        "name": "lint",
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:35:33.679739+00:00",
+        "endUtc": "2026-11-16T06:35:36.249900+00:00",
+        "log": "work/original-pr-checks/67-lint.log"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:35:36.250046+00:00",
+        "endUtc": "2026-11-16T06:35:42.549763+00:00",
+        "log": "work/original-pr-checks/67-typecheck.log"
+      },
+      {
+        "name": "unit",
+        "command": [
+          "npm",
+          "test"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:35:42.549983+00:00",
+        "endUtc": "2026-11-16T06:36:21.607966+00:00",
+        "log": "work/original-pr-checks/67-unit.log"
+      },
+      {
+        "name": "firestore",
+        "command": [
+          "npm",
+          "run",
+          "test:firestore"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:36:21.608189+00:00",
+        "endUtc": "2026-11-16T06:37:10.790282+00:00",
+        "log": "work/original-pr-checks/67-firestore.log"
+      },
+      {
+        "name": "build",
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "exitCode": 0,
+        "startUtc": "2026-11-16T06:37:10.790534+00:00",
+        "endUtc": "2026-11-16T06:37:19.759257+00:00",
+        "log": "work/original-pr-checks/67-build.log"
+      }
+    ],
+    "scope": "original independent PR source; local suites/emulator/build, not Production or physical account",
+    "endUtc": "2026-11-16T06:37:19.759516+00:00",
+    "unitSummary": "54/54 suites passed"
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "atUtc": "2026-11-10T13:50:57.027006+00:00",
+  "scope": "Read-only unauthenticated Production; no settings or personal records changed",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "scripts": [
+        "/_next/static/chunks/rolldown-runtime-C60lm6uB.js",
+        "/_next/static/chunks/framework-D_rUT4EX.js",
+        "/_next/static/chunks/index-DfJLd4me.js"
+      ]
+    },
+    {
+      "path": "/api/camellia/chat",
+      "status": 200,
+      "publicStatus": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "path": "/api/camellia/membership",
+      "status": 200,
+      "publicStatus": {
+        "plan": "free",
+        "checkoutReady": false
+      }
+    },
+    {
+      "path": "/api/camellia/place",
+      "status": 503,
+      "publicStatus": {
+        "error": "PLACE_UNAVAILABLE"
+      }
+    },
+    {
+      "path": "/api/camellia/circle",
+      "status": 401,
+      "publicStatus": {
+        "error": "LOGIN_REQUIRED"
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@ const SESSION_KEY = 'camellia-analytics-session-v1';
 export const ANALYTICS_SESSION_CHANGED = 'camellia-analytics-session-changed';
 export const SESSION_IDLE_MS = 30 * 60 * 1000;
 export function analyticsDay(time: number) { return new Date(time + 9 * 3600000).toISOString().slice(0, 10); }
-/** Per-tab, pseudonymous profile, 30 minutes idle or JST date boundary. No ID is sent as a property. */
+/** Per-tab, pseudonymous profile, 30 minutes idle or JST date boundary. Only the random session UUID is eligible for journey attribution. */
 export function analyticsSession(profile: string, now = Date.now()) {
   let previous: { id: string; profile: string; at: number; day: string } | undefined;
   try { previous = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') ?? undefined; } catch { /* recover session metadata only */ }

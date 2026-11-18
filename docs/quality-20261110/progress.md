@@ -43,3 +43,27 @@
 ### 保存形式とrollback
 
 既存v3は新readerでそのまま読める。一括migrationなし。v4を作成済みの環境では、v4 readerと保存保護を残したまま画面だけ戻す。v4対応前のbuildへ丸ごと戻す場合はread-only recoveryとなるため、原本／pre-v4控えのexportを確保し、v4対応buildへ戻す。古いreaderで新しい記録を読み飛ばして再同期しないことを検証済み。
+
+## Phase 4：店舗管理・オンライン集計・通知設定
+
+店舗担当はserver-onlyの割当slugだけ。運営のみpublish、担当は自店draft/submit/suspend。営業用の別ログイン・事業者導入は未提供。自店イベント専用APIはCircle会員資格を付与せず、feed閲覧不可。無料実証は明示同意、特典任意、自動有料化なし。有料オプション／来店確認は未提供。
+
+公開カタログの操作だけを日別集計。重複eventIdは一度、私的本文は拒否。店舗への自店集計はクリックであり来店ではない。通知は好み・頻度・停止を保存するだけで配信なし。AIの数値メタデータ台帳と承認単価の見積り関数まで。実Gemini原価観測は未接続、請求額・価格は未確認。
+
+検証：専用unit、Firestore emulatorのscope/他店/公開権限/集計concurrency/契約/事業者イベント/撤回/停止、5幅の通知保存・reload・off PASS。lint/typecheck/build/full testsは各実行ログと最終報告を参照。Phase 3の全51 suite再実行もPASS。実店舗登録0、Productionの設定変更0。詳細はoperator-workflow.md。
+
+## Phase 5：プレビュー共有・紹介の安全な基盤
+
+共有送信・匿名公開は引き続き停止。共有owner削除時の読取を失効させるだけでなく本文もscrubする。紹介は未決定設定がないと起動しない内部transaction基盤を追加。7日体験、月3件の永久選択権、自己／連携ID重複、予算／trial専用枠、同時送信、期限、対象取消をローカルで検証。紹介の公開APIはstatusのみ、POST拒否。signup／実Geminiへの紹介連携は未接続、実際の特典提供と称さない。
+
+Phase 4の全52 unit suites PASS。Phase 5の専用unit、referralと既存sharingのFirestore emulator PASS。5幅・全unit・buildは最終検証へ。未決定事項と未接続部分はreferral-workflow.mdに記載。本番の紹介データ・設定・装飾は0件変更。
+
+## Phase 6：総合検証
+
+全54 unit suites、lint/typecheck/build、全Firestore entry suiteがPASS。紹介取消後／期限後の再送を有効な新特典・AI予約と扱わないガードを追加し、専用emulatorでも再実行PASS。
+
+5幅のCheckあり／なし、Place条件・比較、私的Reflection／任意Memory、手動Circle、通知設定・紹介停止・共有エラー復帰を確認。実PostHog SDKの横取り試験で送信privacy、503復旧・DNT・block・破損・容量不足がPASS。会話のsearch/pagination/legacy/モデル切替/reload/focus/Escape、低いviewportもPASS。
+
+最終画面確認で、条件を変える前の比較候補が残る問題と、低い画面でguest会話入力がnavに隠れる問題を修正。Placeの詳細条件をnative detailsへ整理し、常時デモ表示を保持。低速150ms/200kB/s/CPU4倍遅延で5幅の入力とdialog focusも確認した。
+
+固定Previewの本人確認は「選んだ行動と過去の記録を確認できた」。実際のproviderは回答にないので両認証方式の実操作PASSとはしない。Productionは公開statusの読取のみで、main91e95baと配信indexが変わっていないことを確認。最終レポートと40件の対応表に、未接続・未決定・未検証を分離した。
