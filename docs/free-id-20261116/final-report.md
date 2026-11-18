@@ -83,3 +83,11 @@ GitHub run44046516911（tested head2b82852）はlint/typecheck/64unit/15emulator
 [追加報告](analytics-followup-20261118.md)。SDK更新に加え、実SDKを組み合わせたメール認証試験で、ID取得成功の計測が画面切り替え時に取り残される不具合を再現・修正した。同じUIDの記録準備後に永続台帳へ追加し、私的UIDを送らず、既存Freeイベントの変更・人物alias・重複送信を避ける。全体の未着信の原因が確定したわけではなく、本人ブラウザの安全な診断結果と実PostHog着信は未確認。総合PARTIAL・本番未反映を維持する。新しいsourceの実行結果は専用証拠に分離する。
 
 2026-11-18 11:23 JSTの本人操作を独立にPostHog594848で照合し、固定Previewの起動→Check→Myの6種類を各1件確認した。SDK1.450.0・schema2・legacy_externalである。既存外部IDのCheck導線は受領PASSへ更新し、匿名会話・メールID完了・移行完了の着信と区別する。[受領証拠](evidence/owner-posthog-receipt-20261118.json)。さらに [導線照合属性の補完](journey-session-20261118.md) を別差分で進める。総合PARTIAL・本番未反映は継続。
+
+## 更新後の本人受入（11月18日）
+
+固定Previewを9b60003へ更新後、PCログアウト→Free Check→YURA/Lactone各1回→既存専用メールID→明示引き継ぎ→保存確認の完了報告「できた」を受領。これは本人報告の画面操作PASSで、provider・token・実請求は独立確認していない。[操作証拠](evidence/owner-email-flow-20261118.json)。既存のPC→Android確認は旧sourceの証拠として維持し、この新コードの端末間合格へ流用しない。
+
+一方、PostHogの固定Preview＋free_id_v1による会話/ID/移行イベント照合は2026-11-18T02:44:07Z時点で0件。11:23 JSTの既存外部ID Check6種の受領PASSとは分ける。引き継ぎ後の読み取り専用診断を本人へ依頼し、未受領の原因を断定していない。メールの再送・ログアウト・個人記録削除は求めていない。
+
+最終機能source9b60003はGitHub CI全PASS： https://github.com/Wertask11/camellia-beta/actions/runs/44224189611/job/134533194559 。同sourceの固定Previewは11:36:17 JSTにVercel success。この後の追記は文書と証拠のみで、過去の合格を別の機能コードへ流用していない。main/Production/Rules/claims/envは未変更。総合PARTIALを維持。
