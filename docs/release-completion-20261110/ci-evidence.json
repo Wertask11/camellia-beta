@@ -1,0 +1,372 @@
+[
+  {
+    "baseRefName": "main",
+    "headRefName": "feat/camellia-quality-foundation-20261110",
+    "headRefOid": "e1d2c557225b9ee3dd1c186496aae4c82c0ba12f",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 62,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-10T08:45:56Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/DAV6Z6ZTjHmyj7wYiYA46z79pa5s"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-10T08:49:06Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-10T08:49:06Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/62",
+    "checkedAt": "2026-11-16T06:30:21.593343+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-quality-foundation-20261110",
+    "headRefName": "feat/camellia-place-quality-20261110",
+    "headRefOid": "8f633e8ff7cdcaf595acdc852eba8b3874eba91a",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 63,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-10T09:02:02Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/69BfnJToqh4i1zwbaze3sTMgWBmK"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-10T09:02:03Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-10T09:02:03Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/63",
+    "checkedAt": "2026-11-16T06:30:21.702988+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-place-quality-20261110",
+    "headRefName": "feat/camellia-experience-circle-20261110",
+    "headRefOid": "c44c61351ae30e159e026f644d75653ff1c9eded",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 64,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-10T09:30:27Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/9wGrbDiMNuXz2Fcuz6Gf3NfnBauK"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-10T09:30:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-10T09:30:27Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/64",
+    "checkedAt": "2026-11-16T06:30:21.594381+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-experience-circle-20261110",
+    "headRefName": "feat/camellia-operator-quality-20261110",
+    "headRefOid": "d59c2b44a67aa815dfde509c2e9fbd518d3a05ad",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 65,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-10T09:46:39Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/8RvXE9aMjKELiTgXYdA8DCiRXpiH"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-10T09:46:40Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-10T09:46:40Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/65",
+    "checkedAt": "2026-11-16T06:30:21.609141+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-operator-quality-20261110",
+    "headRefName": "feat/camellia-referral-quality-20261110",
+    "headRefOid": "aa66fb3c38418495f6aafb7e7e64a3003f551717",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 66,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-10T13:41:17Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/AfanPxzMBXbdJ858UPxQvpo852ME"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-10T13:41:17Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-10T13:41:17Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/66",
+    "checkedAt": "2026-11-16T06:30:22.397926+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-referral-quality-20261110",
+    "headRefName": "test/camellia-quality-release-audit-20261110",
+    "headRefOid": "fcc586c86275f89ddd1e46922626f3ed320275cf",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 67,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-10T14:08:01Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/75F9VoRLaxJJdmHGj9FfxVLmfMGY"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-10T14:08:02Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-10T14:08:02Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/67",
+    "checkedAt": "2026-11-16T06:30:22.694434+00:00"
+  },
+  {
+    "baseRefName": "test/camellia-quality-release-audit-20261110",
+    "headRefName": "feat/camellia-completion-data-20261110",
+    "headRefOid": "c42f255f9d8c005af828b0688a1e99e408fc972f",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 68,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-11T01:25:22Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/4kWrDrtjhQDBdPRo272n5J8PDUCu"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T01:25:22Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-11T01:25:22Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/68",
+    "checkedAt": "2026-11-16T06:30:22.426242+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-completion-data-20261110",
+    "headRefName": "feat/camellia-completion-ai-20261111",
+    "headRefOid": "0335ce69b6edfdac4df29019f12cf3e705a3b0b9",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 69,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-11T01:37:08Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/FC9YM51wSL9k4Ydj23VuYUbeGnvQ"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T01:37:08Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-11T01:37:08Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/69",
+    "checkedAt": "2026-11-16T06:30:22.498795+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-completion-ai-20261111",
+    "headRefName": "feat/camellia-completion-operations-20261111",
+    "headRefOid": "788010074a3b1417e73b3fd13093e1056ed822af",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 70,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-11T01:57:27Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/6RycjbLPRqBTAnYqwn2cUsrZiaFn"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T01:57:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-11T01:57:27Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/70",
+    "checkedAt": "2026-11-16T06:30:23.060679+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-completion-operations-20261111",
+    "headRefName": "feat/camellia-completion-lifecycle-20261111",
+    "headRefOid": "eb4de3c1716634b27c409dbc9d9ae300657b2549",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 71,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-11T07:06:17Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/DsVPfkDUcW853zc3MxdBfFrSqreJ"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T07:06:18Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-11T07:06:18Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/71",
+    "checkedAt": "2026-11-16T06:30:23.310602+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-completion-lifecycle-20261111",
+    "headRefName": "feat/camellia-completion-billing-20261111",
+    "headRefOid": "94f868adf523ab702e6bd001ee69a3be8b6fa108",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "number": 72,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-11T07:29:45Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/CuYdS4oeiSZ6GRLfkjpuhYJiA6hn"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T07:29:45Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-11T07:29:45Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/72",
+    "checkedAt": "2026-11-16T06:30:23.176928+00:00"
+  },
+  {
+    "baseRefName": "feat/camellia-completion-billing-20261111",
+    "headRefName": "test/camellia-release-completion-20261111",
+    "headRefOid": "0b85594ba2370fade15d019b9881c536812c68c1",
+    "isDraft": true,
+    "mergeable": "MERGEABLE",
+    "number": 73,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T08:42:42Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Wertask11/camellia-beta/actions/runs/42988811767/job/130416352158",
+        "name": "quality",
+        "startedAt": "2026-11-11T08:39:50Z",
+        "status": "COMPLETED",
+        "workflowName": "Release quality"
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-11T08:43:35Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/3RpYKCfqCyQbjyekgidYHuqPqVX6"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T08:43:36Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-11T08:43:36Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/73",
+    "checkedAt": "2026-11-16T06:30:23.417593+00:00"
+  }
+]

@@ -66,8 +66,8 @@ export function mergePersonalBackup(current: CamelliaState, input: unknown) {
   }
   return { ...next, updatedAt: new Date().toISOString() };
 }
-export function preserveBeforeRestore(current: CamelliaState) {
-  const raw = localStorage.getItem('camellia-prototype-v3');
+export function preserveBeforeRestore(current: CamelliaState, storageKey='camellia-prototype-v3') {
+  const raw = localStorage.getItem(storageKey);
   if (!raw || JSON.parse(raw).profile?.id !== current.profile.id)
     throw new Error('LOCAL_BACKUP_CHANGED');
   const withoutTime = ({

@@ -33,6 +33,7 @@ export async function requireEligibleUser(token:string,deps:{auth:Pick<Auth,'ver
     if(typeof code==='string'&&rejectedTokens.has(code))throw new EligibilityError('LOGIN_REQUIRED');
     throw new EligibilityServiceError('token_service');
   }
+  if(decoded.firebase?.sign_in_provider==='password'&&decoded.email_verified!==true)throw new EligibilityError('LOGIN_REQUIRED',403);
   if(decoded.firebase?.sign_in_provider==='anonymous')throw new EligibilityError('LOGIN_REQUIRED',403);
   let profile,config,access;
   // In parallel, so checking invites and suspension adds no round trip before a reply.
