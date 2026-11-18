@@ -1,4 +1,5 @@
 'use client';
+import {CAMELLIA_MESSAGE} from '@/lib/brand';
 import {useMemo,useState} from 'react';
 import {useCamelliaStore,FREE_STORAGE_KEY} from '@/hooks/useCamelliaStore';
 import {useCurrentTime} from '@/hooks/useCurrentTime';
@@ -48,5 +49,5 @@ export function FreeExperience({onIdentity}:{onIdentity:()=>void}){
  else if(tab==='discover')content=<DiscoverScreen state={store.state} category={category} onCategory={setCategory} onTrack={store.track} onOpenAction={r=>{store.track('discover_action_selected',{actionId:r.action.id});open(r);}} onOpenSecondary={destination=>destination==='place'?places():setFeature('circle')}/>;
  else if(tab==='camellia')content=<ConversationWorkspace freeMode state={store.state} recommendations={recs} treeContext={treeContext} onClearTreeContext={()=>setTreeContext(undefined)} onTree={()=>setFeature('tree')} onRemember={store.remember} onTrack={store.track} onOpenAction={open} onNavigate={destination=>destination==='place'?places():destination==='circle'?setFeature('circle'):navigate('discover')} onSaveConversation={store.addConversation} onPendingConversation={store.pendingConversation} onReplaceConversationAssistant={store.replaceConversationAssistant} onSelectConversationModel={store.selectConversationModel}/>;
  else content=<MyScreen deviceOnly onIdentity={onIdentity} state={store.state} devNight={false} onDevNight={()=>{}} onEditProfile={()=>setFeature('profile')} onForget={store.forget} onReset={store.reset} onInsight={store.feedbackInsight} onPrivacy={()=>setFeature('privacy')} onTree={()=>setFeature('tree')} onRestoreBackup={store.restorePersonalBackup} onComplete={store.completeAction} onReflectPlace={store.reflectPlace} onRemoveExperience={store.removePlaceExperience} onExplorePlaces={()=>places()} onPlaces={()=>places()} onCircles={()=>setFeature('circle')} onTrack={store.track} onRenameCharacter={name=>store.updateProfile({characterName:name})}/>;
- return <div className="app-shell"><span className="beta-badge">Camellia β2</span>{content}{dialogs}<BottomNav active={tab} onChange={navigate}/></div>;
+ return <div className="app-shell"><span className="beta-badge">Camellia β2</span>{tab==='today'&&!feature&&!store.state.checkins.length&&<aside className="free-intro"><h1>今日は、自分のために何する？</h1><p>{CAMELLIA_MESSAGE}</p></aside>}{content}{dialogs}<BottomNav active={tab} onChange={navigate}/></div>;
 }
