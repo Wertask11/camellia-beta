@@ -12,3 +12,6 @@ export function analyticsDiagnostic(event: string, status: string, host?: string
     host: projectHost, app_version: 'beta-v3', event_schema: 1, entries: entries.map(entry => ({ ...entry })),
   }) });
 }
+
+export function readAnalyticsDiagnostics(){return enabled?entries.map(({event,status})=>({event,status})):[];}
+export function previewAnalyticsDiagnosticEnabled(){return enabled&&typeof location!=='undefined'&&new URL(location.href).searchParams.get('diagnostics')==='analytics';}

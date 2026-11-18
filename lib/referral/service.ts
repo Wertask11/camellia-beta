@@ -249,6 +249,7 @@ export class ReferralService {
         );
         return { reserved: true, reused: true };
       }
+      reject(g.costReviewRequired!==true,'TRIAL_COST_REVIEW_REQUIRED',429);
       reject(
         g.aiUsed < g.aiLimit && g.aiReservedYen + maxCostYen <= g.reservedYen,
         'TRIAL_AI_LIMIT',
@@ -264,6 +265,33 @@ export class ReferralService {
         createdAt: this.now(),
       });
       return { reserved: true, reused: false };
+    });
+  }
+  async dispatchTrialAi(uid:string,requestId:string) {
+    return this.db.runTransaction(async tx=>{
+      const ref=this.ref('referral_ai_reservations',referralHash(`${uid}:${requestId}`)),gref=this.ref('referral_grants',referralHash(uid));
+      const [receipt,grant]=await Promise.all([tx.get(ref),tx.get(gref)]),r=receipt.data(),g=grant.data();
+      reject(r&&!r.released&&!r.settled&&g&&g.revoked!==true&&Date.parse(g.expiresAt)>this.now(),'TRIAL_EXPIRED',403);
+      if(!r.dispatched)tx.update(ref,{dispatched:true,dispatchedAt:this.now()});
+    });
+  }
+  /** Only a proven not-dispatched request can return its request slot and held estimate. */
+  async releaseTrialAi(uid:string,requestId:string) {
+    return this.db.runTransaction(async tx=>{
+      const ref=this.ref('referral_ai_reservations',referralHash(`${uid}:${requestId}`)),gref=this.ref('referral_grants',referralHash(uid));
+      const [receipt,grant]=await Promise.all([tx.get(ref),tx.get(gref)]),r=receipt.data(),g=grant.data();
+      reject(r&&g,'NOT_FOUND',404);if(r.released)return {released:true,reused:true};
+      reject(r.dispatched!==true&&!r.settled,'ALREADY_DISPATCHED');
+      reject(Number.isSafeInteger(g.aiUsed)&&g.aiUsed>0&&g.aiReservedYen>=r.maxCostYen,'INVALID_AI_RESERVATION');
+      tx.update(ref,{released:true,releasedAt:this.now()});tx.update(gref,{aiUsed:g.aiUsed-1,aiReservedYen:g.aiReservedYen-r.maxCostYen});return {released:true,reused:false};
+    });
+  }
+  async holdTrialAi(uid:string,requestId:string) {
+    return this.db.runTransaction(async tx=>{
+      const ref=this.ref('referral_ai_reservations',referralHash(`${uid}:${requestId}`)),gref=this.ref('referral_grants',referralHash(uid));
+      const [receipt,grant]=await Promise.all([tx.get(ref),tx.get(gref)]);reject(receipt.exists&&grant.exists,'NOT_FOUND',404);
+      reject(receipt.data()!.dispatched===true&&!receipt.data()!.released,'INVALID_AI_RESERVATION');
+      tx.update(ref,{usageIncomplete:true,invoiceVerified:false});tx.update(gref,{costReviewRequired:true});return {held:true};
     });
   }
   async claimDecoration(uid: string, creditId: string, decorationId: string) {
@@ -317,11 +345,11 @@ export class ReferralService {
     });
   }
   /** Already-priced numeric provider observations only. No refunds of reserved budget and no assumed zero cost. */
-  async settleTrialAi(uid: string, requestId: string, actualCostYen: number) {
+  async settleTrialAi(uid: string, requestId: string, estimatedCostYen: number) {
     reject(
       /^[0-9a-f-]{36}$/i.test(requestId) &&
-        Number.isFinite(actualCostYen) &&
-        actualCostYen >= 0,
+        Number.isFinite(estimatedCostYen) &&
+        estimatedCostYen >= 0,
       'INVALID_AI_OBSERVATION',
       400,
     );
@@ -334,17 +362,18 @@ export class ReferralService {
         r = receipt.data();
       reject(r, 'NOT_FOUND', 404);
       if (r.settled) {
-        reject(r.actualCostYen === actualCostYen, 'INVALID_AI_OBSERVATION');
+        reject((r.estimatedCostYen ?? r.actualCostYen) === estimatedCostYen, 'INVALID_AI_OBSERVATION');
         return { settled: true, reused: true };
       }
       const gref = this.ref('referral_grants', referralHash(uid)),
         grant = await tx.get(gref);
       reject(grant.exists, 'NOT_FOUND', 404);
-      const costOverrun = actualCostYen > r.maxCostYen;
-      tx.update(ref, { settled: true, actualCostYen, costOverrun });
+      reject(!r.released,'INVALID_AI_OBSERVATION');
+      const costOverrun = estimatedCostYen > r.maxCostYen;
+      tx.update(ref, { settled: true, estimatedCostYen, costOverrun, costBasis:'provider_token_estimate',invoiceVerified:false });
       tx.update(gref, {
         observedCostYen:
-          Number(grant.data()!.observedCostYen ?? 0) + actualCostYen,
+          Number(grant.data()!.observedCostYen ?? 0) + estimatedCostYen,
         ...(costOverrun ? { costReviewRequired: true } : {}),
       });
       return { settled: true, reused: false, costOverrun };

@@ -33,10 +33,12 @@ export async function requireEligibleUser(token:string,deps:{auth:Pick<Auth,'ver
     if(typeof code==='string'&&rejectedTokens.has(code))throw new EligibilityError('LOGIN_REQUIRED');
     throw new EligibilityServiceError('token_service');
   }
+  if(decoded.firebase?.sign_in_provider==='password'&&decoded.email_verified!==true)throw new EligibilityError('LOGIN_REQUIRED',403);
   if(decoded.firebase?.sign_in_provider==='anonymous')throw new EligibilityError('LOGIN_REQUIRED',403);
   let profile,config,access;
   // In parallel, so checking invites and suspension adds no round trip before a reply.
   try{[profile,config,access]=await Promise.all([deps.db.doc(`camellia_users/${decoded.uid}`).get(),deps.db.doc(ACCESS_CONFIG_PATH).get(),deps.db.doc(userAccessPath(decoded.uid)).get()]);}catch{throw new EligibilityServiceError('profile_storage');}
+  if(profile.data()?.personalDeleteInProgress===true)throw new EligibilityServiceError('profile_storage');
   const blocked=accessDecision(config as Snapshot,profile as Snapshot,access as Snapshot);
   if(blocked)throw new EligibilityError(blocked);
   const agreedAt=profile.data()?.agreedAt;
