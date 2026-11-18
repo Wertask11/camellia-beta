@@ -169,6 +169,9 @@ try {
   await a.sync.prepareSchoolParkAccount(state, uid);
   await sync(a, state);
   assert.equal(a.sync.getSyncStatus().phase, 'saved');
+  assert.equal(await a.sync.cloudContainsState(state,uid),true,'actual cloud archive confirmation');
+  assert.equal(await a.sync.cloudContainsState(state,'foreign-user'),false);
+  assert.equal(await a.sync.cloudContainsState({...state,personalMemories:[{id:'missing-on-cloud',text:'LOCAL ONLY',source:'explicit_conversation',createdAt:at,updatedAt:at}]},uid),false,'old saved status cannot confirm missing records');
   const oldB = await b.sync.prepareSchoolParkAccount(
     emptyState(),
     uid,

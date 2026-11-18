@@ -1,4 +1,5 @@
 import {completePendingReferral} from '../referral/client';
+import {clearOwnedFreeTransfer} from '../free/handover';
 import {serializeConversationState} from '@/lib/conversation/persistence';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -278,6 +279,7 @@ export async function deleteSyncedCamelliaData(clearLocalData: () => void) {
       localStorage.removeItem(`${CONFLICT_KEY}:${uid}`);
     },
     clearLocalData:()=>{
+      const actor=schoolParkAuth.currentUser;if(actor&&!actor.isAnonymous)clearOwnedFreeTransfer(actor.uid,localStorage);
       clearLocalData();
       const user=schoolParkAuth.currentUser;
       if(user&&!user.isAnonymous){
@@ -296,4 +298,16 @@ if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => {
     void flushSchoolParkSync();
   });
+}
+
+/** Read-only confirmation before removing a quarantined Free source. Never trust a past 'saved' status. */
+export async function cloudContainsState(expected:CamelliaState,uid:string){
+ try{
+  if(schoolParkAuth.currentUser?.uid!==uid||preparedUid!==uid)return false;
+  const root=await getDoc(reference(uid,''));if(!root.exists()||root.data()?.archiveSyncInProgress||root.data()?.personalDeleteInProgress)return false;
+  const records=await getDocs(collection(schoolParkDb,'camellia_users',uid,'imports'));
+  const after=await getDoc(reference(uid,''));if(schoolParkAuth.currentUser?.uid!==uid||rootSignature(after.data())!==rootSignature(root.data()))return false;
+  const remote=restoreArchive(records.docs.map(d=>d.data()),expected);if(!remote)return false;
+  return remoteContainedInLocal({...expected,analyticsEvents:[]},remote);
+ }catch{return false;}
 }

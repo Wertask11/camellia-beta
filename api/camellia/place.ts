@@ -58,6 +58,7 @@ export default async function place(req: Request, res: Response) {
       } catch {
         return res.status(401).json({ error: 'LOGIN_REQUIRED' });
       }
+      if(decoded.firebase?.sign_in_provider==='password'&&decoded.email_verified!==true)return res.status(401).json({error:'LOGIN_REQUIRED'});
       const access=await db.doc(`camellia_users/${decoded.uid}/admin/access`).get();
       if(access.data()?.suspended===true)return res.status(403).json({error:'SUSPENDED'});
       const slugs=decoded.firebase?.sign_in_provider==='anonymous'?[]:await managedPlaceSlugs(db,decoded.uid);
