@@ -1,8 +1,8 @@
 """Actual screens/storage; local fake mail/Auth/cloud receipts, no real mail or account."""
 from playwright.sync_api import sync_playwright,expect
 from pathlib import Path
-import json,re
-out=Path('/workspace/outputs/camellia-free-id-20261117/email');out.mkdir(parents=True,exist_ok=True)
+import json,re,os
+out=Path(os.environ.get('CAMELLIA_BROWSER_OUTPUT','/workspace/outputs/camellia-free-id-20261117/email'));out.mkdir(parents=True,exist_ok=True)
 origin='http://127.0.0.1:4173';free='camellia-free-device-v1';primary='camellia-prototype-v3';results=[]
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
