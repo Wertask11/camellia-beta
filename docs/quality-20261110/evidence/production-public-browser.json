@@ -1,0 +1,8 @@
+{
+  "scope": "Unauthenticated Production public entry attempted with fresh Chromium; no auth or personal-record operation",
+  "result": "BLOCKED",
+  "reason": "ERR_CERT_AUTHORITY_INVALID in executor browser trust",
+  "tlsVerificationDisabled": false,
+  "pageDisplayVerified": false,
+  "separateHttpStatusEvidence": "production-final.json"
+}

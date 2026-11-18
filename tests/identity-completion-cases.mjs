@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'vite';
+import {Window} from 'happy-dom';
+const server=await createServer({configFile:false,root:process.cwd(),resolve:{alias:{'@':process.cwd()}},server:{middlewareMode:true,hmr:false}});
+const dom=new Window({url:'https://example.test'});
+try{
+ const {ID_COMPLETION_KEY,stageIdentityCompletion,readIdentityCompletion,finishIdentityCompletion}=await server.ssrLoadModule('/lib/analytics/identity-completion.ts');
+ globalThis.sessionStorage=dom.sessionStorage;
+ const s=dom.sessionStorage,now=Date.now();
+ stageIdentityCompletion('PRIVATE_UID','email',false,s,now);
+ const first=readIdentityCompletion('PRIVATE_UID',s,now);
+ assert.equal(first.name,'camellia_id_complete');assert.equal(first.properties.id_state,'obtained');
+ assert.equal(first.properties.id_operation,'access');
+ assert.deepEqual(readIdentityCompletion('PRIVATE_UID',s,now+1),first,'stable event survives refresh before account persistence');
+ assert.equal(readIdentityCompletion('OTHER_UID',s,now),undefined,'different account cannot consume completion');
+ finishIdentityCompletion('OTHER_UID',first.id,s);assert.ok(s.getItem(ID_COMPLETION_KEY));
+ finishIdentityCompletion('PRIVATE_UID','different-event',s);assert.ok(s.getItem(ID_COMPLETION_KEY));
+ assert.ok(!JSON.stringify(first).includes('PRIVATE_UID'));
+ const altered=JSON.parse(s.getItem(ID_COMPLETION_KEY));altered.event.properties.uid='PRIVATE_UID';altered.event.properties.email='PRIVATE_EMAIL';s.setItem(ID_COMPLETION_KEY,JSON.stringify(altered));
+ assert.deepEqual(readIdentityCompletion('PRIVATE_UID',s,now),first,'only safe projection can enter event ledger');
+ finishIdentityCompletion('PRIVATE_UID',first.id,s);assert.equal(s.getItem(ID_COMPLETION_KEY),null);
+ stageIdentityCompletion('PRIVATE_UID','google',true,s,now);
+ assert.equal(readIdentityCompletion('PRIVATE_UID',s,now).properties.id_state,'legacy_external');
+ assert.equal(readIdentityCompletion('PRIVATE_UID',s,now).properties.id_operation,'link');
+ assert.equal(readIdentityCompletion('PRIVATE_UID',s,now+600000),undefined);assert.equal(s.getItem(ID_COMPLETION_KEY),null);
+ stageIdentityCompletion('PRIVATE_UID','line',false,s,now);assert.equal(readIdentityCompletion('PRIVATE_UID',s,now-1),undefined);
+ const unavailable={setItem(){throw Error('quota');},getItem(){throw Error('blocked');}};
+ assert.doesNotThrow(()=>stageIdentityCompletion('PRIVATE_UID','email',false,unavailable,now));assert.equal(readIdentityCompletion('PRIVATE_UID',unavailable,now),undefined);
+ console.log('PASS verified completion handoff: stable event, same-UID-only consumption, matching acknowledgement, bounded expiry, safe projection and storage failures. No real Auth or analytics transmission.');
+}finally{await server.close();await dom.happyDOM.close();}

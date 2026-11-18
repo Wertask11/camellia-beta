@@ -10,6 +10,7 @@ export function currentAge(birthDate: string | undefined, now = new Date()) {
   return Number(today.slice(0,4)) - Number(birthDate.slice(0,4)) - (today.slice(5) < birthDate.slice(5) ? 1 : 0);
 }
 export function profileComplete(profile: Profile, now = new Date()) {
+  if(profile.emailIdSetup===true&&!profile.birthDate)return profile.womanSelfDeclared===true&&profile.ageRangeSelfDeclared===true&&typeof profile.agreedAt==='string'&&Number.isFinite(Date.parse(profile.agreedAt));
   const age = currentAge(profile.birthDate, now);
   return Boolean(profile.name.trim() && age !== undefined && age >= MIN_AGE && age <= MAX_AGE && profile.womanSelfDeclared===true && typeof profile.agreedAt==='string' && Number.isFinite(Date.parse(profile.agreedAt)));
 }

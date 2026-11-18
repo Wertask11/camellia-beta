@@ -125,6 +125,7 @@ export class PlaceService {
       const previous = await tx.get(ref),
         data = previous.data();
       const now = new Date().toISOString();
+      if(operation==='save'&&(body.expectedUpdatedAt===null&&previous.exists||typeof body.expectedUpdatedAt==='string'&&body.expectedUpdatedAt!==data?.updatedAt))throw new PlaceError(409,'INVALID_TRANSITION');
       if (operation === 'save') {
         let safe;
         try {

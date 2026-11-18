@@ -1,0 +1,65 @@
+[
+  {
+    "width": 375,
+    "sdkVersion": "1.450.0",
+    "noSdkSideChannelRequests": "PASS",
+    "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+    "privacyAndSchema2": "PASS",
+    "diagnosticNoKeysIdsBody": "PASS",
+    "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "sdkVersion": "1.450.0",
+    "noSdkSideChannelRequests": "PASS",
+    "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+    "privacyAndSchema2": "PASS",
+    "diagnosticNoKeysIdsBody": "PASS",
+    "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "sdkVersion": "1.450.0",
+    "noSdkSideChannelRequests": "PASS",
+    "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+    "privacyAndSchema2": "PASS",
+    "diagnosticNoKeysIdsBody": "PASS",
+    "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "sdkVersion": "1.450.0",
+    "noSdkSideChannelRequests": "PASS",
+    "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+    "privacyAndSchema2": "PASS",
+    "diagnosticNoKeysIdsBody": "PASS",
+    "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "sdkVersion": "1.450.0",
+    "noSdkSideChannelRequests": "PASS",
+    "realSdkEnvelopeAndLocalHttpReceipt": "PASS",
+    "privacyAndSchema2": "PASS",
+    "diagnosticNoKeysIdsBody": "PASS",
+    "scope": "Automation signal suppressed only in this fixture to simulate a normal browser. Real ingestion and user opt-out NOT bypassed.",
+    "pageErrors": []
+  },
+  {
+    "case": "email ID and handover",
+    "sdkVersion": "1.450.0",
+    "localHttpReceipts": "PASS",
+    "idStateTransition": "PASS",
+    "callbackAndIdentityPrivacy": "PASS",
+    "scope": "Real SDK and application; synthetic Auth/mail/cloud receipt only."
+  },
+  {
+    "case": "Do Not Track",
+    "zeroHttpSends": "PASS",
+    "readOnlyDiagnostic": "PASS"
+  }
+]
