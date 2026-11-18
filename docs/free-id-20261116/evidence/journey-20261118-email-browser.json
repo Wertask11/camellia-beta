@@ -1,0 +1,52 @@
+[
+  {
+    "width": 375,
+    "emailFlow": "PASS synthetic mail/Auth",
+    "explicitMigration": "PASS",
+    "noBirthdateFabrication": "PASS",
+    "backupUntilCloudProof": "PASS synthetic receipt",
+    "logoutIsolation": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "emailFlow": "PASS synthetic mail/Auth",
+    "explicitMigration": "PASS",
+    "noBirthdateFabrication": "PASS",
+    "backupUntilCloudProof": "PASS synthetic receipt",
+    "logoutIsolation": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "emailFlow": "PASS synthetic mail/Auth",
+    "explicitMigration": "PASS",
+    "noBirthdateFabrication": "PASS",
+    "backupUntilCloudProof": "PASS synthetic receipt",
+    "logoutIsolation": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "emailFlow": "PASS synthetic mail/Auth",
+    "explicitMigration": "PASS",
+    "noBirthdateFabrication": "PASS",
+    "backupUntilCloudProof": "PASS synthetic receipt",
+    "logoutIsolation": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "emailFlow": "PASS synthetic mail/Auth",
+    "explicitMigration": "PASS",
+    "noBirthdateFabrication": "PASS",
+    "backupUntilCloudProof": "PASS synthetic receipt",
+    "logoutIsolation": "PASS",
+    "overflow": false,
+    "pageErrors": []
+  }
+]

@@ -1,5 +1,7 @@
 'use client';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {CIRCLE_PLACE_LINKS_ENABLED} from '@/lib/features';
+import {PLACE_INTENTS} from '@/lib/place/model';
 import { circleRequest } from '@/lib/circle/client';
 import { watchCircleUpdates } from '@/lib/circle/updates';
 import {
@@ -26,8 +28,10 @@ export function CircleScreen({
   onTrack,
   initialCircleId,
   initialJoinedOnly = false,
-  onCircleChange,
+  onCircleChange,onPlace,initialPlaceSlug,
 }: {
+  onPlace?:(slug:string)=>void;
+  initialPlaceSlug?:string;
   initialCircleId?: string;
   initialJoinedOnly?: boolean;
   onCircleChange?: (id?: string) => void;
@@ -37,6 +41,9 @@ export function CircleScreen({
     properties?: Record<string, string | number | boolean>,
   ) => void;
 }) {
+  const [placeSlug,setPlaceSlug]=useState(CIRCLE_PLACE_LINKS_ENABLED?initialPlaceSlug??'':''),[options,setOptions]=useState<{placeLinksEnabled?:boolean;merchant?:boolean;places?:Array<{slug:string;name:string}>}>({});
+  const [preference,setPreference]=useState(''),[eventTitle,setEventTitle]=useState(''),[eventStarts,setEventStarts]=useState(''),[eventEnds,setEventEnds]=useState('');
+  useEffect(()=>{if(!CIRCLE_PLACE_LINKS_ENABLED)return;let active=true;void circleRequest('?postingOptions=1').then(data=>{if(active){setOptions(data);if(initialPlaceSlug&&!data.places?.some(p=>p.slug===initialPlaceSlug))setPlaceSlug('');}}).catch(()=>{});return()=>{active=false;};},[initialPlaceSlug]);
   const [circles, setCircles] = useState<Circle[]>([]),
     [selected, setSelected] = useState<Circle>(),
     [posts, setPosts] = useState<CirclePost[]>([]),
@@ -340,9 +347,11 @@ export function CircleScreen({
       if (!selected || !input.trim()) return;
       await mutate(post ? 'comment' : 'post', {
         text: input.trim(),
+        ...(!post&&CIRCLE_PLACE_LINKS_ENABLED&&options.placeLinksEnabled&&placeSlug?{placeSlug}:{}),
+        ...(!post&&options.merchant?{event:{title:eventTitle,startsAt:new Date(eventStarts).toISOString(),endsAt:new Date(eventEnds).toISOString()}}:{}),
         ...(post ? { postId: post.id } : {}),
       });
-      setInput('');
+      setInput('');setPlaceSlug('');
       onTrack(post ? 'circle_comment_create' : 'circle_post_create', {
         circle_id: selected.id,
       });
@@ -362,7 +371,9 @@ export function CircleScreen({
           })}
         </time>
       </header>
+      {item.authorKind==='place_event'&&<p className="eyebrow">店舗の体験・イベント</p>}{item.event&&<p>{item.event.title} · {new Date(item.event.startsAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})}</p>}
       <p>{item.text}</p>
+      {item.relatedPlace&&onPlace&&<button className="secondary-button" onClick={()=>{onTrack('circle_place_open',{circle_id:item.circleId,place_id:item.relatedPlace!.slug});onPlace(item.relatedPlace!.slug);}}>関連Place：{item.relatedPlace.name} →</button>}{item.placeUnavailable&&<p className="meta">関連Placeは今は公開されていません。</p>}
       <ReceivedReactions item={item} />
       <div className="circle-controls">
         {REACTIONS.map((reaction) => (
@@ -896,7 +907,9 @@ export function CircleScreen({
             </>
           ) : (
             <>
-              {posts.map((item) => itemView(item, 'post'))}
+              {CIRCLE_PLACE_LINKS_ENABLED&&<section aria-label="希望に合う投稿"><h2>希望に合うPlace付きの投稿</h2><label>どんな時間を過ごしたい？<select aria-label="Circleの希望" value={preference} onChange={e=>setPreference(e.target.value)}><option value="">自分で選ぶ</option>{Object.entries(PLACE_INTENTS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><p className="meta">選んだ希望と、公開されたPlaceの特徴だけを使います。Checkや投稿本文の自動分析はしません。</p>{preference&&posts.filter(p=>p.relatedPlace?.recommendedFor.includes(preference)).map(item=>itemView(item,'post'))}</section>}
+              <h2>新着投稿</h2>{posts.filter(p=>p.authorKind!=='place_event').map((item) => itemView(item, 'post'))}
+              {posts.some(p=>p.authorKind==='place_event')&&<section aria-label="店舗の体験・イベント"><h2>店舗の体験・イベント</h2>{posts.filter(p=>p.authorKind==='place_event').map(item=>itemView(item,'post'))}</section>}
               {!posts.length && !error && !busy && (
                 <p className="empty">
                   まだ投稿はありません。短い一言からでも。
@@ -914,6 +927,8 @@ export function CircleScreen({
             </button>
           )}
           <section className="circle-composer">
+            {!post&&!edit&&CIRCLE_PLACE_LINKS_ENABLED&&<><label>関連Place（手動で選択）<select aria-label="関連Place" value={placeSlug} onChange={e=>setPlaceSlug(e.target.value)} disabled={!options.placeLinksEnabled}><option value="">紐づけない</option>{options.places?.map(p=><option key={p.slug} value={p.slug}>{p.name}</option>)}</select></label><p className="meta">選んだPlaceと、この欄に自分で書いた文章だけを投稿します。Check・Memory・振り返りの原本は共有しません。</p>{options.merchant&&<section><p>店舗の投稿は、自店に紐づくイベント・体験に限ります。</p><label>イベント・体験の名前<input maxLength={80} value={eventTitle} onChange={e=>setEventTitle(e.target.value)}/></label><label>開始日時<input type="datetime-local" value={eventStarts} onChange={e=>setEventStarts(e.target.value)}/></label><label>終了日時<input type="datetime-local" value={eventEnds} onChange={e=>setEventEnds(e.target.value)}/></label></section>}</>}
+
             <label>
               {edit ? '文章を編集' : post ? 'コメントを書く' : '一言を投稿する'}
               <textarea
@@ -930,7 +945,7 @@ export function CircleScreen({
             </p>
             <button
               className="primary"
-              disabled={busy || feedMissing || !input.trim() || Array.from(input).length > 500}
+              disabled={busy || feedMissing || !input.trim() || Boolean(!post&&!edit&&options.merchant&&(!placeSlug||!eventTitle.trim()||!eventStarts||!eventEnds||Date.parse(eventEnds)<=Date.parse(eventStarts))) || Array.from(input).length > 500}
               onClick={() =>
                 edit
                   ? void run(async () => {

@@ -1,0 +1,30 @@
+{
+  "source": "305713796a68ba44d8a5c354673ce25271aadd26",
+  "preview": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/",
+  "dateJST": "2026-11-17",
+  "evidenceType": "owner-reported actual operation; not independently inspected network receipts",
+  "results": [
+    {
+      "scenario": "PC email confirmation, explicit Free record handover and cloud confirmation",
+      "result": "PASS",
+      "answer": "保存を確認しましたまで進めた"
+    },
+    {
+      "scenario": "Same email ID on Android Chrome restores the PC Check",
+      "result": "PASS",
+      "answer": "PCで保存したCheckが表示された"
+    },
+    {
+      "scenario": "PC logged-out YURA then Lactone, no login request and progressive replies",
+      "result": "PASS",
+      "answer": "ログインなしで両方とも返答が表示された"
+    }
+  ],
+  "notProven": [
+    "Provider token usage or invoice reconciliation",
+    "All 30 real sends or JST next-day on live service",
+    "Actual account-close/shared Auth deletion",
+    "Latest Google real login",
+    "PostHog receipt of the new source"
+  ]
+}

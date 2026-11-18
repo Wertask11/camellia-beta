@@ -1,0 +1,33 @@
+{
+  "lint": {
+    "command": "npm run lint",
+    "result": "PASS",
+    "evidence": "exit 0"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "result": "PASS",
+    "evidence": "exit 0"
+  },
+  "unit": {
+    "command": "npm test",
+    "result": "PASS",
+    "evidence": "54/54 suites passed\n"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "PASS",
+    "evidence": "Build complete"
+  },
+  "firestore": {
+    "command": "npm run test:firestore",
+    "result": "PASS",
+    "evidence": "Script exited successfully (code 0)"
+  },
+  "referralRevocation": {
+    "command": "local emulators:exec node tests/quality-referral-firestore.mjs",
+    "result": "PASS",
+    "evidence": "Script exited successfully (code 0)"
+  },
+  "scope": "Local automated runs. Auth/HTTP/provider are synthetic unless owner evidence explicitly says otherwise."
+}

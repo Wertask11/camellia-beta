@@ -1,5 +1,7 @@
+import {validatePlaceDetails,type PlaceDetails} from './details.js';
 export const PLACE_CATEGORIES = [
   'カフェ',
+  '飲食店',
   '本屋',
   '美容',
   'ヘッドスパ',
@@ -20,7 +22,7 @@ export const PLACE_INTENTS = {
   together: '誰かと過ごす',
 } as const;
 export type PlaceStatus = 'draft' | 'review' | 'published' | 'suspended';
-export type Place = {
+export type Place = PlaceDetails & {
   saved?: boolean;
   id: string;
   slug: string;
@@ -107,6 +109,8 @@ export function validatePlace(value: Record<string, unknown>) {
   if (recommendedFor.some((key) => !Object.hasOwn(PLACE_INTENTS, key)))
     throw new Error('INVALID_PLACE');
   return {
+    ...validatePlaceDetails(value),
+    contactUrl:safePlaceUrl(value.contactUrl),
     slug,
     name: text('name', 100, true),
     category,

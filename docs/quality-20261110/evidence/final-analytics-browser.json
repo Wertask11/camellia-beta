@@ -1,0 +1,62 @@
+{
+  "scope": "LOCAL real React UI/store/PostHog SDK. All external transport intercepted. NO real cloud login or PostHog ingestion/UI.",
+  "cases": [
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 375,
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "503→reload→online→200",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 390,
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 412,
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 768,
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "core Today UI + real SDK + intercepted HTTP",
+      "width": 1280,
+      "overflow": false,
+      "pass": true
+    },
+    {
+      "case": "DNT",
+      "pass": true
+    },
+    {
+      "case": "tracker_block",
+      "pass": true
+    },
+    {
+      "case": "corrupt_storage",
+      "pass": true
+    },
+    {
+      "case": "quota_storage",
+      "pass": true
+    },
+    {
+      "case": "other engines",
+      "webkitInstalled": false,
+      "firefoxInstalled": false,
+      "realSamsungInternet": "not available; prior baseline used Samsung UA on Chromium only"
+    }
+  ]
+}

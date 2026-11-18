@@ -1,0 +1,48 @@
+[
+  {
+    "label": "production",
+    "status": 200,
+    "contentType": "text/html; charset=utf-8",
+    "bytes": 11918,
+    "sha256": "edb8f07a50472272b8340ad8c5273a5f0ba1bed7a77f4fb2a973716af983a19d"
+  },
+  {
+    "label": "production-chat-status",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "bytes": 103,
+    "sha256": "1649e61b8067a15b65eb3a32391e4d86e8924fa1dd2f82d15114dc1ecc9d8a4d",
+    "publicStatus": {
+      "enabled": true,
+      "dataPolicy": "unknown",
+      "serverAuthConfiguration": "present",
+      "rateLimitMode": "firestore"
+    }
+  },
+  {
+    "label": "production-membership",
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "bytes": 79,
+    "sha256": "4c15da9c67dd11f286220832555b7a031982f5a80919c7a8b21d88d05bc70f35",
+    "publicStatus": {
+      "plan": "free",
+      "trial": false,
+      "paid": false,
+      "checkoutReady": false,
+      "priceYen": 500
+    }
+  },
+  {
+    "label": "fixed-preview",
+    "unverified": true,
+    "errorType": "URLError",
+    "reason": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+  },
+  {
+    "label": "public-action-photo",
+    "unverified": true,
+    "errorType": "URLError",
+    "reason": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+  }
+]

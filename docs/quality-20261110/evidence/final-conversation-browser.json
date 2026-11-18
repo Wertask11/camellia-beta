@@ -1,0 +1,52 @@
+[
+  {
+    "width": 375,
+    "Library_search_pagination_legacy": "PASS",
+    "YURA3_Lactone3_reverse": "PASS",
+    "selector_keyboard_focus_escape_inert": "PASS",
+    "reload_reopen_preference_attribution": "PASS",
+    "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+    "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+    "pageerrors": []
+  },
+  {
+    "width": 390,
+    "Library_search_pagination_legacy": "PASS",
+    "YURA3_Lactone3_reverse": "PASS",
+    "selector_keyboard_focus_escape_inert": "PASS",
+    "reload_reopen_preference_attribution": "PASS",
+    "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+    "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+    "pageerrors": []
+  },
+  {
+    "width": 412,
+    "Library_search_pagination_legacy": "PASS",
+    "YURA3_Lactone3_reverse": "PASS",
+    "selector_keyboard_focus_escape_inert": "PASS",
+    "reload_reopen_preference_attribution": "PASS",
+    "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+    "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+    "pageerrors": []
+  },
+  {
+    "width": 768,
+    "Library_search_pagination_legacy": "PASS",
+    "YURA3_Lactone3_reverse": "PASS",
+    "selector_keyboard_focus_escape_inert": "PASS",
+    "reload_reopen_preference_attribution": "PASS",
+    "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+    "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+    "pageerrors": []
+  },
+  {
+    "width": 1280,
+    "Library_search_pagination_legacy": "PASS",
+    "YURA3_Lactone3_reverse": "PASS",
+    "selector_keyboard_focus_escape_inert": "PASS",
+    "reload_reopen_preference_attribution": "PASS",
+    "reduced_viewport_focus_composer": "PASS (simulation, not a physical OS keyboard)",
+    "scope": "SYNTHETIC LOCAL COMPONENTS; NOT live Gemini/OAuth/Firestore",
+    "pageerrors": []
+  }
+]

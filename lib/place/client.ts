@@ -5,6 +5,7 @@ export async function placeRequest(
   body?: Record<string, unknown>,
   operator = false,
 ) {
+  const requestUid=schoolParkAuth.currentUser?.uid;
   const headers: Record<string, string> = {};
   if (body || operator || schoolParkAuth.currentUser) {
     const user = schoolParkAuth.currentUser;
@@ -25,8 +26,12 @@ export async function placeRequest(
       place: Place;
       nextCursor?: string;
       operator?: boolean;
+      canPublish?:boolean;
+      counts?:Record<string,number>;
+      visitConfirmation?:string;
       error?: string;
     };
+    if(headers.Authorization&&schoolParkAuth.currentUser?.uid!==requestUid)throw new Error('利用者が切り替わりました。もう一度開いてください。');
     if (!response.ok)
       throw new Error(
         data.error === 'NOT_FOUND'

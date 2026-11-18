@@ -44,6 +44,10 @@ export const REPORT_REASONS = [
 ] as const;
 export const GUIDELINES_VERSION = '2026-10-16';
 export type CirclePost = {
+  authorKind?:'place_event';
+  event?:{title:string;startsAt:string;endsAt:string};
+  relatedPlace?:{slug:string;name:string;recommendedFor:string[]};
+  placeUnavailable?:boolean;
   id: string;
   circleId: string;
   authorId: string;

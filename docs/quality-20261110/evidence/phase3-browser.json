@@ -1,0 +1,52 @@
+[
+  {
+    "width": 375,
+    "privateReflection": "PASS",
+    "explicitMemory": false,
+    "backupBeforeV4": "PASS",
+    "reload": "PASS",
+    "manualCirclePostExcludesPrivateOriginal": "PASS",
+    "circleToPlace": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "privateReflection": "PASS",
+    "explicitMemory": true,
+    "backupBeforeV4": "PASS",
+    "reload": "PASS",
+    "manualCirclePostExcludesPrivateOriginal": "PASS",
+    "circleToPlace": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "privateReflection": "PASS",
+    "explicitMemory": false,
+    "backupBeforeV4": "PASS",
+    "reload": "PASS",
+    "manualCirclePostExcludesPrivateOriginal": "PASS",
+    "circleToPlace": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "privateReflection": "PASS",
+    "explicitMemory": false,
+    "backupBeforeV4": "PASS",
+    "reload": "PASS",
+    "manualCirclePostExcludesPrivateOriginal": "PASS",
+    "circleToPlace": "PASS",
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "privateReflection": "PASS",
+    "explicitMemory": true,
+    "backupBeforeV4": "PASS",
+    "reload": "PASS",
+    "manualCirclePostExcludesPrivateOriginal": "PASS",
+    "circleToPlace": "PASS",
+    "pageErrors": []
+  }
+]

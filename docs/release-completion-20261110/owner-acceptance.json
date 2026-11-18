@@ -1,0 +1,69 @@
+{
+  "recordedDateJst": "2026-11-16",
+  "testExecutionDate": "not provided separately",
+  "source": "owner replies in this conversation; no account identifiers or raw records collected",
+  "preview": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/",
+  "previewBranchHeadAtRequest": "0b85594ba2370fade15d019b9881c536812c68c1",
+  "deviceBuildIndependentlyInspected": false,
+  "devices": [
+    "Android Chrome",
+    "PC browser (unspecified)"
+  ],
+  "account": "dedicated disposable test account; same account on both devices",
+  "authMethod": "LINE",
+  "checks": [
+    {
+      "name": "Android to PC private Place reflection sync",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "PC to Android sync",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "Android logout/login persistence",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "same-owner JSON export/restore accepted",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "individual reflection deletion not resurrected by older export",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "personal record reset from Android succeeds",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "old PC tab refresh does not resurrect deleted records",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "LINE real login",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "YURA response progressively displayed",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "switch to Lactone in same thread and response progressively displayed",
+      "result": "PASS_OWNER_REPORTED"
+    },
+    {
+      "name": "existing Circle two distinct accounts: post, comment, reaction, reflection on PC, report, block, unblock",
+      "result": "PASS_OWNER_REPORTED"
+    }
+  ],
+  "limits": [
+    "not full Firebase Auth/Camellia ID account closure",
+    "not simultaneous conflicting edits",
+    "no inspection of device token, export contents or Firestore private documents",
+    "not iOS/Samsung/screen reader/real OS keyboard acceptance",
+    "conversation UI success is not a token/invoice or backend provider receipt inspection",
+    "new Circle to Place flag remains OFF; manual live linking not accepted",
+    "Google, moderator processing on this head, live Gemini usage/invoice still unverified"
+  ]
+}

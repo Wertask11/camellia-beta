@@ -9,3 +9,16 @@ export function membershipFromRecord(value:Record<string,unknown>|undefined,now=
  const trial=value.source==='operator_trial'&&value.status==='trialing';
  return paid||trial?{...base,plan:'plus',paid,trial,expiresAt:value.expiresAt}:base;
 }
+
+/** Parse only the authenticated server response; neither browser flags nor local records grant Plus. */
+export function membershipFromResponse(value:unknown,now=Date.now()):Membership{
+ if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('INVALID_MEMBERSHIP');
+ const v=value as Record<string,unknown>;
+ if(v.priceYen!==PLUS_PRICE_YEN||!['free','plus'].includes(String(v.plan))||typeof v.paid!=='boolean'||typeof v.trial!=='boolean')throw new Error('INVALID_MEMBERSHIP');
+ if(v.plan==='free'){
+  if(v.paid||v.trial)throw new Error('INVALID_MEMBERSHIP');
+  return {plan:'free',paid:false,trial:false,checkoutReady:false,sharingReady:false,priceYen:500};
+ }
+ if(v.paid===v.trial||typeof v.expiresAt!=='string'||!Number.isFinite(Date.parse(v.expiresAt))||Date.parse(v.expiresAt)<=now)throw new Error('INVALID_MEMBERSHIP');
+ return {plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:false,sharingReady:false,priceYen:500};
+}
