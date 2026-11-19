@@ -3,7 +3,7 @@ import {consumeChatStream} from './stream';
 import {isConversationModel} from './models';
 import {safeConversationTiming,safeConversationTimeline,type ConversationTiming} from './performance';
 import type {ConversationModelId} from '@/types';
-export type ChatError='rate_limited'|'timeout'|'network'|'provider_error'|'disabled'|'invalid_request'|'safety_block'|'invalid_response';
+export type ChatError='daily_limited'|'rate_limited'|'timeout'|'network'|'provider_error'|'disabled'|'invalid_request'|'safety_block'|'invalid_response';
 export type ChatResponse={reply:string;provider:'gemini'|'fallback';responseTimeMs?:number;safety?:boolean;actionId?:string;modelId?:ConversationModelId;timing?:ConversationTiming;transport?:'sse'|'json';timeline?:Record<string,number>};
 export async function requestGemini(message:string,history:Array<{role:'user'|'assistant';text:string}>,modelId:ConversationModelId,options:{signal?:AbortSignal;onText?:(text:string)=>void;onRequest?:()=>void;batch?:boolean;free?:boolean}={}):Promise<ChatResponse>{
  const user=schoolParkAuth.currentUser;

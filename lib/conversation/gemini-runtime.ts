@@ -18,6 +18,7 @@ import {
 import { EligibilityServiceError, requireEligibleUser } from '../server/eligibility.js';
 import { CONVERSATION_RESPONSE_SCHEMA } from './action-bridge.js';
 import { adminConfigured, serverAdmin } from '../server/admin.js';
+import {takeMemberFreeDaily} from '../membership/ai-basic-limit.js';
 import { createSharedRateLimiter } from '../server/shared-limit.js';
 import {loadConversationContext} from './context-loader.js';
 import {collectReplyStream} from './stream.js';
@@ -103,7 +104,7 @@ const handler = createGeminiChatHandler({
   claimRequest:(uid,requestId)=>claimAiRequest(serverAdmin().db,uid,requestId),
   getTodayMood:async()=>undefined,
   loadContext:uid=>loadConversationContext(uid,serverAdmin().db as unknown as Parameters<typeof loadConversationContext>[1]),
-  ...(adminConfigured() ? {limiter:{take:(uid:string)=>createSharedRateLimiter(serverAdmin().db).take(uid)}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
+  ...(adminConfigured() ? {limiter:{take:async(uid:string)=>{const db=serverAdmin().db;return await createSharedRateLimiter(db).take(uid)&&await takeMemberFreeDaily(db,uid,Date.now(),true);}}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
   generate:(contents,prompt,controls)=>generate(contents,prompt,controls,false),
   generateStream:(contents,prompt,controls)=>generate(contents,prompt,controls,true),
 });

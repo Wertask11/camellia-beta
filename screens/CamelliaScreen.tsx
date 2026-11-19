@@ -317,6 +317,7 @@ export function CamelliaScreen({
   const mascotExpression:CharacterExpression=moment?.expression??(thinking?'think':'listen');
 
   const errorCopy: Record<ChatError, string> = {
+    daily_limited: '今日は無料の会話の上限（30回）に達しました。日本時間の午前0時から、また話せます。記録や他の機能はそのまま使えます。',
     rate_limited: '今は少し混み合っているみたい。時間をおいて、もう一度試してみてください。',
     timeout: '返答に少し時間がかかっています。時間をおいて、もう一度試してみてください。',
     network: 'うまくつながらなかったみたい。通信を確認して、もう一度試してみてください。',
