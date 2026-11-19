@@ -22,13 +22,13 @@ export async function prepareTrialGeneration(options: {
     config?.approved !== true ||
     config.trialGenerationApproved !== true ||
     !Number.isSafeInteger(config.maxTrialInputTokens) ||
-    config.maxTrialInputTokens <= 0
+    config.maxTrialInputTokens <= 0||!Number.isSafeInteger(config.trialInputTokenLimit)||config.trialInputTokenLimit<=0||!Number.isSafeInteger(config.trialOutputThinkingTokenLimit)||config.trialOutputThinkingTokenLimit<=0
   )
     throw new Error('TRIAL_AI_NOT_CONFIGURED');
   const models = [...new Set(options.models.filter(Boolean))];
   if (!models.length || models.length > 2)
     throw new Error('TRIAL_AI_NOT_CONFIGURED');
-  let upperCost = 0;
+  let upperCost = 0,upperInput=0,upperOutputThinking=0;
   for (const model of models) {
     if (!Number.isFinite(Date.parse(config.pricing?.[model]?.validUntil)) || Date.parse(config.pricing[model].validUntil) <= Date.now()) throw new Error('TRIAL_AI_NOT_CONFIGURED');
     const input = await options.countInput(model);
@@ -46,13 +46,14 @@ export async function prepareTrialGeneration(options: {
     );
     if (estimate.status !== 'estimate')
       throw new Error('TRIAL_AI_NOT_CONFIGURED');
-    upperCost += estimate.amountYen;
+    upperCost += estimate.amountYen;upperInput+=input;upperOutputThinking+=2*cap;
   }
   const service = new ReferralService(options.db, options.auth),
     reserve = await service.reserveTrialAi(
       options.uid,
       options.requestId,
       Math.max(1, Math.ceil(upperCost)),
+      {inputTokens:upperInput,outputThinkingTokens:upperOutputThinking,inputLimit:config.trialInputTokenLimit,outputThinkingLimit:config.trialOutputThinkingTokenLimit},
     );
   if (reserve.reused)
     throw Object.assign(new Error('DUPLICATE_REQUEST'), {
@@ -60,7 +61,7 @@ export async function prepareTrialGeneration(options: {
     });
   let dispatched = false;
   const estimates: number[] = [];
-  let complete = true;
+  let complete = true;let inputTokens=0,outputThinkingTokens=0;
   return {
     async beforeDispatch() {
       await service.dispatchTrialAi(options.uid, options.requestId);
@@ -71,7 +72,7 @@ export async function prepareTrialGeneration(options: {
         attempt.usage,
         config.pricing?.[attempt.model],
       );
-      if (estimate.status === 'estimate') estimates.push(estimate.amountYen);
+      if (estimate.status === 'estimate'&&attempt.usage.input!==null&&attempt.usage.output!==null&&attempt.usage.thinking!==null){estimates.push(estimate.amountYen);inputTokens+=attempt.usage.input;outputThinkingTokens+=attempt.usage.output+attempt.usage.thinking;}
       else complete = false;
     },
     async finish() {
@@ -82,6 +83,7 @@ export async function prepareTrialGeneration(options: {
           options.uid,
           options.requestId,
           estimates.reduce((a, b) => a + b, 0),
+          {inputTokens,outputThinkingTokens},
         );
       return service.holdTrialAi(options.uid, options.requestId);
     },
