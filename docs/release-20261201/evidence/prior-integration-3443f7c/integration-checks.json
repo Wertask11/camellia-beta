@@ -1,0 +1,36 @@
+{
+  "atUTC": "2026-11-19T19:48:45.051617+00:00",
+  "productSource": "3443f7caa7c0094cbeb35aa2a3c2534bf8bf415b",
+  "fixtureChange": "UX mock export repaired after the product source commit; no application source changed",
+  "checks": {
+    "lint": {
+      "logSha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c",
+      "bytes": 246,
+      "evidence": "passed (command exit 0)"
+    },
+    "types": {
+      "logSha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369",
+      "bytes": 257,
+      "evidence": "passed (command exit 0)"
+    },
+    "unit": {
+      "logSha256": "c0d7c274eba987d4343ab1d6c16ca1cca1141b6d2d797deddff2e5fa693ea587",
+      "bytes": 43781,
+      "evidence": "75/75 suites passed"
+    },
+    "firestore": {
+      "logSha256": "3c3fcb29702b3bce1936673c51acede30524b90f537c03511d70b8226c7cce58",
+      "bytes": 28285,
+      "evidence": "Script exited successfully (code 0)"
+    },
+    "build": {
+      "logSha256": "071e171b965b20226f5a6f41f8bcf32c87c084882d5cc718c40b2885cf0f257b",
+      "bytes": 2821,
+      "evidence": "passed (command exit 0)"
+    }
+  },
+  "unitSuites": 75,
+  "firestoreScripts": 23,
+  "rules": "saved rules fixture on demo-camellia only; no live Rules deploy",
+  "productionMutations": false
+}

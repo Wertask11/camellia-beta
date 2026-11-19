@@ -1,0 +1,46 @@
+{
+  "kind": "Static file sizes, not initial-load timing or mobile-network performance",
+  "largestJs": [
+    {
+      "path": "dist/client/_next/static/chunks/page-B1RwdfoZ.js",
+      "bytes": 1393494,
+      "gzipBytes": 426015
+    },
+    {
+      "path": "dist/client/_next/static/chunks/index-DExPdPMU.js",
+      "bytes": 192606,
+      "gzipBytes": 55684
+    },
+    {
+      "path": "dist/client/_next/static/chunks/framework-CZYbymlE.js",
+      "bytes": 190033,
+      "gzipBytes": 58892
+    },
+    {
+      "path": "dist/client/_next/static/chunks/app-route-prefetch-policy-NNdBYsHz.js",
+      "bytes": 937,
+      "gzipBytes": 484
+    },
+    {
+      "path": "dist/client/_next/static/chunks/streamed-icons-8rDlDlHQ.js",
+      "bytes": 772,
+      "gzipBytes": 487
+    },
+    {
+      "path": "dist/client/_next/static/chunks/rolldown-runtime-XKyaHtl9.js",
+      "bytes": 726,
+      "gzipBytes": 431
+    },
+    {
+      "path": "dist/client/camellia-push-sw.js",
+      "bytes": 709,
+      "gzipBytes": 498
+    },
+    {
+      "path": "dist/client/_next/static/chunks/layout-segment-context-Chd8lG-h.js",
+      "bytes": 494,
+      "gzipBytes": 341
+    }
+  ],
+  "fileCount": 10
+}

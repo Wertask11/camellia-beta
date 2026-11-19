@@ -1,0 +1,57 @@
+{
+  "atUTC": "2026-11-19T19:09:26.857192+00:00",
+  "kind": "Certificate-verified read-only HTTP to Production. No login, data writes, generation, notification or payment.",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 13300
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "status": 200,
+      "bytes": 560
+    },
+    {
+      "path": "/api/camellia/chat",
+      "status": 200,
+      "bytes": 103,
+      "publicStatus": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "path": "/api/camellia/circle?status=1",
+      "status": 200,
+      "bytes": 76,
+      "publicStatus": {
+        "enabled": true,
+        "configurationStatus": "ready",
+        "storageStatus": "initialized"
+      }
+    },
+    {
+      "path": "/api/camellia/place?status=1",
+      "status": 200,
+      "bytes": 17,
+      "publicStatus": {
+        "enabled": false
+      }
+    },
+    {
+      "path": "/api/camellia/membership",
+      "status": 200,
+      "bytes": 79,
+      "publicStatus": {
+        "plan": "free",
+        "trial": false,
+        "paid": false,
+        "checkoutReady": false,
+        "priceYen": 500
+      }
+    }
+  ]
+}

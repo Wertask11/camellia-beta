@@ -1,0 +1,31 @@
+{
+  "atUTC": "2026-11-19T20:15:30.377247+00:00",
+  "productSource": "145aa5db8e631b4c7d9fe37a77730cd38b4c3a47",
+  "checks": {
+    "lint": {
+      "logSha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c",
+      "bytes": 246
+    },
+    "types": {
+      "logSha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369",
+      "bytes": 257
+    },
+    "unit": {
+      "logSha256": "9db7781c4694fcb67d57377da174a659918c93b603289fa9dade02fe439ef768",
+      "bytes": 44024
+    },
+    "firestore": {
+      "logSha256": "7d97373fa9384cfc722af684817bf8b69362ff765f4ce880a2ab4ecb8ed4c24b",
+      "bytes": 28545
+    },
+    "build": {
+      "logSha256": "43e7c39cd26f5529daaed50d7e0586bc90977dbc7688c08d30cb7a84a06e0128",
+      "bytes": 2821
+    }
+  },
+  "unitSuites": 76,
+  "firestoreScripts": 23,
+  "packageLockSha256": "5dadd675bc86af886de1a48d4a7f416727c384a3964fe39d11fd741138f5ebef",
+  "rules": "saved Rules fixture; no live Rules/index deploy",
+  "productionMutations": false
+}
