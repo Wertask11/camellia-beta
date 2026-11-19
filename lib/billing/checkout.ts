@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type Stripe from 'stripe';
 import type { Firestore } from 'firebase-admin/firestore';
+import{approvedRetention}from'../server/retention-policy.js';
 import { SERVER_ROOT } from '../server/admin.js';
 import { billingCustomerPath } from './webhook.js';
 import { stripePriceValid, type StripeMode } from './stripe.js';
@@ -28,6 +29,7 @@ export function stripeHostedUrl(value: unknown, kind: 'checkout' | 'portal') {
 export class StripeCheckoutService {
  constructor(private db: Firestore, private stripe: Stripe, private mode: StripeMode, private now = Date.now) {}
  async configuration() { return checkoutConfiguration((await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data(), this.mode); }
+ async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data();return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_checkouts','billing_events','billing_payment_receipts','billing_analytics_outbox']);}
  async status(uid: string, identityCreatedAt: string) {
   const cfg = await this.configuration();
   if (!cfg) return { ready: false, priceYen: 500, customer: false };
@@ -35,7 +37,7 @@ export class StripeCheckoutService {
   const customer = owner.data();
   if (customer && customer.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
   const price = await this.stripe.prices.retrieve(cfg.priceId);
-  return { ready: cfg.checkoutEnabled && stripePriceValid(price, cfg.priceId, this.mode), priceYen: 500,
+  return { ready: await this.intakeReady(cfg) && stripePriceValid(price, cfg.priceId, this.mode), priceYen: 500,
    customer: typeof customer?.customerId === 'string', termsVersion: cfg.termsVersion, disclosureVersion: cfg.disclosureVersion, termsUrl: `${cfg.origin}/terms.html`, disclosureUrl: `${cfg.origin}/billing.html`, ...(pending.data()?.identityCreatedAt === identityCreatedAt && pending.data()!.expiresAt > this.now() ? { pendingRequestId: pending.data()!.requestId } : {}) };
  }
  private async customer(uid: string, identityCreatedAt: string, analyticsProfileId?: string) {
@@ -61,7 +63,7 @@ export class StripeCheckoutService {
   const v = input as Record<string, unknown>;
   if (Object.keys(v).some(k => !['requestId','termsVersion','disclosureVersion','consent','analyticsProfileId'].includes(k)) || !uuid(v.requestId) || v.consent !== true || v.analyticsProfileId !== undefined && !uuid(v.analyticsProfileId)) throw new CheckoutError(400, 'INVALID_CHECKOUT');
   const cfg = await this.configuration();
-  if (!cfg?.checkoutEnabled) throw new CheckoutError(503, 'BILLING_NOT_READY');
+  if (!cfg||!await this.intakeReady(cfg)) throw new CheckoutError(503, 'BILLING_NOT_READY');
   if (v.termsVersion !== cfg.termsVersion || v.disclosureVersion !== cfg.disclosureVersion) throw new CheckoutError(409, 'BILLING_TERMS_CHANGED');
   // The overlap/upgrade policy is not decided. Preserve any valid paid/trial right and never charge twice.
   if ((await memberStatus(this.db, uid, this.now())).plan === 'plus') throw new CheckoutError(409, 'EXISTING_PLUS');

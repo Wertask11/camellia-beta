@@ -15,8 +15,12 @@ try{
  const {createSharedRateLimiter}=await server.ssrLoadModule('/lib/server/shared-limit.ts');
  const {memberStatus}=await server.ssrLoadModule('/lib/membership/server.ts');
  const owner='partner-local-owner',other='partner-local-other',now=Date.now();
+ process.env.CAMELLIA_PARTNER_SHARING_ENABLED='true';
+ await db.doc(`${root}/config/retention`).set({collections:{partner_shares:{approved:true,approvedBy:'LOCAL FIXTURE',approvedAt:new Date().toISOString(),retentionMs:86400000}}});
  const payload={kind:'feeling',feelingId:'listen',recipient:'partner',timing:'today',days:1,consent:true};
  await db.doc(`camellia_users/${owner}`).set({agreedAt:new Date(now).toISOString()});
+ await db.doc(`${root}/config/partner_sharing`).set({version:'partner_v1',approved:true,enabled:true,privacyReviewed:true,entitlementsReviewed:true,approvedBy:'LOCAL FIXTURE',approvedAt:new Date().toISOString()});
+ const {partnerSharingReady}=await server.ssrLoadModule('/lib/partner/config.ts');assert.equal(await partnerSharingReady(db),true,'separate approved capability is ready in this fixture only');
  const service=new PartnerShareService(db,()=>now);
  await assert.rejects(service.create(owner,payload),{code:'PLUS_REQUIRED'});
  for(const context of [env.unauthenticatedContext(),env.authenticatedContext(owner),env.authenticatedContext(owner,{camelliaModerator:true})]){
@@ -26,7 +30,7 @@ try{
   await assertFails(setDoc(doc(context.firestore(),`${root}/partner_shares/forged`),{content:{title:'forged'}}));
  }
  await db.doc(`camellia_users/${owner}/admin/subscription`).set({plan:'plus',source:'verified_payment',status:'active',paymentReceipt:'LOCAL-SYNTHETIC-NOT-A-PAYMENT',currency:'JPY',amount:500,expiresAt:new Date(now+3600000).toISOString()});
- assert.equal((await memberStatus(db,owner,now)).sharingReady,false,'Even a paid fixture cannot enable live sharing in this release');
+ assert.equal((await memberStatus(db,owner,now)).sharingReady,false,'Entitlement lookup alone cannot enable the client capability');
  const created=await service.create(owner,payload);assert.equal(created.token.length,43);assert.equal(created.id,shareHash(created.token));
  const stored=(await db.doc(`${root}/partner_shares/${created.id}`).get()).data();assert.ok(!JSON.stringify(stored).includes(created.token),'Only a token hash is stored');
  const publicValue=await service.read(created.token);assert.equal(publicValue.title,'今日は話を聞いてほしい');assert.ok(!JSON.stringify(publicValue).includes(owner));assert.ok(!JSON.stringify(publicValue).includes('paymentReceipt'));
@@ -39,4 +43,4 @@ try{
  assert.equal(await limiter.take('local-partner-reader'),true);assert.equal(await limiter.take('local-partner-reader'),false);
  assert.equal((await db.doc(`${root}/rate_windows/global-${Math.floor(1793700000000/300000)}`).get()).exists,false,'Sharing never consumes Gemini quota');
  console.log('PASS local sharing-service boundary: protected entitlements/quota, Free denial, hash-only token, public projection, owner-only revoke + content scrub, expiry, delete/recreate invalidation, separate rate limits. API issuance remains disabled; no real payment.');
-}finally{await env.cleanup();await server.close();await db.terminate();await deleteApp(app);}
+}finally{delete process.env.CAMELLIA_PARTNER_SHARING_ENABLED;await env.cleanup();await server.close();await db.terminate();await deleteApp(app);}

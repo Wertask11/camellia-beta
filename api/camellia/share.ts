@@ -15,7 +15,7 @@ export default async function share(req:Req,res:Res){
  if(!adminConfigured())return res.status(503).json({error:'SHARE_UNAVAILABLE'});
  try{
   const deps=serverAdmin(),service=new PartnerShareService(deps.db);
-  if(['create','read'].includes(String(body.operation))&&!await partnerSharingReady(deps.db))return res.status(body.operation==='read'?404:503).json({error:body.operation==='read'?'SHARE_NOT_FOUND':'BILLING_NOT_READY'});
+  if(['create','read'].includes(String(body.operation))&&!await partnerSharingReady(deps.db,body.operation==='create'))return res.status(body.operation==='read'?404:503).json({error:body.operation==='read'?'SHARE_NOT_FOUND':'BILLING_NOT_READY'});
   const limit=createSharedRateLimiter(deps.db,{CAMELLIA_CHAT_RATE_USER:'100',CAMELLIA_CHAT_RATE_GLOBAL:'3000',CAMELLIA_CHAT_RATE_WINDOW_SECONDS:'300'},Date.now,'partner_rate_windows');
   if(body.operation==='read'){
    if(typeof body.token!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(body.token))return res.status(404).json({error:'SHARE_NOT_FOUND'});

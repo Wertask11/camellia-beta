@@ -118,7 +118,7 @@ export async function expiryCleanup(
       };
     if (options.approvedDigest !== digest)
       throw new Error('RETENTION_PLAN_CHANGED');
-    for (const d of eligible) tx.delete(d.ref);
+    for (const d of eligible){tx.delete(d.ref);if(collection==='partner_shares'&&typeof d.data().ownerUid==='string'&&/^[^/]{1,128}$/.test(d.data().ownerUid))tx.delete(db.doc(`camellia_users/${d.data().ownerUid}/partner_shares/${d.id}`));}
     if (eligible.length)
       tx.set(db.doc(`${SERVER_ROOT}/retention_audit/${digest}`), {
         collection,

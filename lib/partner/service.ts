@@ -5,6 +5,7 @@ import {shareQuotaPath,memberStatus} from '../membership/server.js';
 import {ACTIONS} from '../../data/actions.js';
 import {PLACE_DEMO_DATA} from '../../data/place-demo.js';
 import {PlaceService,PlaceError} from '../place/service.js';
+import{sharingCreationConfiguration}from'./config.js';
 import {FEELING_MESSAGES,validateShare,type PublicShare} from './model.js';
 export class ShareError extends Error{constructor(readonly status:number,readonly code:string){super(code);}}
 export const shareHash=(token:string)=>createHash('sha256').update(token).digest('hex');
@@ -26,7 +27,8 @@ export class PartnerShareService{
   }
   const token=randomBytes(32).toString('base64url'),id=shareHash(token),ref=this.global().doc(id),own=this.own(uid).doc(id),quotaRef=this.db.doc(shareQuotaPath(uid));
   await this.db.runTransaction(async tx=>{
-   const [plan,quota,owner]=await Promise.all([memberStatus(this.db,uid,at,path=>tx.get(this.db.doc(path))),tx.get(quotaRef),tx.get(this.db.doc(`camellia_users/${uid}`))]);
+   const [plan,quota,owner,config,retention]=await Promise.all([memberStatus(this.db,uid,at,path=>tx.get(this.db.doc(path))),tx.get(quotaRef),tx.get(this.db.doc(`camellia_users/${uid}`)),tx.get(this.db.doc(`${SERVER_ROOT}/config/partner_sharing`)),tx.get(this.db.doc(`${SERVER_ROOT}/config/retention`))]);
+   if(!sharingCreationConfiguration(config.data(),retention.data()))throw new ShareError(503,'BILLING_NOT_READY');
    if(!owner.exists||owner.data()?.personalDeleteInProgress===true)throw new ShareError(403,'PROFILE_REQUIRED');
    if(plan.plan!=='plus')throw new ShareError(403,'PLUS_REQUIRED');
    const q=quota.data()??{},day=Math.floor(at/86400000),count=q.day===day?Number(q.count??0):0;
