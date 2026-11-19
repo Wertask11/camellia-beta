@@ -1,0 +1,40 @@
+{
+  "atUTC": "2026-11-19T21:00:32.675025+00:00",
+  "pr": {
+    "baseRefName": "feat/camellia-release-integration-20261119",
+    "headRefOid": "61ac5c91a129bc1969674467511d1e2f711d47a2",
+    "number": 98,
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-19T20:59:42Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Wertask11/camellia-beta/actions/runs/44613610721/job/135876306888",
+        "name": "quality",
+        "startedAt": "2026-11-19T20:55:47Z",
+        "status": "COMPLETED",
+        "workflowName": "Release quality"
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-11-19T20:57:03Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/school-park/camellia-beta/BLrSc3qtogLgDCS7MHaJcn52hxNb"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-19T20:57:04Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-11-19T20:57:04Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "url": "https://github.com/Wertask11/camellia-beta/pull/98"
+  },
+  "appSource": "af3de9e2226d15f57e7e1fb1e34323ae1e14f830",
+  "realPreviewAcceptance": false
+}

@@ -1,8 +1,17 @@
 # 新sourceの検証証拠
 
-監査開始2026-11-19。ログの正確な時刻はUTCで保存する。対象アプリコードは `145aa5db8e631b4c7d9fe37a77730cd38b4c3a47`。その後の変更は試験結果のsource表記と報告書。統合中に発見した紹介trialの通常枠迂回を修正し、専用レーン/明示再試行UIもこのsourceで再検証した。前回の本人確認や旧合格結果をこのsourceの実受入に流用していない。
+監査開始2026-11-19。ログの正確な時刻はUTCで保存する。先行統合コードは `145aa5db8e631b4c7d9fe37a77730cd38b4c3a47`。最新の支払い管理追加後は下欄のaf3de9eを参照。その後の変更は試験結果のsource表記と報告書。統合中に発見した紹介trialの通常枠迂回を修正し、専用レーン/明示再試行UIもこのsourceで再検証した。前回の本人確認や旧合格結果をこのsourceの実受入に流用していない。
 
-## 当該コードで実行したコマンド
+## 支払い管理追加後の再検証
+
+アプリコード `af3de9e2226d15f57e7e1fb1e34323ae1e14f830`、テストfixtureのconst修正 `61ac5c91a129bc1969674467511d1e2f711d47a2`。旧145aa5dの証拠はそのまま残し、新しい検証を evidence/billing-* へ分離する。
+
+- lint・typecheck・77/77 unit・24 Firestore emulator scripts・buildはローカルでPASS。原本削除後の実billing API、未認証/未検証メール/別UID/作り直したIDの拒否を追加。ログhashはevidence/billing-management-checks.json。
+- 専用UIは375/390/412/768/1280すべてPASS。consumerプロフィールなし、停止状態、履歴表示、Portal失敗後の復旧、原本を消さないlogout、同端末/別端末形式のメール確認を操作。evidence/billing-management/result.json とPNG。実メール・Stripeではない。
+- 最初のPR98 CIは新規emulator fixtureの`let`を`const`へ直すlint指摘で失敗。修正後ローカルlintを再実行。61ac5c9でquality CI全ステップSUCCESS・Vercel successを確認。evidence/billing-management-ci.json。固定URLへの反映と本人受入は別に記録する。
+- 過去のFree/ID復旧/モデル切替・紹介枠UIと、新規共有/紹介/通知/店舗申請/支払いUIも、当該アプリコードで全5幅を再実行し全てPASS。evidence/billing-regression/summary.json と billing-gated-regression/summary.jsonへ別保存した。実アカウント受入とは区別する。
+
+## 145aa5dで実行したコマンド
 
 |コマンド|結果|証拠|
 |---|---|---|

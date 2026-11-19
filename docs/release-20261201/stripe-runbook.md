@@ -58,3 +58,8 @@ Stripe DashboardでTerms URLを設定し、Portalは解約を期間末、支払�
 - 別端末コマンドで `python tests/browser/stripe-checkout.py` （実Chromium、375/390/412/768/1280、支払いAPIもfixture）
 
 テスト用fixtureサーバーを一般公開しない。これは実ログイン/Stripe Sandbox/実機の代替PASSではない。実Stripe受入までは支払い公開不可。
+
+
+## 支払い管理の直接入口
+
+`/?open=billing` はプロフィール再作成・個人記録の引き継ぎを要求しない本人確認専用入口。販売者情報からも開ける。以前と同じメール・LINE・Googleを使い、別IDへ自動統合しない。ローカル合成検証と、Stripe Sandbox/実Authの受入を区別する。詳細は[billing-management.md](billing-management.md)。Stripe接続障害時の解約窓口と受付手順も、課金前に運営が確認する。

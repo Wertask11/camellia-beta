@@ -1,6 +1,6 @@
 # リリース完成状況（開発進捗・正式公開未完了）
 
-対象 main: `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。統合コード: `145aa5db8e631b4c7d9fe37a77730cd38b4c3a47`、その後のUX fixtureのexport修正と追加ブラウザ試験。mainへmerge・Production deployしていない。
+対象 main: `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。統合コード145aa5dに、支払い管理を独立させたアプリコード `af3de9e2226d15f57e7e1fb1e34323ae1e14f830` を追加。mainへmerge・Production deployしていない。
 
 正式目標は2026-12-01。現時点の判定は **PARTIAL / Go不可（受入前）**。開発・本番技術・正式公開を分ける。未決定・未検証をPASSにしていない。
 
@@ -21,7 +21,7 @@
 |⑨|登録前の価値体験|コード完了・Preview本人確認|登録不要の無料、メールID、LINE/Google互換を維持・再試験。|新sourceでの本人実ログイン受入待ち|
 |⑩|Check→提案→Place/Discover→Action→Reflection|部分実装・実体験待ち|選択→私的体験→任意Reflection/Memoryを5幅で再操作。|実際の来店・体験確認ではない|
 |⑪|店舗実在・許可・情報・履歴・停止|コード完了・実掲載待ち|私的連絡先を分離した申請、CAS審査、担当付与/解除、保管終了を追加。|実在確認/許諾/写真/実掲載0。新規保持の承認待ち|
-|⑫|Plus500円・店舗基本無料・原価と転換計測|部分実装・事業未準備|Stripe500円、署名/正規照合、専用token/原価枠、計測Outboxを接続。|実費/請求書・決済契約・料金運用未照合|
+|⑫|Plus500円・店舗基本無料・原価と転換計測|部分実装・事業未準備|Stripe500円、署名/正規照合、専用token/原価枠、計測Outbox、原本削除後も開ける支払い管理UIを接続。|実費/請求書・決済契約・料金運用未照合|
 |⑬|正式リリース可否は運営判断|維持|main/Production/Rules/env/claims/各運用を変更せず、3判定を分離。|公開判断は運営。日付だけで自動公開しない|
 |⑭-1|発見目的のToday・Check非強制|コード完了・Preview本人確認|Checkなし選択・保存・復旧・無料体験を現在sourceで再試験。|実端末の受入待ち|
 |⑭-2|CircleのPlaceを手動選択|コード完了・新連携OFF|既存の本人手動Place紐付け・原文非混入・停止時非表示を再試験。|新連携OFF。新sourceの実2アカウント受入待ち|
@@ -91,8 +91,8 @@ branchとheadは読取時点。後続は前段をbaseにした独立PR。#91/#94
 |[#94](https://github.com/Wertask11/camellia-beta/pull/94)|`fix/camellia-dependency-security-20261119`|`b95a0f5822228bee9d511f53cabdabe6ad135863`|`fix/camellia-react-security-20261119`|https://camellia-beta-git-fix-camellia-dependency-se-b781b5-school-park.vercel.app|
 |[#95](https://github.com/Wertask11/camellia-beta/pull/95)|`feat/camellia-trial-token-budget-20261119`|`3ee94738eece36a92a49e064b7ea4a01a9103bb0`|`feat/camellia-release-controls-20261119`|https://camellia-beta-git-feat-camellia-trial-token-553bda-school-park.vercel.app|
 |[#96](https://github.com/Wertask11/camellia-beta/pull/96)|`feat/camellia-billing-analytics-20261119`|`446f3f510257627dd76e4b2644b3d980ec218d42`|`feat/camellia-trial-token-budget-20261119`|https://camellia-beta-git-feat-camellia-billing-anal-d41693-school-park.vercel.app|
-
 |[#97](https://github.com/Wertask11/camellia-beta/pull/97)|`feat/camellia-release-integration-20261119`|`ae5003618203733ec1300a91ee836bcd1281f11e`|`feat/camellia-billing-analytics-20261119`|https://camellia-beta-7g536o3ce-school-park.vercel.app|
+|[#98](https://github.com/Wertask11/camellia-beta/pull/98)|`feat/camellia-billing-management-20261119`|`61ac5c91a129bc1969674467511d1e2f711d47a2`|`feat/camellia-release-integration-20261119`|Vercel success: BLrSc3qtogLgDCS7MHaJcn52hxNb|
 
 固定Preview: https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/ 。最新候補の反映/Ready証拠はrelease-readiness.mdを参照。
 
@@ -109,4 +109,4 @@ branchとheadは読取時点。後続は前段をbaseにした独立PR。#91/#94
 
 保存/アクセス/期間/削除方法の全種類の一覧は[data-inventory.md](data-inventory.md)。詳細はrelease-readiness.md、operator-runbook.md、migration-and-rollback.md、external-dependencies.md、test-evidence.md。
 
-プロフィール未作成/個人記録削除後の専用支払い管理UIも未接続。API単体の解約/履歴試験と、利用者が実際にそこへ到達できることを分け、次の開発チェックポイントへ記録した。
+プロフィール未作成/個人記録削除後の専用支払い管理UIを追加（billing-management.md）。ローカルの実API/5幅UIと、実メール・Stripe・固定Previewの受入を分ける。後者は未検証。
