@@ -56,6 +56,7 @@ try {
   await db.doc(billingCustomerPath(adapter.id, event.customerId)).set({
     provider: adapter.id,
     uid,
+    analyticsProfileId: '12345678-1234-4234-8234-123456789012',
     identityCreatedAt: '2026-11-01T00:00:00Z',
   });
   assert.equal((await send(event)).status, 503);
@@ -89,6 +90,9 @@ try {
     1,
   );
   assert.equal((await send({ ...event, amount: 0 })).status, 409);
+  const firstOutbox = (await db.collection(`${root}/billing_analytics_outbox`).get()).docs[0].data();
+  assert.equal(firstOutbox.distinctId, 'camellia_12345678-1234-4234-8234-123456789012');
+  assert.ok(!JSON.stringify(firstOutbox).includes(uid));
   await send({ ...event, id: 'local-cancel', kind: 'cancel', amount: 0 });
   assert.equal((await memberStatus(db, uid, now)).plan, 'plus');
   assert.equal(
