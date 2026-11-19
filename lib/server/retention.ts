@@ -7,6 +7,9 @@ export const EXPIRY_COLLECTIONS = [
   'member_free_chat_days',
   'billing_rate_windows',
   'notification_rate_windows',
+  'place_application_rate_windows',
+  'place_applications',
+  'place_application_audit',
   'notification_deliveries',
   'notification_push_attempts',
   'rate_windows',
@@ -54,6 +57,7 @@ export async function expiryCleanup(
     ).data()?.collections?.[collection];
     if (
       policy?.approved !== true ||
+      (collection === 'place_applications' && policy.mode !== 'closed_only') ||
       !Number.isSafeInteger(policy.retentionMs) ||
       policy.retentionMs <= 0 ||
       typeof policy.approvedBy !== 'string' ||
@@ -80,7 +84,7 @@ export async function expiryCleanup(
       eligible = records.docs.filter(
         (d) =>
           Number.isFinite(millis(d.data().createdAt)) &&
-          millis(d.data().createdAt) + policy.retentionMs <= now,
+          millis(collection==='place_applications'?d.data().closedAt:d.data().createdAt) + policy.retentionMs <= now && (collection!=='place_applications'||['declined','withdrawn','archived'].includes(d.data().status)),
       ),
       digest = createHash('sha256')
         .update(

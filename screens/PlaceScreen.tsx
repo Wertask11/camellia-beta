@@ -211,6 +211,7 @@ export function PlaceScreen({
         ←{' '}
         {selected ? 'Place一覧へ' : isDemo ? 'デモを閉じる' : 'Discoverへ戻る'}
       </button>
+      <a className="text-button" href="/place-partners.html" target="_blank" rel="noopener noreferrer">店舗・施設の掲載について</a>
       <header>
         <div>
           <p className="eyebrow">
