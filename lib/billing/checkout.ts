@@ -32,10 +32,10 @@ export class StripeCheckoutService {
  async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data();return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']);}
  async status(uid: string, identityCreatedAt: string) {
   const cfg = await this.configuration();
-  if (!cfg) return { ready: false, priceYen: 500, customer: false };
   const [owner, pending] = await Promise.all([this.db.doc(ownerPath(uid)).get(), this.db.doc(`${SERVER_ROOT}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`).get()]);
   const customer = owner.data();
   if (customer && customer.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
+  if (!cfg) return { ready: false, priceYen: 500, customer: typeof customer?.customerId === 'string' };
   const price = await this.stripe.prices.retrieve(cfg.priceId);
   return { ready: await this.intakeReady(cfg) && stripePriceValid(price, cfg.priceId, this.mode), priceYen: 500,
    customer: typeof customer?.customerId === 'string', termsVersion: cfg.termsVersion, disclosureVersion: cfg.disclosureVersion, termsUrl: `${cfg.origin}/terms.html`, disclosureUrl: `${cfg.origin}/billing.html`, ...(pending.data()?.identityCreatedAt === identityCreatedAt && pending.data()!.expiresAt > this.now() ? { pendingRequestId: pending.data()!.requestId } : {}) };
@@ -93,7 +93,7 @@ export class StripeCheckoutService {
    line_items: [{ price: cfg.priceId, quantity: 1 }], client_reference_id: intent.id,
    allowed_payment_method_types: ['card'], allow_promotion_codes: false,
    expires_at: Math.floor(intent.expiresAt/1000), locale: 'ja',
-   success_url: `${cfg.origin}/?open=my&billing=returned`, cancel_url: `${cfg.origin}/?open=my&billing=cancelled`,
+   success_url: `${cfg.origin}/?open=billing&billing=returned`, cancel_url: `${cfg.origin}/?open=billing&billing=cancelled`,
    consent_collection: { terms_of_service: 'required' },
    custom_text: { submit: { message: 'Camellia Plusは月額500円です。毎月自動更新され、解約はMyから行えます。無料体験から自動加入しません。' } },
   }, { idempotencyKey: `camellia-checkout-${intent.id}` });
@@ -113,12 +113,12 @@ export class StripeCheckoutService {
   // Approved configuration may allow cancellation/payment methods/invoice history, never arbitrary paid plan changes.
   const configuration = await this.stripe.billingPortal.configurations.retrieve(cfg.portalConfiguration);
   if (!configuration.active || configuration.livemode !== (this.mode === 'live') || configuration.features.subscription_update.enabled || !configuration.features.subscription_cancel.enabled || configuration.features.subscription_cancel.mode !== 'at_period_end') throw new CheckoutError(503, 'BILLING_NOT_READY');
-  const session = await this.stripe.billingPortal.sessions.create({ customer: owner.customerId, configuration: cfg.portalConfiguration, return_url: `${cfg.origin}/?open=my` });
+  const session = await this.stripe.billingPortal.sessions.create({ customer: owner.customerId, configuration: cfg.portalConfiguration, return_url: `${cfg.origin}/?open=billing` });
   return { url: stripeHostedUrl(session.url, 'portal') };
  }
  async history(uid: string, identityCreatedAt: string) {
   const owner = (await this.db.doc(ownerPath(uid)).get()).data();
-  if (!owner) return { invoices: [] };
+  if (!owner) return { invoices: [], more: false };
   if (owner.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
   const invoices = await this.stripe.invoices.list({ customer: owner.customerId, limit: 12 });
   return { invoices: invoices.data.map(i => ({ status: i.status, amountPaidYen: i.currency === 'jpy' ? i.amount_paid : null, createdAt: new Date(i.created*1000).toISOString() })), more: invoices.has_more };

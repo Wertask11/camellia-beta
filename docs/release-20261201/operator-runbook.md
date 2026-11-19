@@ -33,3 +33,8 @@
 `node scripts/retention.mjs <許可済みcollection>` はdry-runのみ。対象digest・保持承認・環境を照合し、`CAMELLIA_OPERATOR_CHANGE_APPROVED=true` と `--apply` を伴う別操作だけで実削除する。未決定期間の仮設定、個人原本の期限削除、期限フィールドだけでの削除完了報告は禁止。保持一覧は release-completion-report.md。個人記録削除と事業者台帳・認証・解約は別。
 
 障害時は migration-and-rollback.md に従い、原本・削除tombstone・正規決済台帳を保持する。[billing-analytics.md](billing-analytics.md) の支払い計測は別承認・dry-run/digest・固定送信先を使う。PostHogの送信受付を実着信・実購入やD7/D30実績と読み替えない。新計測の実着信が取れない項目は未検証のまま扱う。
+
+
+## 支払い管理の直接入口
+
+`/?open=billing` はプロフィール再作成・個人記録の引き継ぎを要求しない本人確認専用入口。販売者情報からも開ける。以前と同じメール・LINE・Googleを使い、別IDへ自動統合しない。ローカル合成検証と、Stripe Sandbox/実Authの受入を区別する。詳細は[billing-management.md](billing-management.md)。Stripe接続障害時の解約窓口と受付手順も、課金前に運営が確認する。

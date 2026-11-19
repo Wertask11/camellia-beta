@@ -6,6 +6,8 @@ import {ExperienceEntry} from '@/components/ExperienceEntry';
 import {captureReferralRegistration} from '@/lib/referral/client';
 import {PlaceOperatorScreen} from '@/screens/PlaceOperatorScreen';
 import {operatorIntent} from '@/lib/place/operator-intent';
+import {billingIntent} from '@/lib/billing/intent';
+import {BillingManagementScreen} from '@/screens/BillingManagementScreen';
 import { useCallback,useEffect, useMemo, useRef, useState } from 'react';
 import { StorageRecovery } from '@/components/StorageRecovery';
 import { ActionSheet } from '@/components/ActionSheet';
@@ -69,10 +71,10 @@ function viewingPublicPlaceDemo() {
 
 const ignoreDemoTrack=()=>{};
 export default function Page(){
- const [operator,setOperator]=useState<boolean|null>(null);
- useEffect(()=>{let active=true,managing=new URL(location.href).searchParams.get('open')==='place-operator';try{managing=operatorIntent(new URL(location.href),localStorage);}catch{/* The normal storage recovery screen handles unavailable storage. */}const open=()=>{if(active)setOperator(managing);};if(managing)queueMicrotask(open);else {void captureReferralRegistration().catch(()=>{});queueMicrotask(open);}return()=>{active=false;};},[]);
+ const [operator,setOperator]=useState<'place'|'billing'|false|null>(null);
+ useEffect(()=>{let active=true;const url=new URL(location.href);let managing:'place'|'billing'|false=url.searchParams.get('open')==='billing'?'billing':url.searchParams.get('open')==='place-operator'?'place':false;try{managing=billingIntent(url,localStorage)?'billing':operatorIntent(url,localStorage)?'place':false;}catch{/* Explicit management URLs work without personal-record storage. */}const open=()=>{if(active)setOperator(managing);};if(managing)queueMicrotask(open);else {void captureReferralRegistration().catch(()=>{});queueMicrotask(open);}return()=>{active=false;};},[]);
  if(operator===null)return <main className="app-shell" aria-busy="true"><p>Camelliaを開いています…</p></main>;
- return operator?<PlaceOperatorScreen/>:<ExperienceEntry account={<CamelliaPage/>}/>;
+ return operator==='billing'?<BillingManagementScreen/>:operator==='place'?<PlaceOperatorScreen/>:<ExperienceEntry account={<CamelliaPage/>}/>;
 }
 function CamelliaPage() {
   const [accountUser,setAccountUser]=useState<User|null>(null);

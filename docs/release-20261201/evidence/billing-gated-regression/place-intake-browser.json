@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-19",
+  "kind": "Local Chromium with injected Auth and API fixtures. Synthetic cafe only; no actual submission, rights assignment, real login or published store. Firestore authorization tested separately.",
+  "results": [
+    {
+      "width": 375,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 390,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 412,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 768,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 1280,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    }
+  ]
+}

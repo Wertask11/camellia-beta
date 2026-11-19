@@ -1,0 +1,37 @@
+{
+  "atUTC": "2026-11-19T20:57:00.623091+00:00",
+  "productSource": "af3de9e2226d15f57e7e1fb1e34323ae1e14f830",
+  "fixtureLintCorrection": "61ac5c91a129bc1969674467511d1e2f711d47a2",
+  "checks": {
+    "lint": {
+      "log": "work/billing-management-final-lint-fixed.log",
+      "logSha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c",
+      "bytes": 246
+    },
+    "types": {
+      "log": "work/billing-management-final-types.log",
+      "logSha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369",
+      "bytes": 257
+    },
+    "unit": {
+      "log": "work/billing-management-final-unit.log",
+      "logSha256": "b20ec176ea5608ecb7d1db25da3177a8e6134a6128e8990c85d8de486cea95af",
+      "bytes": 45643
+    },
+    "firestore": {
+      "log": "work/billing-management-final-firestore.log",
+      "logSha256": "0936ad22cd6cb3706bacce3657477385fa15e9aa534cedb22e7fda28aa5993ac",
+      "bytes": 29739
+    },
+    "build": {
+      "log": "work/billing-management-final-build.log",
+      "logSha256": "9512d14b40011da624b07a4bec3ef9da4a393fda3f5016e6c346b3a26774a576",
+      "bytes": 2821
+    }
+  },
+  "unitSuites": 77,
+  "firestoreScripts": 24,
+  "initialCiLintFailure": "af3de9e: new fixture used let instead of const; corrected in 61ac5c9, lint rerun PASS. Full current-head CI checked separately.",
+  "productionMutations": false,
+  "externalProviderCalls": "Auth/Stripe/Gemini/Push mocked in tests; emulator only for storage"
+}
