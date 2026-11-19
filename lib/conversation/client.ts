@@ -3,9 +3,9 @@ import {consumeChatStream} from './stream';
 import {isConversationModel} from './models';
 import {safeConversationTiming,safeConversationTimeline,type ConversationTiming} from './performance';
 import type {ConversationModelId} from '@/types';
-export type ChatError='daily_limited'|'rate_limited'|'timeout'|'network'|'provider_error'|'disabled'|'invalid_request'|'safety_block'|'invalid_response';
+export type ChatError='trial_limited'|'daily_limited'|'rate_limited'|'timeout'|'network'|'provider_error'|'disabled'|'invalid_request'|'safety_block'|'invalid_response';
 export type ChatResponse={reply:string;provider:'gemini'|'fallback';responseTimeMs?:number;safety?:boolean;actionId?:string;modelId?:ConversationModelId;timing?:ConversationTiming;transport?:'sse'|'json';timeline?:Record<string,number>};
-export async function requestGemini(message:string,history:Array<{role:'user'|'assistant';text:string}>,modelId:ConversationModelId,options:{signal?:AbortSignal;onText?:(text:string)=>void;onRequest?:()=>void;batch?:boolean;free?:boolean}={}):Promise<ChatResponse>{
+export async function requestGemini(message:string,history:Array<{role:'user'|'assistant';text:string}>,modelId:ConversationModelId,options:{signal?:AbortSignal;onText?:(text:string)=>void;onRequest?:()=>void;batch?:boolean;free?:boolean;usageLane?:'referral_extension'}={}):Promise<ChatResponse>{
  const user=schoolParkAuth.currentUser;
  if(!options.free&&!user)throw Object.assign(new Error('AUTH_REQUIRED'),{category:'provider_error'});
  const token=options.free?null:await user!.getIdToken();
@@ -14,7 +14,7 @@ export async function requestGemini(message:string,history:Array<{role:'user'|'a
  try{
   response=await fetch(options.free?'/api/camellia/free-chat':'/api/camellia/chat',{method:'POST',credentials:'same-origin',cache:'no-store',
    headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`} : {}),Accept:options.batch?'application/json':'text/event-stream'},
-   body:JSON.stringify({message,history,modelId,requestId:crypto.randomUUID()}),signal:AbortSignal.any([AbortSignal.timeout(40000),...(options.signal?[options.signal]:[])]),
+   body:JSON.stringify({message,history,modelId,requestId:crypto.randomUUID(),...(options.usageLane?{usageLane:options.usageLane}:{})}),signal:AbortSignal.any([AbortSignal.timeout(40000),...(options.signal?[options.signal]:[])]),
   });
  }catch(error){throw Object.assign(new Error('REQUEST_FAILED'),{category:error&&typeof error==='object'&&'name'in error&&error.name==='TimeoutError'?'timeout':'network'});}
  const stream=response.ok&&response.headers?.get('content-type')?.includes('text/event-stream');
@@ -30,3 +30,5 @@ export async function requestGemini(message:string,history:Array<{role:'user'|'a
  if(result.modelId!==undefined&&(!isConversationModel(result.modelId)||result.modelId!==modelId))throw Object.assign(new Error('INVALID_MODEL'),{category:'invalid_response'});
  return {...result,timeline:safeConversationTimeline(result.timeline),timing:safeConversationTiming(result.timing),transport:stream?'sse':'json'} as ChatResponse;
 }
+
+export async function trialExtensionAvailable(){const user=schoolParkAuth.currentUser;if(!user||user.isAnonymous)return false;try{const r=await fetch('/api/camellia/membership',{headers:{Authorization:`Bearer ${await user.getIdToken()}`},cache:'no-store',signal:AbortSignal.timeout(8000)});const raw=await r.json();if(!raw||typeof raw!=='object'||Array.isArray(raw))return false;const v=raw as Record<string,unknown>;return r.ok&&schoolParkAuth.currentUser?.uid===user.uid&&v.conversationTrialVersion==='referral_ai_v1'&&v.trialExtensionReady===true;}catch{return false;}}

@@ -10,7 +10,7 @@ import { isModelSwitchMessage } from '@/lib/conversation/entries';
 import { REACTION_AFTER_REPLY_MS, REACTION_DELAY_MS, REACTION_EMOJI, REACTION_LABEL, REACTION_LEAD_MS, REACTION_POSE_MS, reactionFor, type ConversationReaction } from '@/lib/conversation/reactions';
 import { CamelliaCharacter, EXPRESSION_FOR_REACTION, characterLabel, characterName, type CharacterExpression } from '@/components/CamelliaCharacter';
 import { CharacterProfileSheet } from '@/components/CharacterProfileSheet';
-import {requestGemini,type ChatError} from '@/lib/conversation/client';
+import {requestGemini,trialExtensionAvailable,type ChatError} from '@/lib/conversation/client';
 import {conversationPerformance,previewBatchTransport,afterConversationPaint,safeConversationTiming,type ConversationTiming} from '@/lib/conversation/performance';
 import { respond, classifyIntent, classifyTopics } from '@/lib/conversation/engine';
 import { immediateSafetyReply } from '@/lib/conversation/safety';
@@ -108,6 +108,7 @@ export function CamelliaScreen({
   const requestInFlight = useRef(false);
   const [sending, setSending] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const[trialReady,setTrialReady]=useState(false);
   const [retryState, setRetryState] = useState<RetryState | null>(()=>recovered?{originalMessage:recovered.text,userId:recovered.id,message:redactKnownNamesForState(recovered.text,state),history:geminiHistory(messages.slice(0,messages.indexOf(recovered))).map(({role,text})=>({role,text:redactKnownNamesForState(text,state)})),modelId:defaultConversationModel(recovered.requestModel??activeModel)}:null);
   const [chatError, setChatError] = useState<ChatError | null>(recovered?'provider_error':null);
   useEffect(() => {
@@ -270,7 +271,9 @@ export function CamelliaScreen({
     setSending(false);
   };
 
-  const retryLast = async () => {
+  useEffect(()=>{let active=true;if(chatError==='daily_limited'&&!freeMode&&!guestMode)void trialExtensionAvailable().then(ready=>{if(active)setTrialReady(ready);});return()=>{active=false;};},[chatError,freeMode,guestMode]);
+  const retryLast = async (usageLane?:'referral_extension') => {
+    if(usageLane&&!trialReady)return;setTrialReady(false);
     if (!retryState || requestInFlight.current || treeContext || (availability === 'disabled' || availability === 'checking')) return;
     requestInFlight.current = true;
     const controller=new AbortController();abortRequest.current=controller;
@@ -279,7 +282,7 @@ export function CamelliaScreen({
     setChatError(null);
     try {
       reactionHold.current=0;
-      const result = await requestGemini(retryState.message, retryState.history,retryState.modelId,streamOptions(controller));
+      const result = await requestGemini(retryState.message, retryState.history,retryState.modelId,{...streamOptions(controller),...(usageLane?{usageLane}:{})});
       if(!mounted.current||controller.signal.aborted)return;
       await afterReaction();
       if(!mounted.current||controller.signal.aborted)return;
@@ -317,6 +320,7 @@ export function CamelliaScreen({
   const mascotExpression:CharacterExpression=moment?.expression??(thinking?'think':'listen');
 
   const errorCopy: Record<ChatError, string> = {
+    trial_limited:'紹介体験の会話枠は、今は利用できません。通常の無料会話でお試しください。無料の上限に達している場合は、日本時間の翌日にまた話せます。',
     daily_limited: '今日は無料の会話の上限（30回）に達しました。日本時間の午前0時から、また話せます。記録や他の機能はそのまま使えます。',
     rate_limited: '今は少し混み合っているみたい。時間をおいて、もう一度試してみてください。',
     timeout: '返答に少し時間がかかっています。時間をおいて、もう一度試してみてください。',
@@ -361,7 +365,7 @@ export function CamelliaScreen({
         <div ref={messageEnd} aria-hidden="true"/>
       </div>
       <div className="conversation-followups">
-      {chatError && <output className="chat-error" aria-live="polite"><span>{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <><button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>{retryState.modelId!==activeModel&&<span className="meta">この返答は{conversationModelName(retryState.modelId)}で再試行します。</span>}</>}</output>}
+      {chatError && <output className="chat-error" aria-live="polite"><span>{errorCopy[chatError]}</span>{retryState && !treeContext && availability !== 'disabled' && <><button className="text-button" disabled={retrying || sending} onClick={() => void retryLast()}>{retrying ? '…' : 'もう一度試す'}</button>{chatError==='daily_limited'&&trialReady&&!freeMode&&<button className="text-button" disabled={retrying||sending} onClick={()=>void retryLast('referral_extension')}>紹介体験の会話枠で続ける</button>}{retryState.modelId!==activeModel&&<span className="meta">この返答は{conversationModelName(retryState.modelId)}で再試行します。</span>}</>}</output>}
       {lastSafety && <p className="chat-safety-note" role="alert">緊急時はCamelliaだけで対応せず、身近な人や地域の緊急窓口につながってください。</p>}
       {suggestedAction&&CONVERSATION_ACTIONS.filter(action=>action.id===suggestedAction).map(action=><div className="conversation-action" key={action.id}><p className="eyebrow">よければ、こんな選択も</p><button onClick={()=>onOpenAction({action,score:0,reasons:['会話の続きに、自分で選べる小さな過ごし方']})}>{action.title}<span>内容を見る →</span></button><button className="text-button" onClick={()=>setSuggestedAction(undefined)}>今は話を続ける</button></div>)}
       {last?.showAction && last.action && <div className="conversation-action"><p className="eyebrow">よければ、こんな選択も</p><button onClick={() => { const recommendation = recommendations.find((item) => item.action.id === last.action?.id); onOpenAction(recommendation ?? { action: last.action!, score: 0, reasons: [] }); }}>{last.action.title}<span>詳しく見る →</span></button><button onClick={() => onNavigate('discover')}>ほかの選択を見る<span>Discover →</span></button></div>}

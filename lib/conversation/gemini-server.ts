@@ -11,7 +11,7 @@ import { CONVERSATION_MODEL_PROMPTS, modelAllowsAction } from './model-server.js
 export { immediateSafetyReply } from './safety.js';
 
 export type SafeHistoryMessage = { role: 'user' | 'assistant'; text: string };
-export type ChatErrorCategory = 'daily_limited' | 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
+export type ChatErrorCategory = 'daily_limited' | 'trial_limited' | 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
 
 export const CAMELLIA_SYSTEM_PROMPT = `あなたは「Camellia」です。女性の日常のウェルビーイングを支える会話相手です。診断や正解を与えるのではなく、本人が今の気持ちや今日どうしたいかに気づき、小さな選択をできるように支えます。
 
@@ -126,6 +126,7 @@ export function classifyChatError(error: unknown): ChatErrorCategory {
   for(let depth=0;depth<3&&error&&typeof error==='object'&&'code'in error&&error.code==='STREAM_INTERRUPTED'&&'cause'in error;depth++)error=error.cause;
   if (error && typeof error === 'object') {
     const value = error as { status?: unknown; code?: unknown; name?: unknown };
+    if(typeof value.code==='string'&&['TRIAL_AI_LIMIT','TRIAL_AI_TOKEN_LIMIT','TRIAL_AI_INPUT_LIMIT','TRIAL_AI_NOT_CONFIGURED','TRIAL_AI_NOT_READY','TRIAL_EXPIRED','TRIAL_COST_REVIEW_REQUIRED','TRIAL_TOKEN_REVIEW_REQUIRED'].includes(value.code))return 'trial_limited';
     if(value.code==='SAFETY_BLOCK')return 'safety_block';
     if(value.code==='INVALID_RESPONSE')return 'invalid_response';
     if (value.status === 429 || value.code === 429 || value.code === 'RESOURCE_EXHAUSTED') return 'rate_limited';
@@ -192,7 +193,7 @@ export function createGeminiChatHandler(deps: {
   generate:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls?:GenerationControls)=>Promise<string>;
   generateStream?:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls:GenerationControls)=>Promise<string>;
   claimRequest?:(uid:string,requestId:string)=>Promise<{finish:(state:'success'|'error'|'aborted')=>Promise<void>}>;
-  limiter?:{take:(uid:string)=>boolean|Promise<boolean>};now?:()=>number;
+  limiter?:{take:(uid:string,lane?:'basic'|'referral_extension')=>boolean|Promise<boolean>};now?:()=>number;
 }) {
  const limiter=deps.limiter??createInMemoryRateLimiter(),clock=deps.now??Date.now;
  return async(req:{method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown},res:ChatApiResponse,receivedAt=clock())=>{
@@ -232,7 +233,7 @@ export function createGeminiChatHandler(deps: {
    const requestId=typeof body.requestId==='string'?body.requestId:randomUUID();
    try{requestLease=await deps.claimRequest?.(identity.uid,requestId);}catch(error){return res.status(error&&typeof error==='object'&&'code'in error&&error.code==='DUPLICATE_REQUEST'?409:503).json({error:'temporarily_unavailable',category:'provider_error'});}
    const limitStart=clock();let allowed;
-   try{allowed=await limiter.take(identity.uid);}catch(error){if(error&&typeof error==='object'&&'code'in error&&error.code==='FREE_DAILY_LIMIT')return res.status(429).json({error:'daily_limit_reached',category:'daily_limited'});return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
+   try{allowed=await limiter.take(identity.uid,body.usageLane==='referral_extension'?'referral_extension':'basic');}catch(error){if(error&&typeof error==='object'&&'code'in error&&error.code==='TRIAL_AI_NOT_READY')return res.status(429).json({error:'trial_frame_unavailable',category:'trial_limited'});if(error&&typeof error==='object'&&'code'in error&&error.code==='FREE_DAILY_LIMIT')return res.status(429).json({error:'daily_limit_reached',category:'daily_limited'});return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
    timeline.T4=clock();timing.server_rate_limit_ms=Math.max(0,timeline.T4-limitStart);
    if(!allowed)return res.status(429).json({error:'temporarily_unavailable',category:'rate_limited'});
    controller.signal.throwIfAborted();
@@ -264,7 +265,7 @@ export function createGeminiChatHandler(deps: {
    if(controller.signal.aborted)return;
    const category=classifyChatError(error),result={error:'temporarily_unavailable',category,timing:finishTiming()};
    if(streaming){emit({type:'error',...result});res.end?.();}
-   else return res.status(category==='rate_limited'?429:category==='timeout'?504:category==='invalid_request'?400:502).json(result);
+   else return res.status(category==='rate_limited'||category==='trial_limited'?429:category==='timeout'?504:category==='invalid_request'?400:502).json(result);
   }finally{if(controller.signal.aborted)requestOutcome='aborted';try{await requestLease?.finish(requestOutcome);}catch{console.warn('camellia_request_receipt_unavailable',{stage:'finish'});}if(heartbeat)clearInterval(heartbeat);res.off?.('close',disconnect);}
  };
 }
