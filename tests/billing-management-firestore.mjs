@@ -8,7 +8,7 @@ try{
  const handler=(await vite.ssrLoadModule('/api/camellia/billing.ts')).default;
  const call=async(operation,token='OWNER',extra={},origin='https://local.example.test')=>{let result;await handler({method:'POST',headers:{authorization:`Bearer ${token}`,origin},body:{operation,...extra}},{setHeader(){},status(status){return{json(body){result={status,body};}};}});return result;};
  await db.doc(`${root}/billing_owners/${createHash('sha256').update(uid).digest('hex')}`).set({customerId:'cus_deleted_profile',identityCreatedAt:created});await db.doc(`camellia_users/${uid}`).delete();await db.doc(`${root}/config/billing`).delete();
- assert.equal((await call('status')).body.customer,true,'stopping new intake does not hide an existing billing owner');let r=await call('history');assert.equal(r.status,200);assert.equal(r.body.invoices[0].amountPaidYen,500);assert.ok(!JSON.stringify(r).includes('NEVER RETURN'));
+ assert.equal((await call('status')).body.customer,true,'stopping new intake does not hide an existing billing owner');const r=await call('history');assert.equal(r.status,200);assert.equal(r.body.invoices[0].amountPaidYen,500);assert.ok(!JSON.stringify(r).includes('NEVER RETURN'));
  assert.deepEqual((await call('history','OTHER')).body,{invoices:[],more:false});
  for(const token of ['UNVERIFIED','ANON','INVALID'])assert.equal((await call('history',token)).status,401);
  assert.equal((await call('history','OWNER',{uid:'BILLING OTHER'})).status,400);assert.equal((await call('history','OWNER',{input:{uid:'BILLING OTHER'}})).body.invoices[0].amountPaidYen,500,'input cannot choose another owner');
