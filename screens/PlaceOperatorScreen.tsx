@@ -17,12 +17,14 @@ import {
   clearOperatorLogin,
 } from '@/lib/place/operator-intent';
 import { placeRequest } from '@/lib/place/client';
+import {PlaceApplications} from '@/components/PlaceApplications';
 import { PlaceScreen } from '@/screens/PlaceScreen';
 const ignoreTrack = () => {};
 export function PlaceOperatorScreen() {
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false),
     [allowed, setAllowed] = useState(false),
+    [reviewer,setReviewer]=useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   useEffect(() => {
@@ -30,7 +32,7 @@ export function PlaceOperatorScreen() {
     const unsubscribe = onAuthStateChanged(schoolParkAuth, (u) => {
       if (active) {
         setUser(u);
-        setAllowed(false);
+        setAllowed(false);setReviewer(false);
       }
     });
     void finishAuthCallback()
@@ -56,10 +58,10 @@ export function PlaceOperatorScreen() {
     void placeRequest('?operatorStatus=1', undefined, true)
       .then((v) => {
         if (active) {
-          setAllowed(v.operator === true);
+          setAllowed(v.operator === true);setReviewer(v.canPublish===true);
           if (!v.operator)
             setError(
-              '担当する掲載場所がまだ割り当てられていません。運営へ確認してください。',
+              '担当場所はまだありません。掲載相談の受付状況は下の申請欄で確認できます。',
             );
         }
       })
@@ -146,6 +148,7 @@ export function PlaceOperatorScreen() {
         )}
         <button className="text-button" onClick={()=>location.assign('/')}>Camelliaへ戻る</button>
       </header>
+      {ready&&user&&!user.isAnonymous&&<PlaceApplications key={user.uid} reviewer={reviewer}/>}
       {ready && allowed && (
         <PlaceScreen
           managementOnly

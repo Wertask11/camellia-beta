@@ -1,3 +1,4 @@
+import placeApplications from '../../lib/place/application-handler.js';
 import {managedPlaceSlugs} from '../../lib/place/operator.js';
 import {recordPlaceMetric,placeMetricSummary,acceptFreePilot} from '../../lib/place/metrics.js';
 import {createSharedRateLimiter} from '../../lib/server/shared-limit.js';
@@ -18,6 +19,7 @@ type Response = {
   status: (code: number) => { json: (body: unknown) => void };
 };
 export default async function place(req: Request, res: Response) {
+  if(req.query?.applications==='1')return placeApplications(req,res);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   const enabled =
