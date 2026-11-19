@@ -1,5 +1,6 @@
 import {serverAdmin,adminConfigured} from '../../lib/server/admin.js';
 import {requireEligibleUser,EligibilityError} from '../../lib/server/eligibility.js';
+import {partnerSharingReady} from '../../lib/partner/config.js';
 import {memberStatus} from '../../lib/membership/server.js';
 import {membershipFromRecord} from '../../lib/membership/model.js';
 type Req={method?:string;headers:Record<string,string|string[]|undefined>};
@@ -10,6 +11,6 @@ export default async function membership(req:Req,res:Res){
  const header=req.headers.authorization;
  if(typeof header!=='string'||!header.startsWith('Bearer '))return res.status(200).json(membershipFromRecord(undefined));
  if(!adminConfigured())return res.status(503).json({error:'MEMBERSHIP_UNAVAILABLE'});
- try{const deps=serverAdmin(),user=await requireEligibleUser(header.slice(7),deps);return res.status(200).json(await memberStatus(deps.db,user.uid));}
+ try{const deps=serverAdmin(),user=await requireEligibleUser(header.slice(7),deps);const [plan,sharingReady]=await Promise.all([memberStatus(deps.db,user.uid),partnerSharingReady(deps.db)]);return res.status(200).json({...plan,sharingReady,capabilitiesVersion:'partner_v1'});}
  catch(e){return res.status(e instanceof EligibilityError?e.status:503).json({error:e instanceof EligibilityError?e.code:'MEMBERSHIP_UNAVAILABLE'});}
 }

@@ -1,6 +1,6 @@
 import { billingSubscriptionPath } from '../billing/webhook.js';
 import { referralMembership } from '../referral/membership.js';
-import type { Firestore } from 'firebase-admin/firestore';
+import type { Firestore, DocumentSnapshot } from 'firebase-admin/firestore';
 import { membershipFromRecord } from './model.js';
 export const subscriptionPath = (uid: string) =>
   `camellia_users/${uid}/admin/subscription`;
@@ -10,10 +10,11 @@ export async function memberStatus(
   db: Firestore,
   uid: string,
   now = Date.now(),
+  read: (path: string) => Promise<DocumentSnapshot> = path => db.doc(path).get(),
 ) {
   const [sub, billing] = await Promise.all([
-    db.doc(subscriptionPath(uid)).get(),
-    db.doc(billingSubscriptionPath(uid)).get(),
+    read(subscriptionPath(uid)),
+    read(billingSubscriptionPath(uid)),
   ]);
   // Owner decision: previews only until real billing is configured. Never infer readiness from a URL or client state.
   const legacy = membershipFromRecord(sub.data(), now),
@@ -33,6 +34,6 @@ export async function memberStatus(
       ? paid
       : legacy;
   const referral =
-    base.plan === 'free' ? await referralMembership(db, uid, now) : undefined;
+    base.plan === 'free' ? await referralMembership(db, uid, now, read) : undefined;
   return { ...base, ...referral, sharingReady: false };
 }

@@ -1,11 +1,10 @@
 import {createHash,randomBytes} from 'node:crypto';
 import type {Firestore} from 'firebase-admin/firestore';
 import {SERVER_ROOT} from '../server/admin.js';
-import {membershipFromRecord} from '../membership/model.js';
-import {shareQuotaPath,subscriptionPath} from '../membership/server.js';
+import {shareQuotaPath,memberStatus} from '../membership/server.js';
 import {ACTIONS} from '../../data/actions.js';
 import {PLACE_DEMO_DATA} from '../../data/place-demo.js';
-import {PlaceService} from '../place/service.js';
+import {PlaceService,PlaceError} from '../place/service.js';
 import {FEELING_MESSAGES,validateShare,type PublicShare} from './model.js';
 export class ShareError extends Error{constructor(readonly status:number,readonly code:string){super(code);}}
 export const shareHash=(token:string)=>createHash('sha256').update(token).digest('hex');
@@ -27,9 +26,8 @@ export class PartnerShareService{
   }
   const token=randomBytes(32).toString('base64url'),id=shareHash(token),ref=this.global().doc(id),own=this.own(uid).doc(id),quotaRef=this.db.doc(shareQuotaPath(uid));
   await this.db.runTransaction(async tx=>{
-   const [sub,quota,owner]=await Promise.all([tx.get(this.db.doc(subscriptionPath(uid))),tx.get(quotaRef),tx.get(this.db.doc(`camellia_users/${uid}`))]);
-   if(!owner.exists)throw new ShareError(403,'PROFILE_REQUIRED');
-   const plan=membershipFromRecord(sub.data(),at);
+   const [plan,quota,owner]=await Promise.all([memberStatus(this.db,uid,at,path=>tx.get(this.db.doc(path))),tx.get(quotaRef),tx.get(this.db.doc(`camellia_users/${uid}`))]);
+   if(!owner.exists||owner.data()?.personalDeleteInProgress===true)throw new ShareError(403,'PROFILE_REQUIRED');
    if(plan.plan!=='plus')throw new ShareError(403,'PLUS_REQUIRED');
    const q=quota.data()??{},day=Math.floor(at/86400000),count=q.day===day?Number(q.count??0):0;
    if(count>=10)throw new ShareError(429,'SHARE_LIMIT');
@@ -47,6 +45,9 @@ export class PartnerShareService{
   const owner=await this.db.doc(`camellia_users/${v.ownerUid}`).get();
   if(!owner.exists||owner.data()?.personalDeleteInProgress===true||owner.createTime?.toMillis()!==v.ownerCreatedAt){await record.ref.update({revoked:true,content:{}});throw new ShareError(404,'SHARE_NOT_FOUND');}
   const c=v.content as PublicShare;
+  if(c.kind==='place'&&c.placeSlug&&!PLACE_DEMO_DATA.some(p=>p.slug===c.placeSlug)){
+   try{await new PlaceService(this.db).detail(c.placeSlug);}catch(e){if(e instanceof PlaceError&&e.status===404){await record.ref.update({revoked:true,content:{}});throw new ShareError(404,'SHARE_NOT_FOUND');}throw e;}
+  }
   return {kind:c.kind,title:c.title,description:c.description,timing:c.timing,expiresAt:c.expiresAt,demo:c.demo,...(c.placeSlug?{placeSlug:c.placeSlug}:{})};
  }
  async list(uid:string){const docs=await this.own(uid).orderBy('createdAt','desc').limit(30).get();return docs.docs.map(d=>({id:d.id,...d.data()}));}

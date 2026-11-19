@@ -1,6 +1,4 @@
 export const PLUS_PRICE_YEN=500;
-/** Owner-approved release policy: no checkout, no issued links or public link reads until billing setup. */
-export const COMMERCE_PREVIEW_ONLY=true;
 export type Membership={plan:'free'|'plus';trial:boolean;paid:boolean;expiresAt?:string;sharingReady?:boolean;checkoutReady:false;priceYen:500};
 export function membershipFromRecord(value:Record<string,unknown>|undefined,now=Date.now()):Membership{
  const base:Membership={plan:'free',trial:false,paid:false,checkoutReady:false,priceYen:500};
@@ -17,8 +15,8 @@ export function membershipFromResponse(value:unknown,now=Date.now()):Membership{
  if(v.priceYen!==PLUS_PRICE_YEN||!['free','plus'].includes(String(v.plan))||typeof v.paid!=='boolean'||typeof v.trial!=='boolean')throw new Error('INVALID_MEMBERSHIP');
  if(v.plan==='free'){
   if(v.paid||v.trial)throw new Error('INVALID_MEMBERSHIP');
-  return {plan:'free',paid:false,trial:false,checkoutReady:false,sharingReady:false,priceYen:500};
+  return {plan:'free',paid:false,trial:false,checkoutReady:false,sharingReady:v.capabilitiesVersion==='partner_v1'&&v.sharingReady===true,priceYen:500};
  }
  if(v.paid===v.trial||typeof v.expiresAt!=='string'||!Number.isFinite(Date.parse(v.expiresAt))||Date.parse(v.expiresAt)<=now)throw new Error('INVALID_MEMBERSHIP');
- return {plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:false,sharingReady:false,priceYen:500};
+ return {plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:false,sharingReady:v.capabilitiesVersion==='partner_v1'&&v.sharingReady===true,priceYen:500};
 }
