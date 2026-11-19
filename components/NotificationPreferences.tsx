@@ -1,4 +1,5 @@
 'use client';
+import {PushSetup} from './PushSetup';
 import { saveServerNotificationPreferences } from '@/lib/notifications/client';
 import { useState } from 'react';
 import {
@@ -23,11 +24,11 @@ export function NotificationPreferences({
     [busy, setBusy] = useState(false);
   const preview = safeNotificationPreview();
   return (
-    <details className="my-feature-preferences">
-      <summary>通知の好み（配信は準備中）</summary>
+    <><details className="my-feature-preferences">
+      <summary>通知の好み</summary>
       <section className="panel">
         <p>
-          今は通知を配信しません。ここでは希望だけを保存します。開始前には改めて通知の許可を確認します。通知を希望しなくても基本機能は使えます。
+          ここでは希望だけを保存します。実際に受け取るには「この端末への通知」で公開状況を確認し、通知の許可を選んでください。通知を希望しなくても基本機能は使えます。
         </p>
         <label className="privacy-choice">
           <input
@@ -38,7 +39,7 @@ export function NotificationPreferences({
               setSaved(false);
             }}
           />
-          配信が始まったら通知を希望する
+          通知を希望する
         </label>
         {Object.entries(NOTIFICATION_TOPICS).map(([id, label]) => (
           <label className="privacy-choice" key={id}>
@@ -106,7 +107,7 @@ export function NotificationPreferences({
         </button>
         {saved && (
           <output>
-            希望を保存しました。通知配信は始まりません。
+            希望を保存しました。この操作だけでは新しい端末の通知登録は始まりません。
             {serverSaved === true
               ? 'アカウントにも希望を保存しました。'
               : serverSaved === false
@@ -115,6 +116,6 @@ export function NotificationPreferences({
           </output>
         )}
       </section>
-    </details>
+    </details><PushSetup/></>
   );
 }

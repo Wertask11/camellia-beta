@@ -36,15 +36,17 @@ export async function saveNotificationSettings(
     throw new Error('INVALID_PREFERENCES');
   const ref = db.doc(`camellia_users/${uid}/profile/notification_preferences`);
   return db.runTransaction(async (tx) => {
-    const [root, old] = await Promise.all([
+    const [root, old, registration] = await Promise.all([
       tx.get(db.doc(`camellia_users/${uid}`)),
       tx.get(ref),
+      tx.get(db.doc(`camellia_users/${uid}/admin/notification_registration`)),
     ]);
     if (!root.exists || root.data()?.personalDeleteInProgress)
       throw new Error('ACCOUNT_UNAVAILABLE');
     const revision = Number(old.data()?.revision ?? 0);
     if (expectedRevision !== null && expectedRevision !== revision)
       throw new Error('PREFERENCES_CHANGED');
+    if(!prefs.requested){const id=registration.data()?.recipient;tx.delete(registration.ref);if(typeof id==='string'&&/^[a-f0-9]{64}$/.test(id))tx.delete(db.doc(`${SERVER_ROOT}/notification_subscriptions/${id}`));}
     tx.set(ref, {
       preferences: prefs,
       revision: revision + 1,
@@ -59,6 +61,7 @@ export class NotificationDelivery {
     private db: Firestore,
     private driver?: DeliveryDriver,
     private now = Date.now,
+    private retentionMs?: number,
   ) {}
   async send(uid: string, topic: NotificationPreferences['topics'][number]) {
     if (!this.driver?.idempotent) return { state: 'not_configured' };
@@ -109,6 +112,7 @@ export class NotificationDelivery {
         attempt,
         createdAt: v?.createdAt ?? new Date(now),
         updatedAt: new Date(now),
+        ...(this.retentionMs?{expiresAt:new Date(now+this.retentionMs)}:{}),
       });
       return {
         ref,
@@ -165,7 +169,8 @@ export async function stopNotificationSettings(db: Firestore, uid: string) {
       `camellia_users/${uid}/admin/notification_registration`,
     );
   await db.runTransaction(async (tx) => {
-    const old = await tx.get(settings);
+    const [old,current] = await Promise.all([tx.get(settings),tx.get(registration)]);
+    const id=current.data()?.recipient;if(typeof id==='string'&&/^[a-f0-9]{64}$/.test(id))tx.delete(db.doc(`${SERVER_ROOT}/notification_subscriptions/${id}`));
     tx.delete(registration);
     if (old.exists) {
       const v = old.data()!,
