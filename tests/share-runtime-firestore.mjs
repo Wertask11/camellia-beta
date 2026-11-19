@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import {createServer as httpServer}from'node:http';
+import {createServer}from'vite';
+import {initializeApp,deleteApp}from'firebase-admin/app';
+import {getFirestore}from'firebase-admin/firestore';
+import{createHash}from'node:crypto';
+assert.equal(process.env.FIRESTORE_EMULATOR_HOST,'127.0.0.1:8085');
+const app=initializeApp({projectId:'demo-camellia'},'share-http'),db=getFirestore(app),root='camellia_admin/release_phase1';
+const accounts={'LOCAL-A':'share-http-A','LOCAL-B':'share-http-B'};
+globalThis[Symbol.for('share-http-deps')]={db,auth:{verifyIdToken:async token=>{if(!accounts[token])throw{code:'auth/invalid-id-token'};return{uid:accounts[token],email_verified:true,firebase:{sign_in_provider:'password'}};}}};
+const vite=await createServer({configFile:false,root:process.cwd(),server:{middlewareMode:true,hmr:false},plugins:[{name:'share-fixture',enforce:'pre',resolveId(id){if(id.endsWith('/server/admin.js'))return'\0share-admin';},load(id){if(id==='\0share-admin')return'export const SERVER_ROOT="camellia_admin/release_phase1";export const adminConfigured=()=>true;export const serverAdmin=()=>globalThis[Symbol.for("share-http-deps")];';}}]});
+let http;
+try{
+ const handler=(await vite.ssrLoadModule('/api/camellia/share.ts')).default;
+ http=httpServer(async(req,res)=>{let raw='';for await(const chunk of req)raw+=chunk;await handler({method:req.method,headers:req.headers,body:JSON.parse(raw||'{}')},{setHeader:(k,v)=>res.setHeader(k,v),status(code){res.statusCode=code;return{json(value){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));}};}});});await new Promise(r=>http.listen(0,'127.0.0.1',r));
+ const url=`http://127.0.0.1:${http.address().port}`,call=async(body,token)=>{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify(body)});return{status:r.status,body:await r.json(),headers:r.headers};};
+ const now=Date.now();await db.doc(`${root}/config/access`).set({inviteRequired:false});
+ for(const uid of Object.values(accounts))await db.doc(`camellia_users/${uid}`).set({agreedAt:new Date(now).toISOString()});
+ const input={operation:'create',kind:'feeling',feelingId:'listen',recipient:'partner',timing:'today',days:1,consent:true};
+ assert.equal((await call(input,'LOCAL-A')).status,503);
+ process.env.CAMELLIA_PARTNER_SHARING_ENABLED='true';assert.equal((await call(input,'LOCAL-A')).status,503);
+ await db.doc(`${root}/config/partner_sharing`).set({version:'partner_v1',approved:true,enabled:true,privacyReviewed:true,entitlementsReviewed:true,approvedBy:'LOCAL OPERATOR',approvedAt:new Date(now).toISOString()});
+ assert.equal((await call(input)).status,401);assert.equal((await call(input,'LOCAL-A')).status,403,'Free cannot forge Plus');
+ await db.doc(`camellia_users/${accounts['LOCAL-A']}/admin/billing_subscription`).set({plan:'plus',source:'verified_payment',status:'active',amount:500,currency:'JPY',paymentReceipt:'LOCAL-ONLY-INVOICE',periodStart:new Date(now-1000).toISOString(),expiresAt:new Date(now+3600000).toISOString()});
+ assert.equal((await call({...input,message:'PRIVATE MEMORY'},'LOCAL-A')).status,400);
+ const created=await call(input,'LOCAL-A');assert.equal(created.status,200);assert.equal(created.body.token.length,43);assert.equal(created.headers.get('referrer-policy'),'no-referrer');
+ const id=createHash('sha256').update(created.body.token).digest('hex');const stored=(await db.doc(`${root}/partner_shares/${id}`).get()).data();assert.ok(!JSON.stringify(stored).includes(created.body.token));
+ const read=await call({operation:'read',token:created.body.token});assert.equal(read.status,200);assert.equal(read.body.share.title,'今日は話を聞いてほしい');for(const forbidden of ['ownerUid','share-http-A','LOCAL-ONLY-INVOICE','recipient','PRIVATE MEMORY'])assert.ok(!JSON.stringify(read.body).includes(forbidden));
+ assert.equal((await call({operation:'revoke',id},'LOCAL-B')).status,404);
+ assert.equal((await call({operation:'list'},'LOCAL-B')).body.shares.length,0);
+ assert.equal((await call({operation:'list'},'LOCAL-A')).body.shares[0].id,id);
+ assert.equal((await call({operation:'revoke',id},'LOCAL-A')).status,200);assert.equal((await call({operation:'read',token:created.body.token})).status,404);assert.deepEqual((await db.doc(`${root}/partner_shares/${id}`).get()).data().content,{});
+ const {PLACE_DEMO_DATA}=await vite.ssrLoadModule('/data/place-demo.ts');
+ await db.doc(`${root}/places/share-test-place`).set({...PLACE_DEMO_DATA[0],id:'share-test-place',slug:'share-test-place',status:'published'});
+ const place=await call({...input,kind:'place',placeSlug:'share-test-place',feelingId:undefined},'LOCAL-A');assert.equal(place.status,200);assert.equal((await call({operation:'read',token:place.body.token})).status,200);
+ await db.doc(`${root}/places/share-test-place`).update({status:'suspended'});assert.equal((await call({operation:'read',token:place.body.token})).status,404,'suspended Place is not publicly shared');
+ await db.doc(`camellia_users/${accounts['LOCAL-A']}`).update({personalDeleteInProgress:true});assert.equal((await call(input,'LOCAL-A')).status,503,'deletion lock blocks issuance');await db.doc(`camellia_users/${accounts['LOCAL-A']}`).update({personalDeleteInProgress:false});
+ const expired=await call(input,'LOCAL-A');await db.doc(`${root}/partner_shares/${expired.body.id}`).update({expiresAt:new Date(now-1).toISOString()});assert.equal((await call({operation:'read',token:expired.body.token})).status,404);
+ // The seven-day protected referral grant, rather than a client or legacy-only flag, can authorize sharing.
+ const uid=accounts['LOCAL-B'],grantId=createHash('sha256').update(uid).digest('hex');await db.doc(`camellia_users/${uid}/admin/referral_trial`).set({source:'referral_trial',plan:'plus',status:'trialing',grantId,expiresAt:new Date(now+7*86400000).toISOString()});await db.doc(`${root}/referral_grants/${grantId}`).set({uidHash:grantId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+7*86400000).toISOString()});
+ const trial=await call(input,'LOCAL-B');assert.equal(trial.status,200);await db.doc(`${root}/referral_grants/${grantId}`).update({revoked:true});assert.equal((await call(input,'LOCAL-B')).status,403);
+ await db.doc(`${root}/config/partner_sharing`).update({enabled:false});assert.equal((await call({operation:'read',token:trial.body.token})).status,404);assert.equal((await call({operation:'revoke',id:trial.body.id},'LOCAL-B')).status,200,'stop preserves owner cleanup');
+ console.log('PASS real local HTTP issuance→anonymous third-party view→owner revoke→404; protected paid/referral rights, Free denial, double gate, opaque hash, private projection, cross-owner refusal, history, expiry/scrub and stopped cleanup. Auth/provider are fixtures; no real users or Production links.');
+}finally{delete process.env.CAMELLIA_PARTNER_SHARING_ENABLED;await new Promise(r=>http?http.close(r):r());await vite.close();await db.terminate();await deleteApp(app);delete globalThis[Symbol.for('share-http-deps')];}

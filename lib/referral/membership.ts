@@ -1,4 +1,4 @@
-import type { Firestore } from 'firebase-admin/firestore';
+import type { Firestore, DocumentSnapshot } from 'firebase-admin/firestore';
 import { SERVER_ROOT } from '../server/admin.js';
 import { referralHash } from './identity.js';
 /** Read-time expiry; stopping new grants never erases an already valid trial. */
@@ -6,10 +6,9 @@ export async function referralMembership(
   db: Firestore,
   uid: string,
   now = Date.now(),
+  read: (path: string) => Promise<DocumentSnapshot> = path => db.doc(path).get(),
 ) {
-  const trial = await db
-      .doc(`camellia_users/${uid}/admin/referral_trial`)
-      .get(),
+  const trial = await read(`camellia_users/${uid}/admin/referral_trial`),
     t = trial.data();
   if (
     !t ||
@@ -19,9 +18,7 @@ export async function referralMembership(
     t.grantId !== referralHash(uid)
   )
     return;
-  const grant = await db
-      .doc(`${SERVER_ROOT}/referral_grants/${t.grantId}`)
-      .get(),
+  const grant = await read(`${SERVER_ROOT}/referral_grants/${t.grantId}`),
     g = grant.data();
   if (
     !g ||
