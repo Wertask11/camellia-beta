@@ -1,0 +1,64 @@
+{
+  "observedAtUTC": "2026-11-19T11:32:24.661053+00:00",
+  "method": "GET only; no login, payment, AI generation, record mutation or configuration change",
+  "results": [
+    {
+      "path": "/",
+      "status": 200,
+      "json": null
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "status": 200,
+      "json": null
+    },
+    {
+      "path": "/api/camellia/chat",
+      "status": 200,
+      "json": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "path": "/api/camellia/place?operation=status",
+      "status": 503
+    },
+    {
+      "path": "/api/camellia/circle?operation=status",
+      "status": 401
+    },
+    {
+      "path": "/api/camellia/membership",
+      "status": 200,
+      "json": {
+        "plan": "free",
+        "trial": false,
+        "paid": false,
+        "checkoutReady": false,
+        "priceYen": 500
+      }
+    },
+    {
+      "path": "/api/camellia/place?status=1",
+      "status": 200,
+      "json": {
+        "enabled": false
+      }
+    },
+    {
+      "path": "/api/camellia/circle?status=1",
+      "status": 200,
+      "json": {
+        "enabled": true,
+        "configurationStatus": "ready",
+        "storageStatus": "initialized"
+      }
+    }
+  ],
+  "notes": [
+    "Initial operation=status probes are unsupported routes (503/401), not a regression diagnosis. Correct status=1 probes follow."
+  ]
+}

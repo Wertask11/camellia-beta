@@ -26,6 +26,7 @@ export const billingCustomerPath = (provider: string, id: string) =>
   `${SERVER_ROOT}/billing_customers/${hash(`${provider}:${id}`)}`;
 export const billingSubscriptionPath = (uid: string) =>
   `camellia_users/${uid}/admin/billing_subscription`;
+export class BillingProviderUnavailable extends Error {}
 class BillingError extends Error {
   constructor(readonly status: number) {
     super('BILLING_UNAVAILABLE');
@@ -105,9 +106,11 @@ export function createBillingWebhook(options: {
         throw new BillingError(400);
       let event: BillingEvent;
       try {
-        event = normalize(await options.adapter.verify(raw, signature));
-      } catch {
-        throw new BillingError(400);
+        const verified = await options.adapter.verify(raw, signature);
+        if (verified === null) return { status: 200, body: { accepted: true, ignored: true } };
+        event = normalize(verified);
+      } catch (error) {
+        throw new BillingError(error instanceof BillingProviderUnavailable ? 503 : 400);
       }
       const provider = options.adapter.id;
       if (!/^[a-z0-9-]{1,60}$/.test(provider)) throw new BillingError(503);
@@ -199,18 +202,18 @@ export function createBillingWebhook(options: {
                 periodEnd: event.periodEnd,
                 refundedYen: receipt?.refundedYen ?? 0,
                 verifiedAt: new Date(now).toISOString(),
-                analyticsEnqueued: true,
+                analyticsEnqueued: Boolean(binding.analyticsProfileId && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId)),
               },
               { merge: true },
             );
-            if (receipt?.analyticsEnqueued !== true)
+            if (receipt?.analyticsEnqueued !== true && typeof binding.analyticsProfileId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId))
               tx.create(
                 db.doc(
                   `${SERVER_ROOT}/billing_analytics_outbox/${hash(`${provider}:${event.paymentReceipt}`)}`,
                 ),
                 {
                   event: 'plus_complete',
-                  distinctId: `camellia_${binding.uid}`,
+                  distinctId: `camellia_${binding.analyticsProfileId}`,
                   insertId: randomUUID(),
                   properties: { currency: 'JPY', amount: PLUS_PRICE_YEN },
                   timestamp: event.occurredAt,
