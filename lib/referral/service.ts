@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes,createHash } from 'node:crypto';
 import type { Auth } from 'firebase-admin/auth';
 import type { Firestore } from 'firebase-admin/firestore';
 import { SERVER_ROOT } from '../server/admin.js';
@@ -26,6 +26,8 @@ const month = (now: number) =>
 export const referralTrialPath = (uid: string) =>
   `camellia_users/${uid}/admin/referral_trial`;
 /** Internal foundation. There is no public grant/issue endpoint until signup, cost and dedicated-AI integrations pass. */
+export type TrialTokenBudget={inputTokens:number;outputThinkingTokens:number;inputLimit:number;outputThinkingLimit:number};
+const validTokenUsage=(v:{inputTokens:number;outputThinkingTokens:number})=>[v.inputTokens,v.outputThinkingTokens].every(n=>Number.isSafeInteger(n)&&n>=0);
 export class ReferralService {
   constructor(
     private db: Firestore,
@@ -220,7 +222,7 @@ export class ReferralService {
       return { granted: true, reused: false, expiresAt, rewarded };
     });
   }
-  async reserveTrialAi(uid: string, requestId: string, maxCostYen: number) {
+  async reserveTrialAi(uid: string, requestId: string, maxCostYen: number, tokenBudget?:TrialTokenBudget) {
     reject(
       /^[0-9a-f-]{36}$/i.test(requestId) &&
         Number.isSafeInteger(maxCostYen) &&
@@ -228,6 +230,7 @@ export class ReferralService {
       'INVALID_AI_RESERVATION',
       400,
     );
+    if(tokenBudget)reject(validTokenUsage(tokenBudget)&&Number.isSafeInteger(tokenBudget.inputLimit)&&tokenBudget.inputLimit>0&&Number.isSafeInteger(tokenBudget.outputThinkingLimit)&&tokenBudget.outputThinkingLimit>0,'INVALID_AI_RESERVATION',400);
     const grantRef = this.ref('referral_grants', referralHash(uid)),
       receiptRef = this.ref(
         'referral_ai_reservations',
@@ -246,10 +249,15 @@ export class ReferralService {
       );
       if (receipt.exists) {
         reject(
-          receipt.data()?.maxCostYen === maxCostYen,
+          receipt.data()?.maxCostYen === maxCostYen&&(tokenBudget?['inputTokens','outputThinkingTokens','inputLimit','outputThinkingLimit'].every(k=>receipt.data()?.tokenBudget?.[k]===tokenBudget[k as keyof TrialTokenBudget]):!receipt.data()?.tokenBudget),
           'INVALID_AI_RESERVATION',
         );
         return { reserved: true, reused: true };
+      }
+      if(tokenBudget){
+       reject(!(g.aiUsed>0&&g.aiInputReservedTokens===undefined),'TRIAL_TOKEN_REVIEW_REQUIRED',429);
+       reject(Number.isSafeInteger(g.aiInputReservedTokens??0)&&Number.isSafeInteger(g.aiOutputThinkingReservedTokens??0)&&(g.aiInputReservedTokens??0)>=0&&(g.aiOutputThinkingReservedTokens??0)>=0,'TRIAL_TOKEN_REVIEW_REQUIRED',429);
+       reject((g.aiInputReservedTokens??0)+tokenBudget.inputTokens<=tokenBudget.inputLimit&&(g.aiOutputThinkingReservedTokens??0)+tokenBudget.outputThinkingTokens<=tokenBudget.outputThinkingLimit,'TRIAL_AI_TOKEN_LIMIT',429);
       }
       reject(g.costReviewRequired!==true,'TRIAL_COST_REVIEW_REQUIRED',429);
       reject(
@@ -260,10 +268,12 @@ export class ReferralService {
       tx.update(grantRef, {
         aiUsed: g.aiUsed + 1,
         aiReservedYen: g.aiReservedYen + maxCostYen,
+        ...(tokenBudget?{aiInputReservedTokens:(g.aiInputReservedTokens??0)+tokenBudget.inputTokens,aiOutputThinkingReservedTokens:(g.aiOutputThinkingReservedTokens??0)+tokenBudget.outputThinkingTokens}:{}),
       });
       tx.create(receiptRef, {
         grantId: grantRef.id,
         maxCostYen,
+        ...(tokenBudget?{tokenBudget}:{}),
         createdAt: this.now(),
       });
       return { reserved: true, reused: false };
@@ -285,7 +295,8 @@ export class ReferralService {
       reject(r&&g,'NOT_FOUND',404);if(r.released)return {released:true,reused:true};
       reject(r.dispatched!==true&&!r.settled,'ALREADY_DISPATCHED');
       reject(Number.isSafeInteger(g.aiUsed)&&g.aiUsed>0&&g.aiReservedYen>=r.maxCostYen,'INVALID_AI_RESERVATION');
-      tx.update(ref,{released:true,releasedAt:this.now()});tx.update(gref,{aiUsed:g.aiUsed-1,aiReservedYen:g.aiReservedYen-r.maxCostYen});return {released:true,reused:false};
+      if(r.tokenBudget)reject(g.aiInputReservedTokens>=r.tokenBudget.inputTokens&&g.aiOutputThinkingReservedTokens>=r.tokenBudget.outputThinkingTokens,'INVALID_AI_RESERVATION');
+      tx.update(ref,{released:true,releasedAt:this.now()});tx.update(gref,{aiUsed:g.aiUsed-1,aiReservedYen:g.aiReservedYen-r.maxCostYen,...(r.tokenBudget?{aiInputReservedTokens:g.aiInputReservedTokens-r.tokenBudget.inputTokens,aiOutputThinkingReservedTokens:g.aiOutputThinkingReservedTokens-r.tokenBudget.outputThinkingTokens}:{})});return {released:true,reused:false};
     });
   }
   async holdTrialAi(uid:string,requestId:string) {
@@ -294,6 +305,29 @@ export class ReferralService {
       const [receipt,grant]=await Promise.all([tx.get(ref),tx.get(gref)]);reject(receipt.exists&&grant.exists,'NOT_FOUND',404);
       reject(receipt.data()!.dispatched===true&&!receipt.data()!.released,'INVALID_AI_RESERVATION');
       tx.update(ref,{usageIncomplete:true,invoiceVerified:false});tx.update(gref,{costReviewRequired:true});return {held:true};
+    });
+  }
+  /** Explicit operator reconciliation; never assumes unknown provider usage was free. No entitlement or decoration is removed. */
+  async reconcileExpiredBudget(grantId:string,options:{apply?:boolean;approvedDigest?:string}={}){
+    reject(/^[a-f0-9]{64}$/.test(grantId),'INVALID_GRANT',400);
+    return this.db.runTransaction(async tx=>{
+      const ref=this.ref('referral_grants',grantId),snap=await tx.get(ref),g=snap.data();reject(g,'NOT_FOUND',404);
+      if(g.budgetReconciled===true)return{reconciled:true,reused:true,returnedYen:g.returnedReservationYen};
+      reject(typeof g.expiresAt==='string'&&Date.parse(g.expiresAt)<=this.now(),'TRIAL_NOT_EXPIRED');
+      reject(typeof g.campaignId==='string'&&/^[a-z0-9][a-z0-9-]{0,79}$/.test(g.campaignId)&&Number.isFinite(Date.parse(g.createdAt)),'INVALID_GRANT');
+      const receipts=await tx.get(this.db.collection(`${SERVER_ROOT}/referral_ai_reservations`).where('grantId','==',grantId).limit(1001));
+      reject(receipts.size<1001&&g.costReviewRequired!==true,'TRIAL_COST_REVIEW_REQUIRED');
+      const values=receipts.docs.map(d=>d.data()),settled=values.filter(r=>r.released!==true);
+      reject(Number.isSafeInteger(g.aiUsed)&&g.aiUsed===settled.length&&values.every(r=>r.released===true||r.settled===true&&r.costBasis==='provider_token_estimate'&&Number.isFinite(r.estimatedCostYen)&&r.estimatedCostYen>=0),'TRIAL_COST_REVIEW_REQUIRED');
+      const used=settled.reduce((n,r)=>n+r.estimatedCostYen,0);reject(Number.isSafeInteger(g.reservedYen)&&g.reservedYen>0&&used<=g.reservedYen&&Math.abs(used-Number(g.observedCostYen??0))<0.000001,'TRIAL_COST_REVIEW_REQUIRED');
+      const budgetRef=this.ref('referral_budgets',month(Date.parse(g.createdAt))),budget=await tx.get(budgetRef),returned=g.reservedYen-used;
+      reject(Number.isFinite(budget.data()?.reservedYen)&&budget.data()!.reservedYen>=returned,'TRIAL_COST_REVIEW_REQUIRED');
+      const digest=createHash('sha256').update(JSON.stringify({grantId,version:[snap.updateTime?.seconds,snap.updateTime?.nanoseconds],budget:[budget.updateTime?.seconds,budget.updateTime?.nanoseconds],receipts:receipts.docs.map(d=>[d.id,d.updateTime.seconds,d.updateTime.nanoseconds]),used,returned})).digest('hex');
+      if(!options.apply)return{reconciled:false,digest,estimatedUsedYen:used,returnableYen:returned};
+      reject(options.approvedDigest===digest,'RECONCILIATION_PLAN_CHANGED');
+      tx.update(budgetRef,{reservedYen:budget.data()!.reservedYen-returned});tx.update(ref,{budgetReconciled:true,returnedReservationYen:returned,estimatedUsedYen:used,reconciledAt:new Date(this.now()).toISOString(),invoiceVerified:false});
+      tx.create(this.ref('referral_budget_audit',digest),{grantId,operation:'expired_reservation_reconciled',estimatedUsedYen:used,returnedReservationYen:returned,invoiceVerified:false,at:new Date(this.now()).toISOString()});
+      return{reconciled:true,reused:false,returnedYen:returned};
     });
   }
   async claimDecoration(uid: string, creditId: string, decorationId: string) {
@@ -346,8 +380,8 @@ export class ReferralService {
       });
     });
   }
-  /** Already-priced numeric provider observations only. No refunds of reserved budget and no assumed zero cost. */
-  async settleTrialAi(uid: string, requestId: string, estimatedCostYen: number) {
+  /** Confirm numeric provider estimates; return only the proven unused part of a request reservation. Never an invoice confirmation. */
+  async settleTrialAi(uid: string, requestId: string, estimatedCostYen: number, tokens?:{inputTokens:number;outputThinkingTokens:number}) {
     reject(
       /^[0-9a-f-]{36}$/i.test(requestId) &&
         Number.isFinite(estimatedCostYen) &&
@@ -363,17 +397,22 @@ export class ReferralService {
         receipt = await tx.get(ref),
         r = receipt.data();
       reject(r, 'NOT_FOUND', 404);
+      if(r.tokenBudget)reject(tokens&&validTokenUsage(tokens),'INVALID_AI_OBSERVATION',400);
       if (r.settled) {
-        reject((r.estimatedCostYen ?? r.actualCostYen) === estimatedCostYen, 'INVALID_AI_OBSERVATION');
+        reject((r.estimatedCostYen ?? r.actualCostYen) === estimatedCostYen&&(!r.tokenBudget||(r.tokens?.inputTokens===tokens?.inputTokens&&r.tokens?.outputThinkingTokens===tokens?.outputThinkingTokens)), 'INVALID_AI_OBSERVATION');
         return { settled: true, reused: true };
       }
       const gref = this.ref('referral_grants', referralHash(uid)),
         grant = await tx.get(gref);
       reject(grant.exists, 'NOT_FOUND', 404);
       reject(!r.released,'INVALID_AI_OBSERVATION');
-      const costOverrun = estimatedCostYen > r.maxCostYen;
-      tx.update(ref, { settled: true, estimatedCostYen, costOverrun, costBasis:'provider_token_estimate',invoiceVerified:false });
+      const costOverrun = estimatedCostYen > r.maxCostYen||Boolean(r.tokenBudget&&tokens&&(tokens.inputTokens>r.tokenBudget.inputTokens||tokens.outputThinkingTokens>r.tokenBudget.outputThinkingTokens));
+      const g=grant.data()!;reject(g.aiReservedYen>=r.maxCostYen,'INVALID_AI_OBSERVATION');
+      if(r.tokenBudget)reject(r.dispatched===true&&g.aiInputReservedTokens>=r.tokenBudget.inputTokens&&g.aiOutputThinkingReservedTokens>=r.tokenBudget.outputThinkingTokens,'INVALID_AI_OBSERVATION');
+      tx.update(ref, { settled: true, estimatedCostYen, ...(tokens?{tokens}:{}), costOverrun, costBasis:'provider_token_estimate',invoiceVerified:false });
       tx.update(gref, {
+        aiReservedYen:g.aiReservedYen-r.maxCostYen+estimatedCostYen,
+        ...(r.tokenBudget&&tokens?{aiInputReservedTokens:g.aiInputReservedTokens-r.tokenBudget.inputTokens+tokens.inputTokens,aiOutputThinkingReservedTokens:g.aiOutputThinkingReservedTokens-r.tokenBudget.outputThinkingTokens+tokens.outputThinkingTokens}:{}),
         observedCostYen:
           Number(grant.data()!.observedCostYen ?? 0) + estimatedCostYen,
         ...(costOverrun ? { costReviewRequired: true } : {}),

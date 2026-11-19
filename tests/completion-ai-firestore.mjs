@@ -235,7 +235,7 @@ try {
     .set({
       ...config,
       trialGenerationApproved: true,
-      maxTrialInputTokens: 1000,
+      maxTrialInputTokens: 1000,trialInputTokenLimit:10000,trialOutputThinkingTokenLimit:100000,
     });
   const cancelled = await prepareTrialGeneration(options);
   await cancelled.finish();
