@@ -24,20 +24,20 @@ export async function prepareTrialGeneration(options: {
     !Number.isSafeInteger(config.maxTrialInputTokens) ||
     config.maxTrialInputTokens <= 0||!Number.isSafeInteger(config.trialInputTokenLimit)||config.trialInputTokenLimit<=0||!Number.isSafeInteger(config.trialOutputThinkingTokenLimit)||config.trialOutputThinkingTokenLimit<=0
   )
-    throw new Error('TRIAL_AI_NOT_CONFIGURED');
+    throw Object.assign(new Error('TRIAL_AI_NOT_CONFIGURED'),{code:'TRIAL_AI_NOT_CONFIGURED'});
   const models = [...new Set(options.models.filter(Boolean))];
   if (!models.length || models.length > 2)
-    throw new Error('TRIAL_AI_NOT_CONFIGURED');
+    throw Object.assign(new Error('TRIAL_AI_NOT_CONFIGURED'),{code:'TRIAL_AI_NOT_CONFIGURED'});
   let upperCost = 0,upperInput=0,upperOutputThinking=0;
   for (const model of models) {
-    if (!Number.isFinite(Date.parse(config.pricing?.[model]?.validUntil)) || Date.parse(config.pricing[model].validUntil) <= Date.now()) throw new Error('TRIAL_AI_NOT_CONFIGURED');
+    if (!Number.isFinite(Date.parse(config.pricing?.[model]?.validUntil)) || Date.parse(config.pricing[model].validUntil) <= Date.now()) throw Object.assign(new Error('TRIAL_AI_NOT_CONFIGURED'),{code:'TRIAL_AI_NOT_CONFIGURED'});
     const input = await options.countInput(model);
     if (
       !Number.isSafeInteger(input) ||
       input < 0 ||
       input > config.maxTrialInputTokens
     )
-      throw new Error('TRIAL_AI_INPUT_LIMIT');
+      throw Object.assign(new Error('TRIAL_AI_INPUT_LIMIT'),{code:'TRIAL_AI_INPUT_LIMIT'});
     const cap = model.includes('flash-lite') ? 512 : 2048;
     // Conservative bound: charge the whole output cap at both output and thinking rates; assume no cache discount.
     const estimate = estimateAttempt(
@@ -45,7 +45,7 @@ export async function prepareTrialGeneration(options: {
       config.pricing?.[model],
     );
     if (estimate.status !== 'estimate')
-      throw new Error('TRIAL_AI_NOT_CONFIGURED');
+      throw Object.assign(new Error('TRIAL_AI_NOT_CONFIGURED'),{code:'TRIAL_AI_NOT_CONFIGURED'});
     upperCost += estimate.amountYen;upperInput+=input;upperOutputThinking+=2*cap;
   }
   const service = new ReferralService(options.db, options.auth),

@@ -1,0 +1,28 @@
+{
+  "atUTC": "2026-11-19T20:33:19.337721+00:00",
+  "branch": "codex/camellia-alpha-release-candidate",
+  "buildCommit": "ae5003618203733ec1300a91ee836bcd1281f11e",
+  "productSource": "145aa5db8e631b4c7d9fe37a77730cd38b4c3a47",
+  "productionEnvironment": false,
+  "githubDeploymentId": 7924926841,
+  "statuses": [
+    {
+      "created_at": "2026-11-19T20:31:16Z",
+      "environment": "Preview",
+      "environment_url": "https://camellia-beta-7g536o3ce-school-park.vercel.app",
+      "log_url": "https://camellia-beta-7g536o3ce-school-park.vercel.app",
+      "state": "success"
+    },
+    {
+      "created_at": "2026-11-19T20:27:17Z",
+      "environment": "Preview",
+      "environment_url": "https://camellia-beta-nmz0novhq-school-park.vercel.app",
+      "log_url": "https://camellia-beta-nmz0novhq-school-park.vercel.app",
+      "state": "success"
+    }
+  ],
+  "http": {
+    "failure": "URLError",
+    "verified": false
+  }
+}

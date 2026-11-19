@@ -49,7 +49,7 @@ export async function generate(contents:Parameters<ReturnType<typeof createGemin
  const signal=AbortSignal.any([AbortSignal.timeout(28000),...(controls?[controls.signal]:[])]);
  let trial:Awaited<ReturnType<typeof prepareTrialGeneration>>|undefined;
  if(controls?.identity?.usageLane==='referral_extension'){
-  if(!referralDeploymentReady())throw new Error('TRIAL_AI_NOT_READY');
+  if(!referralDeploymentReady())throw Object.assign(new Error('TRIAL_AI_NOT_READY'),{code:'TRIAL_AI_NOT_READY'});
   const admin=serverAdmin();
   trial=await prepareTrialGeneration({db:admin.db,auth:admin.auth,...controls.identity,models:[primaryModel,fallbackModel],countInput:async model=>{const result=await ai.models.countTokens({model,contents:contents as Parameters<GoogleGenAI['models']['countTokens']>[0]['contents'],config:{systemInstruction,abortSignal:signal}});return result.totalTokens??NaN;}});
  }
@@ -104,7 +104,7 @@ const handler = createGeminiChatHandler({
   claimRequest:(uid,requestId)=>claimAiRequest(serverAdmin().db,uid,requestId),
   getTodayMood:async()=>undefined,
   loadContext:uid=>loadConversationContext(uid,serverAdmin().db as unknown as Parameters<typeof loadConversationContext>[1]),
-  ...(adminConfigured() ? {limiter:{take:async(uid:string)=>{const db=serverAdmin().db;return await createSharedRateLimiter(db).take(uid)&&await takeMemberFreeDaily(db,uid,Date.now(),true);}}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
+  ...(adminConfigured() ? {limiter:{take:async(uid:string,lane?:'basic'|'referral_extension')=>{const db=serverAdmin().db;return await createSharedRateLimiter(db).take(uid)&&await takeMemberFreeDaily(db,uid,Date.now(),true,lane);}}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
   generate:(contents,prompt,controls)=>generate(contents,prompt,controls,false),
   generateStream:(contents,prompt,controls)=>generate(contents,prompt,controls,true),
 });

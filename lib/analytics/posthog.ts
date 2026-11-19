@@ -225,7 +225,7 @@ export function sanitizeEventProperties(
     if (key === 'circle_id' && !['tired','alone-time','working','self','rest','interests'].includes(String(value))) continue;
     if (event.name === 'conversation_starter_selected' && !['today', 'vent', 'organize', 'check'].includes(String(value))) continue;
     if (key === 'provider' && !['gemini', 'fallback'].includes(String(value))) continue;
-    if (key === 'error_category' && !['daily_limited', 'rate_limited', 'timeout', 'network', 'provider_error', 'disabled', 'invalid_request', 'safety_block', 'invalid_response'].includes(String(value))) continue;
+    if (key === 'error_category' && !['trial_limited','daily_limited', 'rate_limited', 'timeout', 'network', 'provider_error', 'disabled', 'invalid_request', 'safety_block', 'invalid_response'].includes(String(value))) continue;
     if(key==='transport'&&!['sse','json'].includes(String(value)))continue;
     if((PERFORMANCE_KEYS as readonly string[]).includes(key)&&(typeof value!=='number'||!Number.isFinite(value)||value<0||value>120000))continue;
     if (key === 'response_time_ms' && (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 120_000)) continue;

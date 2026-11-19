@@ -81,7 +81,7 @@ export const getSyncStatus=()=>status;
 export const subscribeSyncStatus=()=>()=>{};
 export const flushSchoolParkSync=async()=>{};
 export const cloudContainsState=async()=>sessionStorage.getItem('ux-cloud-confirm')==='1';`,
-  '@/lib/analytics/posthog': `export const resetAnalyticsIdentity=()=>{};
+  '@/lib/analytics/posthog': `export const billingAnalyticsProfileId=()=>undefined;export const resetAnalyticsIdentity=()=>{};
 export const forwardEvent=()=>true;
 export const captureAuthEvent=(name,properties)=>{if(${checkFirst})window.dispatchEvent(new CustomEvent('ux-auth-event',{detail:{name,properties}}));return true;};
 export const setAnalyticsDeliveryAllowed=()=>{};`,

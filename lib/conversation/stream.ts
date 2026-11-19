@@ -60,7 +60,7 @@ export async function consumeChatStream(response:Response,onText:(text:string)=>
           if(typeof event.text!=='string'||Array.from(event.text).length>300)throw Object.assign(new Error('INVALID_DELTA'),{category:'invalid_response'});
           onText(event.text);
         }else if(event.type==='error'){
-          const allowed=['daily_limited','rate_limited','timeout','network','provider_error','disabled','invalid_request','safety_block','invalid_response'];
+          const allowed=['trial_limited','daily_limited','rate_limited','timeout','network','provider_error','disabled','invalid_request','safety_block','invalid_response'];
           throw Object.assign(new Error('CHAT_FAILED'),{category:allowed.includes(String(event.category))?event.category:'provider_error',timing:event.timing});
         }else if(event.type==='done')done=event;
       }

@@ -1,0 +1,42 @@
+[
+  {
+    "width": 375,
+    "noCheckSelectionAndReflection": "PASS",
+    "emailSendFailureAndBackPreserveOriginal": "PASS synthetic mail failure",
+    "reflectionWithoutScoreMeasured": "PASS local event only",
+    "existingIdEmailLinkSameUidAndRecords": "PASS synthetic Auth",
+    "pageErrors": []
+  },
+  {
+    "width": 390,
+    "noCheckSelectionAndReflection": "PASS",
+    "emailSendFailureAndBackPreserveOriginal": "PASS synthetic mail failure",
+    "reflectionWithoutScoreMeasured": "PASS local event only",
+    "existingIdEmailLinkSameUidAndRecords": "PASS synthetic Auth",
+    "pageErrors": []
+  },
+  {
+    "width": 412,
+    "noCheckSelectionAndReflection": "PASS",
+    "emailSendFailureAndBackPreserveOriginal": "PASS synthetic mail failure",
+    "reflectionWithoutScoreMeasured": "PASS local event only",
+    "existingIdEmailLinkSameUidAndRecords": "PASS synthetic Auth",
+    "pageErrors": []
+  },
+  {
+    "width": 768,
+    "noCheckSelectionAndReflection": "PASS",
+    "emailSendFailureAndBackPreserveOriginal": "PASS synthetic mail failure",
+    "reflectionWithoutScoreMeasured": "PASS local event only",
+    "existingIdEmailLinkSameUidAndRecords": "PASS synthetic Auth",
+    "pageErrors": []
+  },
+  {
+    "width": 1280,
+    "noCheckSelectionAndReflection": "PASS",
+    "emailSendFailureAndBackPreserveOriginal": "PASS synthetic mail failure",
+    "reflectionWithoutScoreMeasured": "PASS local event only",
+    "existingIdEmailLinkSameUidAndRecords": "PASS synthetic Auth",
+    "pageErrors": []
+  }
+]
