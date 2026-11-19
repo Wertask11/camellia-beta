@@ -14,6 +14,6 @@ try{
  runInNewContext(await readFile('public/camellia-push-sw.js','utf8'),{self:scope,URL});const tasks=[];
  listeners.push({data:{json:()=>({key:'a'.repeat(64),body:'PRIVATE HEALTH',url:'https://evil.test'})},waitUntil:p=>tasks.push(p)});assert.ok(tasks.length>0);await Promise.all(tasks);tasks.length=0;assert.equal(shown[0].title,'Camellia');assert.ok(!JSON.stringify(shown).includes('PRIVATE'));assert.equal(shown[0].opts.data.path,'/?open=discover');
  listeners.notificationclick({notification:{close(){}},waitUntil:p=>tasks.push(p)});assert.ok(tasks.length>0);await Promise.all(tasks);tasks.length=0;assert.deepEqual(opened,['https://camellia.example/?open=discover']);assert.equal(listeners.fetch,undefined,'no private offline cache');
- const dispatch=(await vite.ssrLoadModule('/api/camellia/notification-dispatch.ts')).default;let status;await dispatch({method:'POST',headers:{},body:{uid:'FORGED'}},{setHeader(){},status(c){status=c;return{json(){}};}});assert.equal(status,401);
+ const dispatch=(await vite.ssrLoadModule('/lib/notifications/dispatch-handler.ts')).default;let status;await dispatch({method:'POST',headers:{},body:{uid:'FORGED'}},{setHeader(){},status(c){status=c;return{json(){}};}});assert.equal(status,401);
  console.log('PASS CommonJS SDK load + real encryption request construction, SSRF/key/shape refusal, VAPID matching, untrusted SW text ignored, fixed click URL, no cache, protected dispatcher. No network send or real permission.');
 }finally{await vite.close();}

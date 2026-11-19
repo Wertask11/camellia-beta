@@ -11,7 +11,7 @@ async def main():
    async def handle(route):
     nonlocal registered
     req=route.request
-    if '/api/camellia/push-subscription' in req.url:
+    if '/api/camellia/notification-settings?push=1' in req.url:
      if req.method=='POST':posts.append(req.post_data_json);registered=True;return await route.fulfill(json={'registered':True})
      if req.method=='DELETE':registered=False;return await route.fulfill(json={'stopped':True})
      return await route.fulfill(json={'ready':True,'preferencesRequested':True,'publicKey':'B'+'A'*86,'registered':registered,'registrationId':hashlib.sha256(b'https://fcm.googleapis.com/fcm/send/LOCAL-UI-FIXTURE').hexdigest() if registered else None,'revision':1})
@@ -23,7 +23,7 @@ async def main():
    await page.screenshot(path=str(out/f'push-{width}.png'));results.append({'width':width,'no_permission_on_open':True,'explicit_permission_and_registration':True,'stop':True,'no_overflow':True});await page.close()
   page=await b.new_page(viewport={'width':390,'height':844});await page.add_init_script(INIT)
   async def off(route):
-   if '/api/camellia/push-subscription' in route.request.url:return await route.fulfill(json={'ready':False,'registered':False,'revision':0})
+   if '/api/camellia/notification-settings?push=1' in route.request.url:return await route.fulfill(json={'ready':False,'registered':False,'revision':0})
    if route.request.url.startswith('http://127.0.0.1:4184'):return await route.continue_()
    return await route.abort()
   await page.route('**/*',off);await page.goto('http://127.0.0.1:4184/fixture');await page.locator('summary').click();await page.get_by_text('配信は準備中です。この画面を開いただけでは通知の許可を要求しません。').wait_for();assert await page.evaluate('window.permissionCalls')==0;results.append({'mode':'unconfigured','no_permission':True});await b.close()

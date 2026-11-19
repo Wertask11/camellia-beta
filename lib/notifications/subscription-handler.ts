@@ -1,8 +1,8 @@
-import {adminConfigured,serverAdmin}from'../../lib/server/admin.js';
-import{requireEligibleUser,EligibilityError}from'../../lib/server/eligibility.js';
-import{pushReadiness,registerPush}from'../../lib/notifications/push.js';
-import{stopNotificationSettings}from'../../lib/notifications/delivery.js';
-import{createSharedRateLimiter}from'../../lib/server/shared-limit.js';
+import {adminConfigured,serverAdmin}from'../server/admin.js';
+import{requireEligibleUser,EligibilityError}from'../server/eligibility.js';
+import{pushReadiness,registerPush}from'./push.js';
+import{stopNotificationSettings}from'./delivery.js';
+import{createSharedRateLimiter}from'../server/shared-limit.js';
 type Req={method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown};type Res={setHeader:(n:string,v:string)=>void;status:(n:number)=>{json:(v:unknown)=>void}};
 export default async function push(req:Req,res:Res){
  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');

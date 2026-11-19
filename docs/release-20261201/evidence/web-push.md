@@ -10,3 +10,7 @@
 Auth/Notification/ServiceWorker/PushManager/配信APIはfixture。実OS許可・実購読・実Push・実機表示・Preview受入・Production反映は未実施。鍵/環境変数/cronを設定せず、通知を送っていない。
 
 別途npm production auditで既存React RSC等の脆弱性報告を検出。新Web Pushを原因と断定せず、mainから分離したsecurity修正で調査/対処する。正式リリースの安全性PASSとはしない。
+
+## API入口整理後
+
+push/dispatchを既存notification-settingsの内部handlerへ移したsourceで、lint/typecheck/unit73/73/emulator20 scripts/Production相当buildを再実行PASS。Chromium5幅も同じquery経路で再PASS。API入口12本の維持を自動検証へ追加。元Preview失敗の詳細ログは未参照であり、本数が唯一の原因とは断定しない。修正headのVercel判定は別途確認する。

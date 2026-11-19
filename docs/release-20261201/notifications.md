@@ -30,7 +30,7 @@ Myで通知の好み・種類・頻度を保存→「この端末への通知」
 
 ## 運営の送信手順（別承認が必要）
 
-`POST /api/camellia/notification-dispatch`、Authorizationにdispatch secret、bodyは既知topic=place/circle/reflectionと任意after cursorのみ。任意の宛先/UID/本文をクライアントから送らせない。topicを選んだ運営の汎用案内の配信であり、未実装のCircle即時コメント通知と誤認させない。初回は承認された専用アカウント・端末だけの検証環境を使う。
+`POST /api/camellia/notification-settings?dispatch=1`、Authorizationにdispatch secret、bodyは既知topic=place/circle/reflectionと任意after cursorのみ。任意の宛先/UID/本文をクライアントから送らせない。topicを選んだ運営の汎用案内の配信であり、未実装のCircle即時コメント通知と誤認させない。初回は承認された専用アカウント・端末だけの検証環境を使う。
 
 登録済み配送先を50件ずつ読み、JSTの日/週/月の本人設定・種類・全topic共通の期間claim・停止/削除/凍結状態を再確認。実行時間で一旦止めた場合は最後に処理したcursorを返す。nextCursorを次の呼出へ渡し、nullで終了。今回cron/自動送信は設定しない。正式な配信タイミング・内容対象・開始判断は運営が決める。
 
@@ -47,3 +47,7 @@ Myで通知の好み・種類・頻度を保存→「この端末への通知」
 Android Chrome、iPhone Safariの実OS通知許可/表示、Samsung Internet、バックグラウンド、機内モード、省電力、音・バッジ、端末間切替。iPhone Safariは通常ホーム画面追加等の条件がある。ブラウザの対応は実OSで確認する。FCM/Mozilla/Apple/Windows通知hostをallowlistにするが、query付き等の未対応endpointは安全に拒否。サポートするOSの保証は実機受入後。
 
 ローカルの実ChromiumではUIを5幅操作するが、Notification/ServiceWorker/PushManager/Auth/サーバーはfixture。これはOS許可・実購読・実通知ではない。実SDKの暗号化生成とCommonJS読込、emulatorでの登録/二重送信/停止/不明結果/失効は別の自動試験。実送信・実表示は未確認。
+
+## Previewでの経路整理
+
+最初のPreviewはデプロイに失敗。APIファイルが14本となったため、新しいpush/dispatch入口を既存notification-settingsのqueryで分岐させ、認証と秘密鍵の境界は別の内部handlerに維持した。公開APIは12本へ戻し、機能追加で関数本数を増やさない。初回失敗の詳細ログは接続がなく参照できないため、元の原因を断定せず修正後のVercel結果を別途確認する。

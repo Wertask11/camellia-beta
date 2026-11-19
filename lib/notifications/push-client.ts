@@ -5,7 +5,7 @@ export const pushErrorMessage=(e:unknown)=>e instanceof PushUiError?e.message:'�
 export type PushStatus={ready:boolean;preferencesRequested?:boolean;stopped?:boolean;accountRegistered?:boolean;registrationId?:string|null;publicKey?:string;registered:boolean;revision:number;checkedAt?:number;ownerKey?:string;lastDelivery?:{state:'push_service_accepted'|'rejected'|'unknown';at:string}|null};
 async function request(method:'GET'|'POST'|'DELETE',body?:unknown){
  const user=schoolParkAuth.currentUser;if(!user||user.isAnonymous)throw new PushUiError('通知をこの端末へ届けるには、先に無料のCamellia IDで引き継いでください。');
- const response=await fetch('/api/camellia/push-subscription',{method,headers:{Authorization:`Bearer ${await user.getIdToken()}`,...(body?{'Content-Type':'application/json'}:{})},...(body&&method!=='GET'?{body:JSON.stringify(body)}:{}),cache:'no-store',signal:AbortSignal.timeout(12000)});
+ const response=await fetch('/api/camellia/notification-settings?push=1',{method,headers:{Authorization:`Bearer ${await user.getIdToken()}`,...(body?{'Content-Type':'application/json'}:{})},...(body&&method!=='GET'?{body:JSON.stringify(body)}:{}),cache:'no-store',signal:AbortSignal.timeout(12000)});
  if(schoolParkAuth.currentUser?.uid!==user.uid)throw new PushUiError('アカウントが変わりました。通知は登録していません。');
  if(!response.ok)throw new PushUiError('通知の状態を確認できませんでした。希望の保存や他の機能はそのまま使えます。');return response.json();
 }

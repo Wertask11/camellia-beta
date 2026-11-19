@@ -1,9 +1,9 @@
 import {FieldPath}from'firebase-admin/firestore';
 import {createHash,timingSafeEqual}from'node:crypto';
-import {adminConfigured,serverAdmin,SERVER_ROOT}from'../../lib/server/admin.js';
-import {pushReadiness,webPushDriver}from'../../lib/notifications/push.js';
-import {NotificationDelivery}from'../../lib/notifications/delivery.js';
-import{NOTIFICATION_TOPICS,type NotificationPreferences}from'../../lib/notifications/preferences.js';
+import {adminConfigured,serverAdmin,SERVER_ROOT}from'../server/admin.js';
+import {pushReadiness,webPushDriver}from'./push.js';
+import {NotificationDelivery}from'./delivery.js';
+import{NOTIFICATION_TOPICS,type NotificationPreferences}from'./preferences.js';
 type Req={method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown};type Res={setHeader:(n:string,v:string)=>void;status:(n:number)=>{json:(v:unknown)=>void}};
 export const maxDuration=60;
 /** Operator/scheduler only. No schedule is installed or started by this endpoint. */

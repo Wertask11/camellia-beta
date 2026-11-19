@@ -1,0 +1,3 @@
+import assert from'node:assert/strict';import{readdir}from'node:fs/promises';
+async function routes(path){const found=[];for(const e of await readdir(path,{withFileTypes:true})){if(e.isDirectory())found.push(...await routes(`${path}/${e.name}`));else if(/\.(ts|js)$/.test(e.name))found.push(`${path}/${e.name}`);}return found;}
+const files=await routes('api');assert.ok(files.length<=12,`Keep deployed API entrypoints within the established 12-function budget: ${files.length}`);assert.ok(!files.some(x=>/push-subscription|notification-dispatch/.test(x)));console.log('PASS deployment entrypoints <=12; notification subroutes reuse existing authenticated API. No hosting settings changed.');
