@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-19",
+  "kind": "Local real Chromium with injected Auth/payment fixtures; no real login, Stripe call, charge or Preview/Production acceptance",
+  "results": [
+    {
+      "width": 375,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true
+    },
+    {
+      "width": 390,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true
+    },
+    {
+      "width": 412,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true
+    },
+    {
+      "width": 768,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true
+    },
+    {
+      "width": 1280,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true
+    },
+    {
+      "mode": "disabled",
+      "passed": true
+    },
+    {
+      "mode": "portal",
+      "passed": true
+    }
+  ]
+}
