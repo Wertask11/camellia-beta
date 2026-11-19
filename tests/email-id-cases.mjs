@@ -20,6 +20,13 @@ try{
  await service.request('old@example.test','https://camellia.test','link');user=makeUser('different-account');await assert.rejects(()=>service.complete('https://camellia.test/?oobCode=LOCAL'),/EMAIL_AUTH_CHANGED/);assert.equal(links,1);
  user=null;await service.request('old@example.test','https://camellia.test','signin',true);time+=email.EMAIL_INTENT_TTL+1;assert.equal(service.pending(),undefined);await assert.rejects(()=>service.complete('https://camellia.test/?oobCode=LOCAL'),/EMAIL_REQUIRED/);
  driver.signin=async()=>{user=makeUser('unverified',false);return user;};await service.request('old@example.test','https://camellia.test','signin',true);await assert.rejects(()=>service.complete('https://camellia.test/?oobCode=LOCAL'),/EMAIL_UNVERIFIED/);
+ // Billing identity is separate from consumer consent and never binds private records.
+ user=null;localStorage.removeItem(email.EMAIL_PENDING_KEY);localStorage.removeItem(email.EMAIL_VERIFIED_KEY);driver.signin=async()=>{signins++;user=makeUser('billing-only');return user;};
+ await service.request('billing@example.test','https://camellia.test','signin',false,'billing');assert.equal(sends.at(-1).url,'https://camellia.test/?auth=email&open=billing');assert.equal(service.pending().targetAcknowledged,false);
+ await assert.rejects(()=>service.complete('https://camellia.test/?oobCode=LOCAL'),/EMAIL_PURPOSE_MISMATCH/);
+ await service.complete('https://camellia.test/?oobCode=LOCAL&open=billing',undefined,false,'billing');assert.equal(localStorage.getItem(email.EMAIL_VERIFIED_KEY),null);assert.equal(localStorage.getItem('EXISTING_PRIVATE'),'EXACT_ORIGINAL');
+ user=null;await service.request('records@example.test','https://camellia.test','signin',true);await assert.rejects(()=>service.complete('https://camellia.test/?oobCode=LOCAL&open=billing',undefined,false,'billing'),/EMAIL_PURPOSE_MISMATCH/);assert.equal(user,null);
+ localStorage.removeItem(email.EMAIL_PENDING_KEY);await service.complete('https://camellia.test/?oobCode=LOCAL&open=billing','billing@example.test',false,'billing');assert.equal(localStorage.getItem(email.EMAIL_VERIFIED_KEY),null,'another-device billing email does not imply service consent');
  const clean=email.stripEmailCallback(new URL('https://camellia.test/?auth=email&oobCode=PRIVATE_CODE&apiKey=PRIVATE_KEY&mode=signIn&lang=ja'));assert.equal(clean,'/');assert.ok(!email.emailIdError({code:'unknown',message:'PRIVATE_EMAIL'}).includes('PRIVATE'));
  console.log('PASS email verification driver, consent without fake birthday, same-UID explicit linking, changed-account/mismatched-email/expiry/unverified refusal, callback scrubbing and sanitized errors. Adapter only, no real email sent.');
 }finally{await server.close();await dom.happyDOM.close();}

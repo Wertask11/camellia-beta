@@ -29,11 +29,13 @@ export default async function billing(req: Req, res: Res) {
   if (!await limit.take(`billing:${user.uid}`)) return res.status(429).json({error:'SLOW_DOWN'});
   const service = new StripeCheckoutService(deps.db,stripeClient(settings.key),settings.mode), cfg = await service.configuration();
   if (body.operation === 'status') return res.status(200).json(await service.status(user.uid,created));
+  // A token-authenticated read does not require new-intake configuration or a consumer profile.
+  if (body.operation === 'history') return res.status(200).json(await service.history(user.uid,created));
   if (!cfg) return res.status(503).json({error:'BILLING_NOT_READY'});
   if (req.headers.origin !== cfg.origin) return res.status(403).json({error:'ORIGIN_NOT_ALLOWED'});
   if (body.operation === 'checkout') return res.status(200).json(await service.start(user.uid,created,body.input));
   if (body.operation === 'portal') return res.status(200).json(await service.portal(user.uid,created));
-  return res.status(200).json(await service.history(user.uid,created));
+  return res.status(400).json({error:'INVALID_CHECKOUT'});
  } catch (e) {
   if (e instanceof CheckoutError || e instanceof EligibilityError) return res.status(e.status).json({error:e.code});
   console.warn('camellia_billing_unavailable',{stage:'checkout_or_storage'});
