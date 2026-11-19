@@ -35,3 +35,26 @@ customer→UID→Auth作成日時のサーバー専用bindingで誤付与を防�
 - 不明なcustomer/別Auth作成日時は409として運営調査。自動で別UIDへ結び直さない。
 - Plus完了イベントの送信先はpseudonymous UUIDがある場合のみ。Firebase UIDへのfallbackを禁止。UUID未設定の旧顧客も支払い済みの権利は正常に付与し、計測が欠けることを別に扱う。outboxを作っただけでPostHog着信済みとしない。
 - 既存v4対応mainをロールバック基点として維持。customer/receipt/idempotency台帳を消して旧コードへ戻さない。
+
+## Checkout/Portal接続（後続PR）
+
+購入は同じサーバー設定に加え、`checkoutEnabled=true`、`checkoutOrigin`（固定Previewまたは本番の正確なorigin）、`termsVersion`、`disclosureVersion`、`disclosuresApproved=true`、`portalConfiguration`が必要。
+
+`disclosure`にはversion/approved/approvedBy/approvedAtと、seller/representative/address/contact/paymentTiming/cancellation/refundの実際の公開表示文を設定する。秘密値や利用者の情報を入れない。未設定なら購入停止。`/billing.html` は承認済みの項目だけを公開APIから取得し、準備中なら購入できないことを表示。元のbilling設定や鍵・顧客IDは返さない。
+
+Stripe DashboardでTerms URLを設定し、Portalは解約を期間末、支払い方法/請求履歴管理を許可、subscription_updateは無効の承認済み構成を用意する。コードは構成を再検証してからPortalへ移動する。解約は個人記録削除や利用停止後もverified identityから到達可能。
+
+テスト用Priceは税込総額500円（exclusive税を追加するPriceは拒否）。Checkoutはカード/数量1/プロモーションコードなし/自動trialなし。顧客metadataにUID・メール・健康/会話記録を送らない。Stripe自身が決済に必要な情報を購入者から受け取ることは別途Privacyへ正確に記載する必要がある。
+
+通信が切れてもprotected intentとStripe idempotency keyで同じ手続きを再利用。Myで開き直した場合、本人の未期限切れpending requestを返して再開。古い未確定intent（14分以上）は新規発行で回避せず運営照合へ。Checkout作成後に応答だけ失われた場合、同じcustomerとopaque client_reference_idをStripe Dashboardで確認する。45分のsession期限前に新規requestで二重購入しない。既存subscription（incomplete含む）/有効Plus/試用があれば新規請求を拒否。
+
+新規受付停止は`checkoutEnabled=false`。既にStripeで開かれたセッションまで即時取消になるとは言わない。必要なら承認済み担当者がStripe Dashboardで未完了セッションをexpireし、処理中支払いを照合する。Webhook処理とPortalは新規受付と分離して維持する。
+
+## 自動検証の再現
+
+- `npm run lint && npm run typecheck && npm test && npm run test:firestore`
+- `VERCEL_ENV=production npm run build`
+- `node tests/browser/stripe-checkout-server.mjs` （ローカル4181、認証/計測はfixture、実APIへの接続なし）
+- 別端末コマンドで `python tests/browser/stripe-checkout.py` （実Chromium、375/390/412/768/1280、支払いAPIもfixture）
+
+テスト用fixtureサーバーを一般公開しない。これは実ログイン/Stripe Sandbox/実機の代替PASSではない。実Stripe受入までは支払い公開不可。
