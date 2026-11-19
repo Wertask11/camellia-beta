@@ -1,0 +1,15 @@
+import{createHash,timingSafeEqual}from'node:crypto';
+import{adminConfigured,serverAdmin}from'../server/admin.js';
+import{createSharedRateLimiter}from'../server/shared-limit.js';
+import{BillingAnalyticsDispatcher,BillingAnalyticsError,billingAnalyticsHttpDriver,billingAnalyticsPreferencePath}from'./analytics.js';
+type Req={method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown};type Res={setHeader:(k:string,v:string)=>void;status:(n:number)=>{json:(v:unknown)=>void}};
+export async function stopBillingAnalytics(req:Req,res:Res){
+ if(req.method!=='POST'||!req.body||typeof req.body!=='object'||Array.isArray(req.body)||Object.keys(req.body).length)return res.status(400).json({error:'INVALID_REQUEST'});if(!adminConfigured())return res.status(503).json({error:'UNAVAILABLE'});
+ try{const{auth,db}=serverAdmin(),h=req.headers.authorization;if(typeof h!=='string'||!h.startsWith('Bearer '))return res.status(401).json({error:'LOGIN_REQUIRED'});const user=await auth.verifyIdToken(h.slice(7),true);if(user.firebase?.sign_in_provider==='anonymous'||user.firebase?.sign_in_provider==='password'&&user.email_verified!==true)return res.status(401).json({error:'LOGIN_REQUIRED'});if(!await createSharedRateLimiter(db,{CAMELLIA_CHAT_RATE_USER:'20',CAMELLIA_CHAT_RATE_GLOBAL:'1000'},Date.now,'billing_rate_windows').take(`analytics-stop:${user.uid}`))return res.status(429).json({error:'SLOW_DOWN'});await db.doc(billingAnalyticsPreferencePath(user.uid)).set({disabled:true,updatedAt:new Date()});return res.status(200).json({stopped:true});}catch{return res.status(503).json({error:'UNAVAILABLE'});}
+}
+export async function dispatchBillingAnalytics(req:Req,res:Res){
+ const secret=process.env.CAMELLIA_BILLING_ANALYTICS_DISPATCH_SECRET,h=req.headers.authorization;if(!/^[a-f0-9]{64}$/i.test(secret??'')||typeof h!=='string'||!timingSafeEqual(createHash('sha256').update(h).digest(),createHash('sha256').update(`Bearer ${secret}`).digest()))return res.status(401).json({error:'UNAUTHORIZED'});
+ const v=req.body as Record<string,unknown>|undefined;if(req.method!=='POST'||!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).some(k=>!['operation','after','approvedDigest'].includes(k))||!['plan','dispatch'].includes(String(v.operation))||v.after!==undefined&&(typeof v.after!=='string'||!/^[a-f0-9]{64}$/.test(v.after))||v.operation==='dispatch'&&(typeof v.approvedDigest!=='string'||!/^[a-f0-9]{64}$/.test(v.approvedDigest)))return res.status(400).json({error:'INVALID_REQUEST'});
+ if(!adminConfigured())return res.status(503).json({error:'ANALYTICS_NOT_READY'});
+ try{const d=new BillingAnalyticsDispatcher(serverAdmin().db,billingAnalyticsHttpDriver()),after=typeof v.after==='string'?v.after:undefined;const result=v.operation==='plan'?await d.plan(after):await d.dispatch(after,String(v.approvedDigest));if('rows'in result){const{rows:_private,...summary}=result;return res.status(200).json(summary);}return res.status(200).json(result);}catch(e){return res.status(e instanceof BillingAnalyticsError&&e.message==='ANALYTICS_PLAN_CHANGED'?409:503).json({error:'ANALYTICS_UNAVAILABLE'});}
+}

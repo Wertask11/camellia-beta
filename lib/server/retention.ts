@@ -6,6 +6,7 @@ export const EXPIRY_COLLECTIONS = [
   'free_chat_days',
   'member_free_chat_days',
   'billing_rate_windows',
+  'billing_analytics_outbox',
   'notification_rate_windows',
   'place_application_rate_windows',
   'place_applications',

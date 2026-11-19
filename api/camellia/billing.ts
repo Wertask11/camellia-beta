@@ -1,12 +1,15 @@
+import{dispatchBillingAnalytics,stopBillingAnalytics}from'../../lib/billing/analytics-handler.js';
 import { serverAdmin, adminConfigured } from '../../lib/server/admin.js';
 import { requireEligibleUser, EligibilityError } from '../../lib/server/eligibility.js';
 import { createSharedRateLimiter } from '../../lib/server/shared-limit.js';
 import { StripeCheckoutService, CheckoutError } from '../../lib/billing/checkout.js';
 import { stripeSettings, stripeClient } from '../../lib/billing/stripe.js';
-type Req = { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown };
+type Req = { method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown;query?:Record<string,string|string[]|undefined> };
 type Res = { setHeader: (n: string, v: string) => void; status: (c: number) => { json: (v: unknown) => void } };
+export const maxDuration=60;
 export default async function billing(req: Req, res: Res) {
  res.setHeader('Cache-Control','no-store'); res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('Referrer-Policy','no-referrer');
+ if(req.query?.analytics==='stop')return stopBillingAnalytics(req,res);if(req.query?.analytics==='dispatch')return dispatchBillingAnalytics(req,res);
  const settings = stripeSettings();
  if (!settings || !adminConfigured()) return res.status(503).json({error:'BILLING_NOT_READY'});
  if (req.method !== 'POST') return res.status(405).json({error:'METHOD_NOT_ALLOWED'});

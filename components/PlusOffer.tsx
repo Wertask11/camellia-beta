@@ -2,12 +2,12 @@
 import {CAMELLIA_MESSAGE} from '@/lib/brand';
 import {useEffect,useRef,useState} from 'react';
 import {schoolParkAuth} from '@/lib/schoolpark/firebase';
-import {billingRequest,checkout,billingRedirect,type BillingStatus} from '@/lib/billing/client';
+import {billingRequest,checkout,billingRedirect,stopPaymentAnalytics,type BillingStatus} from '@/lib/billing/client';
 import type {Membership} from '@/lib/membership/model';
 import type {AnalyticsEventName} from '@/types';
 export function PlusOffer({source,membership,onClose,onTrack}:{source:'place'|'partner'|'my';membership?:Membership|null;onClose:()=>void;onTrack:(name:AnalyticsEventName,props?:Record<string,string|number|boolean>)=>void}){
  const ref=useRef<HTMLDialogElement>(null),sent=useRef(false),requestId=useRef(''),owner=useRef(schoolParkAuth.currentUser?.uid);
- const [billing,setBilling]=useState<BillingStatus>(),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [billing,setBilling]=useState<BillingStatus>(),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[analyticsStopped,setAnalyticsStopped]=useState(false);
  useEffect(()=>{let active=true;const user=schoolParkAuth.currentUser;if(user&&!user.isAnonymous)void billingRequest('status').then(v=>{if(active&&v.priceYen===500)setBilling(v as BillingStatus);}).catch(()=>{});return()=>{active=false;};},[]);
  const start=async()=>{if(busy||!billing?.ready||!consent)return;if(schoolParkAuth.currentUser?.uid!==owner.current){setError('アカウントが変わりました。画面を開き直してください。');return;}setBusy(true);setError('');if(!requestId.current){requestId.current=billing.pendingRequestId??crypto.randomUUID();if(!billing.pendingRequestId)onTrack('plus_start',{source});}try{await checkout(billing,requestId.current);}catch(e){setError(e instanceof Error?e.message:'手続きを確認できませんでした。');}finally{setBusy(false);}};
  const manage=async()=>{if(busy)return;if(schoolParkAuth.currentUser?.uid!==owner.current){setError('アカウントが変わりました。画面を開き直してください。');return;}setBusy(true);setError('');try{const v=await billingRequest('portal');billingRedirect(v.url,'billing.stripe.com');}catch(e){setError(e instanceof Error?e.message:'手続きを確認できませんでした。');}finally{setBusy(false);}};
@@ -19,6 +19,6 @@ export function PlusOffer({source,membership,onClose,onTrack}:{source:'place'|'p
  {membership?.plan==='plus'?<output>{membership.trial?'Plus無料試用中です。自動課金はありません。':'Plusをご利用中です。'}</output>:<p className="meta">{billing?.ready?'月額500円で毎月自動更新します。解約はMyから手続きでき、支払い済みの期限まで利用できます。無料体験からの自動加入はありません。':'無料でも基本の提案はそのまま利用できます。支払いの受け付けは準備中です。いま料金は発生せず、この画面から有料加入することもありません。既存の無料機能はそのまま使えます。'}</p>}
  <p className="meta">会話は無料でもYURA・Lactoneの両方を使えます。Plusの会話拡張は準備中で、未提供の機能を利用できるとは案内しません。実店舗の掲載・特典は準備状況によって異なります。</p>{error&&<p role="alert">{error}</p>}
  {billing?.ready&&membership?.plan!=='plus'?<><p><a href={billing.termsUrl} target="_blank" rel="noopener noreferrer">利用規約</a>・<a href={billing.disclosureUrl} target="_blank" rel="noopener noreferrer">料金・解約・返金と販売者情報</a></p><label className="privacy-choice"><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/>月額500円の自動更新と解約条件を確認しました</label><button className="primary" disabled={busy||!consent} onClick={()=>void start()}>{busy?'手続きを確認しています…':'月額500円の支払い手続きへ'}</button></>:!billing?.customer&&<button className="primary" disabled>支払い受付は準備中</button>}
- {billing?.customer&&<button className="secondary-button" disabled={busy} onClick={()=>void manage()}>支払い履歴・解約を確認する</button>}<button className="secondary-button" onClick={onClose}>いま使える機能に戻る</button>
+ {schoolParkAuth.currentUser&&!schoolParkAuth.currentUser.isAnonymous&&<details><summary>支払い完了の計測</summary><p className="meta">申込時の計測設定に従い、支払い完了だけを記録します。メール・カード番号・個人記録は分析へ送りません。このIDで今後の送信を止めても、支払い・Plus・解約には影響しません。送信処理中・送信済みのイベントは回収できません。</p>{analyticsStopped?<output>このIDの支払い完了の計測を停止しました。</output>:<button className="text-button" disabled={busy} onClick={async()=>{if(busy||schoolParkAuth.currentUser?.uid!==owner.current)return;setBusy(true);setError('');try{await stopPaymentAnalytics();setAnalyticsStopped(true);}catch(e){setError(e instanceof Error?e.message:'計測を停止できませんでした。');}finally{setBusy(false);}}}>支払い完了の計測を止める</button>}</details>}{billing?.customer&&<button className="secondary-button" disabled={busy} onClick={()=>void manage()}>支払い履歴・解約を確認する</button>}<button className="secondary-button" onClick={onClose}>いま使える機能に戻る</button>
  </dialog>;
 }

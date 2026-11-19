@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import type { Auth } from 'firebase-admin/auth';
+import{approvedRetention}from'../server/retention-policy.js';
 import { SERVER_ROOT } from '../server/admin.js';
 import { PLUS_PRICE_YEN } from '../membership/model.js';
 export type BillingEvent = {
@@ -146,17 +147,18 @@ export function createBillingWebhook(options: {
         digest = hash(JSON.stringify(event)),
         now = options.now?.() ?? Date.now();
       const result = await db.runTransaction(async (tx) => {
-        const [cfg, oldEvent, invoice, subscription, legacy] =
+        const [cfg, oldEvent, invoice, subscription, legacy,retention] =
             await Promise.all([
               tx.get(db.doc(`${SERVER_ROOT}/config/billing`)),
               tx.get(eventRef),
               tx.get(invoiceRef),
               tx.get(subRef),
-              tx.get(legacyRef),
+              tx.get(legacyRef),tx.get(db.doc(`${SERVER_ROOT}/config/retention`)),
             ]),
           config = cfg.data(),
           receipt = invoice.data(),
           sub = subscription.data();
+        const analyticsAllowed=approvedRetention(retention.data(),['billing_analytics_outbox'])&&typeof binding.analyticsProfileId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId)&&Number.isFinite(binding.analyticsProfileEpoch)&&Date.parse(binding.analyticsConsentUntil)>now&&Date.parse(binding.analyticsConsentFrom)<=Date.parse(event.occurredAt)&&Date.parse(event.occurredAt)<=Date.parse(binding.analyticsConsentUntil);
         if (
           config?.approved !== true ||
           config.enabled !== true ||
@@ -202,22 +204,23 @@ export function createBillingWebhook(options: {
                 periodEnd: event.periodEnd,
                 refundedYen: receipt?.refundedYen ?? 0,
                 verifiedAt: new Date(now).toISOString(),
-                analyticsEnqueued: Boolean(binding.analyticsProfileId && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId)),
+                analyticsEnqueued: analyticsAllowed,
               },
               { merge: true },
             );
-            if (receipt?.analyticsEnqueued !== true && typeof binding.analyticsProfileId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId))
+            if (receipt?.analyticsEnqueued !== true && analyticsAllowed)
               tx.create(
                 db.doc(
                   `${SERVER_ROOT}/billing_analytics_outbox/${hash(`${provider}:${event.paymentReceipt}`)}`,
                 ),
                 {
+                  attributionVersion:'checkout_v1',ownerHash:owner,customerBindingId:customer.id,profileEpoch:binding.analyticsProfileEpoch,consentFrom:binding.analyticsConsentFrom,consentUntil:binding.analyticsConsentUntil,
                   event: 'plus_complete',
                   distinctId: `camellia_${binding.analyticsProfileId}`,
                   insertId: randomUUID(),
                   properties: { currency: 'JPY', amount: PLUS_PRICE_YEN },
                   timestamp: event.occurredAt,
-                  status: 'pending',
+                  status: 'pending',expiresAt:new Date(now+retention.data()!.collections.billing_analytics_outbox.retentionMs),
                   createdAt: new Date(now),
                 },
               );

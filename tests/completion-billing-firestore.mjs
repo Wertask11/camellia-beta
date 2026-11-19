@@ -53,10 +53,12 @@ try {
     occurredAt: '2026-11-11T00:00:00Z',
   };
   assert.equal((await send(event)).status, 409);
+  await db.doc(`camellia_users/${uid}`).set({agreedAt:new Date(now).toISOString()});const profileEpoch=(await db.doc(`camellia_users/${uid}`).get()).createTime.toMillis();
+  await db.doc(`${root}/config/retention`).set({collections:{billing_analytics_outbox:{approved:true,approvedBy:'LOCAL FIXTURE',approvedAt:new Date(now).toISOString(),retentionMs:86400000}}});
   await db.doc(billingCustomerPath(adapter.id, event.customerId)).set({
     provider: adapter.id,
     uid,
-    analyticsProfileId: '12345678-1234-4234-8234-123456789012',
+    analyticsProfileId: '12345678-1234-4234-8234-123456789012',analyticsProfileEpoch:profileEpoch,analyticsConsentFrom:new Date(now).toISOString(),analyticsConsentUntil:new Date(now+45*60000).toISOString(),
     identityCreatedAt: '2026-11-01T00:00:00Z',
   });
   assert.equal((await send(event)).status, 503);
@@ -128,7 +130,7 @@ try {
   );
   assert.equal(
     (await db.collection(`${root}/billing_analytics_outbox`).get()).size,
-    2,
+    1, // A renewal is not a new Plus conversion and cannot reuse old checkout attribution.
   );
   await send({
     ...next,
