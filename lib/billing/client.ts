@@ -23,3 +23,6 @@ export function billingRedirect(value:unknown,hostname:string){
  const u=new URL(String(value));if(u.protocol!=='https:'||u.hostname!==hostname||u.username||u.password||u.port)throw new Error('支払い先を確認できませんでした。');
  window.location.assign(u.href);
 }
+
+/** Stops only future server-side payment conversion delivery; it never cancels billing. */
+export async function stopPaymentAnalytics(){const user=schoolParkAuth.currentUser;if(!user||user.isAnonymous)throw new Error('Camellia IDで確認してください。');const r=await fetch('/api/camellia/billing?analytics=stop',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${await user.getIdToken()}`},body:'{}',cache:'no-store',signal:AbortSignal.timeout(10000)});if(!r.ok||schoolParkAuth.currentUser?.uid!==user.uid)throw new Error('支払い完了の計測を停止できませんでした。通信を確認してお試しください。');}

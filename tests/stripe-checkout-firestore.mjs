@@ -19,7 +19,7 @@ try{
  await assert.rejects(()=>service.start(uid,created,input),e=>e.code==='BILLING_NOT_READY');
  await db.doc(`${root}/config/billing`).set(config);await db.doc(`camellia_users/${uid}`).set({agreedAt:created});
  assert.equal((await service.status(uid,created)).ready,false,'retention is required for new purchases');
- const approvedPolicy={approved:true,approvedBy:'LOCAL FIXTURE',approvedAt:new Date().toISOString(),retentionMs:86400000};await db.doc(`${root}/config/retention`).set({collections:Object.fromEntries(['billing_customers','billing_checkouts','billing_events','billing_payment_receipts','billing_analytics_outbox'].map(k=>[k,approvedPolicy]))});
+ const approvedPolicy={approved:true,approvedBy:'LOCAL FIXTURE',approvedAt:new Date().toISOString(),retentionMs:86400000};await db.doc(`${root}/config/retention`).set({collections:Object.fromEntries(['billing_customers','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox'].map(k=>[k,approvedPolicy]))});
  assert.equal((await service.status(uid,created)).ready,true);
  for(const patch of [{consent:false},{uid:'forged'},{price:1},{termsVersion:'stale'}])await assert.rejects(()=>service.start(uid,created,{...input,...patch}));
  networkUncertain=true;await assert.rejects(()=>service.start(uid,created,input));assert.equal(createCount,1);

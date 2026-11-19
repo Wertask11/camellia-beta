@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type Stripe from 'stripe';
-import type { Firestore } from 'firebase-admin/firestore';
+import {FieldValue,type Firestore } from 'firebase-admin/firestore';
 import{approvedRetention}from'../server/retention-policy.js';
 import { SERVER_ROOT } from '../server/admin.js';
 import { billingCustomerPath } from './webhook.js';
@@ -29,7 +29,7 @@ export function stripeHostedUrl(value: unknown, kind: 'checkout' | 'portal') {
 export class StripeCheckoutService {
  constructor(private db: Firestore, private stripe: Stripe, private mode: StripeMode, private now = Date.now) {}
  async configuration() { return checkoutConfiguration((await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data(), this.mode); }
- async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data();return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_checkouts','billing_events','billing_payment_receipts','billing_analytics_outbox']);}
+ async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data();return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']);}
  async status(uid: string, identityCreatedAt: string) {
   const cfg = await this.configuration();
   if (!cfg) return { ready: false, priceYen: 500, customer: false };
@@ -43,7 +43,10 @@ export class StripeCheckoutService {
  private async customer(uid: string, identityCreatedAt: string, analyticsProfileId?: string) {
   const ref = this.db.doc(ownerPath(uid)), old = (await ref.get()).data();
   if (old && old.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
-  if (typeof old?.customerId === 'string') return old.customerId as string;
+  if (typeof old?.customerId === 'string'){
+   const profile=await this.db.doc(`camellia_users/${uid}`).get();if(!profile.exists||profile.data()?.personalDeleteInProgress===true)throw new CheckoutError(409,'RECORDS_UNAVAILABLE');
+   await this.db.doc(billingCustomerPath('stripe',old.customerId)).set(this.analyticsBinding(analyticsProfileId,uid,profile.createTime?.toMillis()),{merge:true});return old.customerId as string;
+  }
   const key = hash(`${uid}:${identityCreatedAt}`);
   // Do not forward email, name, UID, health records or conversation text in Stripe metadata.
   const customer = await this.stripe.customers.create({}, { idempotencyKey: `camellia-customer-${key}` });
@@ -52,12 +55,13 @@ export class StripeCheckoutService {
    const [current, profile] = await Promise.all([tx.get(ref), tx.get(this.db.doc(`camellia_users/${uid}`))]);
    if (!profile.exists || profile.data()?.personalDeleteInProgress === true) throw new CheckoutError(409, 'RECORDS_UNAVAILABLE');
    if (current.exists && (current.data()?.customerId !== customer.id || current.data()?.identityCreatedAt !== identityCreatedAt)) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
-   const binding = { uid, provider: 'stripe', identityCreatedAt, ...(uuid(analyticsProfileId) && analyticsProfileId !== uid ? { analyticsProfileId } : {}) };
+   const binding = { uid, provider: 'stripe', identityCreatedAt, ...this.analyticsBinding(analyticsProfileId,uid,profile.createTime?.toMillis()) };
    tx.set(this.db.doc(billingCustomerPath('stripe', customer.id)), binding, { merge: true });
    tx.set(ref, { customerId: customer.id, identityCreatedAt }, { merge: true });
   });
   return customer.id;
  }
+ private analyticsBinding(profileId:unknown,uid:string,epoch?:number){return uuid(profileId)&&profileId!==uid?{analyticsProfileId:profileId,analyticsProfileEpoch:epoch,analyticsConsentFrom:new Date(this.now()).toISOString(),analyticsConsentUntil:new Date(this.now()+45*60000).toISOString()}:{analyticsProfileId:FieldValue.delete(),analyticsProfileEpoch:FieldValue.delete(),analyticsConsentFrom:FieldValue.delete(),analyticsConsentUntil:FieldValue.delete()};}
  async start(uid: string, identityCreatedAt: string, input: unknown) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new CheckoutError(400, 'INVALID_CHECKOUT');
   const v = input as Record<string, unknown>;
