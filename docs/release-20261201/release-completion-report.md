@@ -92,6 +92,8 @@ branchとheadは読取時点。後続は前段をbaseにした独立PR。#91/#94
 |[#95](https://github.com/Wertask11/camellia-beta/pull/95)|`feat/camellia-trial-token-budget-20261119`|`3ee94738eece36a92a49e064b7ea4a01a9103bb0`|`feat/camellia-release-controls-20261119`|https://camellia-beta-git-feat-camellia-trial-token-553bda-school-park.vercel.app|
 |[#96](https://github.com/Wertask11/camellia-beta/pull/96)|`feat/camellia-billing-analytics-20261119`|`446f3f510257627dd76e4b2644b3d980ec218d42`|`feat/camellia-trial-token-budget-20261119`|https://camellia-beta-git-feat-camellia-billing-anal-d41693-school-park.vercel.app|
 
+|[#97](https://github.com/Wertask11/camellia-beta/pull/97)|`feat/camellia-release-integration-20261119`|`ae5003618203733ec1300a91ee836bcd1281f11e`|`feat/camellia-billing-analytics-20261119`|https://camellia-beta-7g536o3ce-school-park.vercel.app|
+
 固定Preview: https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/ 。最新候補の反映/Ready証拠はrelease-readiness.mdを参照。
 
 ## 明確に残ること

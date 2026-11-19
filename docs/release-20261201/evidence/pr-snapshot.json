@@ -1,5 +1,5 @@
 {
-  "atUTC": "2026-11-19T19:40:47.439220+00:00",
+  "atUTC": "2026-11-19T20:40:59.184686+00:00",
   "prs": [
     {
       "baseRefName": "main",
@@ -506,6 +506,45 @@
       "url": "https://github.com/Wertask11/camellia-beta/pull/96",
       "previewUrls": [
         "https://camellia-beta-git-feat-camellia-billing-anal-d41693-school-park.vercel.app"
+      ]
+    },
+    {
+      "baseRefName": "feat/camellia-billing-analytics-20261119",
+      "headRefName": "feat/camellia-release-integration-20261119",
+      "headRefOid": "ae5003618203733ec1300a91ee836bcd1281f11e",
+      "number": 97,
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-11-19T20:30:01Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/Wertask11/camellia-beta/actions/runs/44608640384/job/135858980625",
+          "name": "quality",
+          "startedAt": "2026-11-19T20:26:09Z",
+          "status": "COMPLETED",
+          "workflowName": "Release quality"
+        },
+        {
+          "__typename": "StatusContext",
+          "context": "Vercel",
+          "startedAt": "2026-11-19T20:31:16Z",
+          "state": "SUCCESS",
+          "targetUrl": "https://vercel.com/school-park/camellia-beta/BqPbyHAYZTqJFACdk2XWQbFzr5kE"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-11-19T20:31:16Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://vercel.com/github",
+          "name": "Vercel Preview Comments",
+          "startedAt": "2026-11-19T20:31:16Z",
+          "status": "COMPLETED",
+          "workflowName": ""
+        }
+      ],
+      "url": "https://github.com/Wertask11/camellia-beta/pull/97",
+      "previewUrls": [
+        "https://camellia-beta-7g536o3ce-school-park.vercel.app"
       ]
     }
   ]

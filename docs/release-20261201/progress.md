@@ -9,3 +9,5 @@ main/Productionはfe7f859のまま。コード統合・Production公開・料金
 次はrelease-readiness.md末尾の開発チェックポイントから再開する。特に請求管理をプロフィール再作成から独立させるUI、全種類の保持/完全削除、承認後のPlus数値適用、実Stripe/店舗/OS/計測受入を完了し、最後にmain/本番を別承認する。最新のremote mainと全open PRのhead/CIを取得し、未コミットの本人変更を上書きしない。固定Preview URLを維持し、LINE callbackを増やさない。
 
 未決定: 紹介月予算・専用AI枠・終了日、Plusの会話数/文脈、種類別保持、最終装飾等。推奨値は未適用。Stripeのテスト環境準備の質問は回答待ちで、秘密値をチャットへ要求しない。PostHog接続は再試行も応答せず、実着信を確認していない。
+
+固定Preview用branchはae50036へFF更新し、Vercel Preview success・PR97 quality SUCCESSを確認。本番mainはfe7f859のまま。後続の報告更新commitは固定Previewへ再pushせず、アプリコード/Build commit/報告headを区別する。本人の新しい匿名YURA/Lactone実操作の回答待ち。

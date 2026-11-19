@@ -15,7 +15,7 @@ Production/mainは `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。最新の公開G
 固定Previewは既存URLを維持する：
 https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/
 
-**最終候補の反映・Readyは記録待ち。** 個別PR Previewを新しいLINE callbackとして追加しない。main統合・本番反映・全新規フラグON・課金・通知・紹介は別承認で、今回開始しない。
+固定Preview用branchを `ae5003618203733ec1300a91ee836bcd1281f11e` へ通常のfast-forwardで更新した。アプリコードは `145aa5d`、追加差分は検証証拠/報告書。GitHub deployment 7924926841 は environment=Preview / production_environment=false / success。PR #97のquality CIもSUCCESS。証拠は evidence/fixed-preview.json と pr-snapshot.json。直接HTTPは当環境からURLErrorとなり、固定URLの実画面・実ログインは未確認で、本人へ2つの会話の実操作確認を依頼中。 個別PR Previewを新しいLINE callbackとして追加しない。main統合・本番反映・全新規フラグON・課金・通知・紹介は別承認で、今回開始しない。
 
 ## 先に確認する残件
 
