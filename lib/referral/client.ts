@@ -1,4 +1,3 @@
-import { REFERRAL_INTEGRATION_READY } from './config';
 import { schoolParkAuth } from '../schoolpark/firebase';
 const KEY = 'camellia-referral-registration';
 let completing = false;
@@ -19,15 +18,19 @@ async function captureRegistration() {
   history.replaceState({}, '', url.pathname + url.search + url.hash);
   clearPendingReferral();
   if (
-    !REFERRAL_INTEGRATION_READY ||
     (schoolParkAuth.currentUser && !schoolParkAuth.currentUser.isAnonymous) ||
     !/^[A-Za-z0-9_-]{43}$/.test(token)
   )
     return;
   try {
+    await schoolParkAuth.authStateReady();
+    const anonymous=schoolParkAuth.currentUser;
+    if(anonymous&&!anonymous.isAnonymous)return;
+    const captureHeaders:Record<string,string>={'Content-Type':'application/json'};
+    if(anonymous?.isAnonymous)captureHeaders.Authorization=`Bearer ${await anonymous.getIdToken()}`;
     const response = await fetch('/api/camellia/referral', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: captureHeaders,
         body: JSON.stringify({ operation: 'capture', token }),
         signal: AbortSignal.timeout(10000),
       }),
@@ -48,7 +51,8 @@ async function captureRegistration() {
 }
 /** Called after the first successful account sync. No private content or client-created account timestamp. */
 export async function completePendingReferral(uid: string) {
-  if (!REFERRAL_INTEGRATION_READY || completing) return;
+  if (completing) return;
+  await capturePromise;
   let pending;
   try {
     pending = JSON.parse(localStorage.getItem(KEY) || 'null');

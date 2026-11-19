@@ -1,8 +1,12 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import type { Auth } from 'firebase-admin/auth';
 import type { Firestore } from 'firebase-admin/firestore';
 export const referralHash = (v: string) =>
   createHash('sha256').update(v).digest('hex');
+export function referralEmailKey(email: string, key = process.env.CAMELLIA_REFERRAL_IDENTITY_HMAC_KEY) {
+  if (!/^[a-f0-9]{64}$/i.test(key ?? '') || !email.trim() || email.length > 320) return;
+  return referralHash(`email:verified:v1:${createHmac('sha256', Buffer.from(key!, 'hex')).update(email.trim().toLowerCase()).digest('hex')}`);
+}
 /** Only Admin Auth and the backend-owned identity map; never accept client provider claims. */
 export async function verifiedReferralIdentity(
   db: Firestore,
@@ -14,6 +18,10 @@ export async function verifiedReferralIdentity(
   const createdAt = Date.parse(account.metadata.creationTime);
   if (!Number.isFinite(createdAt)) throw new Error('INVALID_IDENTITY');
   const keys = [referralHash(`firebase:${uid}`)];
+  if (account.emailVerified === true && typeof account.email === 'string') {
+    const emailKey = referralEmailKey(account.email);
+    if (emailKey) keys.push(emailKey);
+  }
   for (const provider of account.providerData)
     if (provider.providerId === 'google.com' && provider.uid)
       keys.push(referralHash(`google:subject:${referralHash(provider.uid)}`));

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { Auth } from 'firebase-admin/auth';
 import type { Firestore } from 'firebase-admin/firestore';
 import { SERVER_ROOT } from '../server/admin.js';
+import {billingSubscriptionPath} from '../billing/webhook.js';
 import { subscriptionPath } from '../membership/server.js';
 import {
   referralConfiguration,
@@ -48,7 +49,7 @@ export class ReferralService {
     });
     return { token };
   }
-  async grant(uid: string, token: unknown) {
+  async grant(uid: string, token: unknown, registrationIntent?: string) {
     reject(
       typeof token === 'string' && /^[A-Za-z0-9_-]{43}$/.test(token),
       'INVALID_REFERRAL',
@@ -67,12 +68,14 @@ export class ReferralService {
       ownerRef = this.db.doc(`camellia_users/${uid}`),
       grantRef = this.ref('referral_grants', referralHash(uid));
     return this.db.runTransaction(async (tx) => {
-      const [cfg, code, profile, previous, subscription] = await Promise.all([
+      const [cfg, code, profile, previous, subscription, billing, intent] = await Promise.all([
         tx.get(this.ref('config', 'referral')),
         tx.get(this.ref('referral_codes', referralHash(token))),
         tx.get(ownerRef),
         tx.get(grantRef),
         tx.get(this.db.doc(subscriptionPath(uid))),
+        tx.get(this.db.doc(billingSubscriptionPath(uid))),
+        registrationIntent && /^[A-Za-z0-9_-]{43}$/.test(registrationIntent) ? tx.get(this.ref('referral_intents',referralHash(registrationIntent))) : Promise.resolve(undefined),
       ]);
       // A retried successful grant remains the same after a new-acceptance stop. Never renew its expiry.
       if (previous.exists)
@@ -102,10 +105,12 @@ export class ReferralService {
         'INVALID_REFERRAL',
       );
       reject(c.ownerUid !== uid, 'SELF_REFERRAL');
+      const proof=intent?.data();
+      const anonymousRegistration=proof?.anonymousOwner===referralHash(uid)&&Date.parse(proof.anonymousCreatedAt)===identity.createdAt&&proof.uid===uid&&proof.ownerCreatedAt===profile.createTime?.toMillis()&&proof.codeHash===referralHash(token)&&proof.createdAt?.toMillis()>=Date.parse(config.startsAt)&&proof.expiresAt?.toMillis()>now&&proof.completedAt?.toMillis()<=now;
       reject(
-        profile.exists &&
+        profile.exists && profile.data()?.personalDeleteInProgress !== true &&
           profile.createTime!.toMillis() >= Date.parse(config.startsAt) &&
-          identity.createdAt >= Date.parse(config.startsAt) &&
+          (identity.createdAt >= Date.parse(config.startsAt) || anonymousRegistration) &&
           identity.createdAt <= now,
         'NEW_REGISTRATION_REQUIRED',
         403,
@@ -125,11 +130,8 @@ export class ReferralService {
           ),
         'SELF_REFERRAL',
       );
-      const sub = subscription.data();
-      reject(
-        !sub ||
-          (Date.parse(String(sub.expiresAt)) <= now &&
-            config.overlapPolicy === 'reject_active_only'),
+      for(const sub of [subscription.data(),billing.data()]) reject(
+        !sub || (Date.parse(String(sub.expiresAt)) <= now && config.overlapPolicy === 'reject_active_only'),
         'TRIAL_OVERLAP',
       );
       const identityRefs = identity.keys.map((k) =>

@@ -1,5 +1,4 @@
-/** No campaign is launched by this implementation. Cost/quota and signup hooks need a separately reviewed release. */
-export const REFERRAL_INTEGRATION_READY = false;
+/* Business policy has no implicit values; runtime readiness is checked on the server. */
 export const REFERRAL_TRIAL_DAYS = 7;
 export const REFERRER_MONTHLY_REWARDS = 3;
 export type ReferralConfig = {
@@ -93,4 +92,8 @@ export function referralConfiguration(value: unknown): {
   return missing.length
     ? { missing }
     : { missing, config: v as unknown as ReferralConfig };
+}
+
+export function referralDeploymentReady(env:Record<string,string|undefined>=process.env){
+ return env.CAMELLIA_REFERRAL_ENABLED==='true'&&/^[a-f0-9]{64}$/i.test(env.CAMELLIA_REFERRAL_IDENTITY_HMAC_KEY??'');
 }

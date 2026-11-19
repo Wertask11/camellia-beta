@@ -1,4 +1,4 @@
-import {REFERRAL_INTEGRATION_READY} from '../referral/config.js';
+import {referralDeploymentReady} from '../referral/config.js';
 import {prepareTrialGeneration} from '../referral/ai-runtime.js';
 import {claimAiRequest,recordProviderAttempt} from '../server/ai-observation.js';
 import {observeProviderAttempt,observeUsageChunks} from './provider-observation.js';
@@ -48,7 +48,7 @@ export async function generate(contents:Parameters<ReturnType<typeof createGemin
  const signal=AbortSignal.any([AbortSignal.timeout(28000),...(controls?[controls.signal]:[])]);
  let trial:Awaited<ReturnType<typeof prepareTrialGeneration>>|undefined;
  if(controls?.identity?.usageLane==='referral_extension'){
-  if(!REFERRAL_INTEGRATION_READY)throw new Error('TRIAL_AI_NOT_READY');
+  if(!referralDeploymentReady())throw new Error('TRIAL_AI_NOT_READY');
   const admin=serverAdmin();
   trial=await prepareTrialGeneration({db:admin.db,auth:admin.auth,...controls.identity,models:[primaryModel,fallbackModel],countInput:async model=>{const result=await ai.models.countTokens({model,contents:contents as Parameters<GoogleGenAI['models']['countTokens']>[0]['contents'],config:{systemInstruction,abortSignal:signal}});return result.totalTokens??NaN;}});
  }
