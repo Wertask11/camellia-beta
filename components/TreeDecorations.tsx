@@ -76,7 +76,7 @@ export function TreeDecorations({
     <details className="tree-decorations">
       <summary>My Treeの装飾</summary>
       <p className="meta">
-        選んだ装飾はFree・Plusどちらでも使えます。取得済みの選択権は会員プランや紹介受付の終了で消えません。人とのつながりに点数は付けません。
+        選んだ装飾は無料・Plusどちらでも使えます。取得済みの選択権は会員プランや紹介受付の終了で消えません。人とのつながりに点数は付けません。
       </p>
       {error && <output>{error}</output>}
       {value?.active && (
