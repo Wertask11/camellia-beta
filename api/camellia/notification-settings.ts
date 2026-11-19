@@ -1,3 +1,5 @@
+import pushSubscription from '../../lib/notifications/subscription-handler.js';
+import notificationDispatch from '../../lib/notifications/dispatch-handler.js';
 import { serverAdmin, adminConfigured } from '../../lib/server/admin.js';
 import {
   requireEligibleUser,
@@ -11,6 +13,7 @@ type Req = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
+  query?: Record<string,string|string[]|undefined>;
 };
 type Res = {
   setHeader: (n: string, v: string) => void;
@@ -18,6 +21,8 @@ type Res = {
 };
 /** Preferences only. No push subscription, permission prompt, driver or send endpoint. */
 export default async function notificationSettings(req: Req, res: Res) {
+  if(req.query?.dispatch==='1')return notificationDispatch(req,res);
+  if(req.query?.push==='1')return pushSubscription(req,res);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   if (!adminConfigured())
