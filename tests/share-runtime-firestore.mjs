@@ -14,10 +14,12 @@ try{
  const handler=(await vite.ssrLoadModule('/api/camellia/share.ts')).default;
  http=httpServer(async(req,res)=>{let raw='';for await(const chunk of req)raw+=chunk;await handler({method:req.method,headers:req.headers,body:JSON.parse(raw||'{}')},{setHeader:(k,v)=>res.setHeader(k,v),status(code){res.statusCode=code;return{json(value){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value));}};}});});await new Promise(r=>http.listen(0,'127.0.0.1',r));
  const url=`http://127.0.0.1:${http.address().port}`,call=async(body,token)=>{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify(body)});return{status:r.status,body:await r.json(),headers:r.headers};};
- const now=Date.now();await db.doc(`${root}/config/access`).set({inviteRequired:false});
+ const now=Date.now();await db.doc(`${root}/config/partner_sharing`).delete();await db.doc(`${root}/config/access`).set({inviteRequired:false});
  for(const uid of Object.values(accounts))await db.doc(`camellia_users/${uid}`).set({agreedAt:new Date(now).toISOString()});
+ process.env.CAMELLIA_PARTNER_SHARING_ENABLED='true';
+ await db.doc(`${root}/config/retention`).set({collections:{partner_shares:{approved:true,approvedBy:'LOCAL FIXTURE',approvedAt:new Date().toISOString(),retentionMs:86400000}}});
  const input={operation:'create',kind:'feeling',feelingId:'listen',recipient:'partner',timing:'today',days:1,consent:true};
- assert.equal((await call(input,'LOCAL-A')).status,503);
+ delete process.env.CAMELLIA_PARTNER_SHARING_ENABLED;assert.equal((await call(input,'LOCAL-A')).status,503);
  process.env.CAMELLIA_PARTNER_SHARING_ENABLED='true';assert.equal((await call(input,'LOCAL-A')).status,503);
  await db.doc(`${root}/config/partner_sharing`).set({version:'partner_v1',approved:true,enabled:true,privacyReviewed:true,entitlementsReviewed:true,approvedBy:'LOCAL OPERATOR',approvedAt:new Date(now).toISOString()});
  assert.equal((await call(input)).status,401);assert.equal((await call(input,'LOCAL-A')).status,403,'Free cannot forge Plus');
@@ -26,6 +28,7 @@ try{
  const created=await call(input,'LOCAL-A');assert.equal(created.status,200);assert.equal(created.body.token.length,43);assert.equal(created.headers.get('referrer-policy'),'no-referrer');
  const id=createHash('sha256').update(created.body.token).digest('hex');const stored=(await db.doc(`${root}/partner_shares/${id}`).get()).data();assert.ok(!JSON.stringify(stored).includes(created.body.token));
  const read=await call({operation:'read',token:created.body.token});assert.equal(read.status,200);assert.equal(read.body.share.title,'今日は話を聞いてほしい');for(const forbidden of ['ownerUid','share-http-A','LOCAL-ONLY-INVOICE','recipient','PRIVATE MEMORY'])assert.ok(!JSON.stringify(read.body).includes(forbidden));
+ const retention=(await db.doc(`${root}/config/retention`).get()).data();await db.doc(`${root}/config/retention`).delete();assert.equal((await call(input,'LOCAL-A')).status,503,'missing retention blocks only new issuance');assert.equal((await call({operation:'read',token:created.body.token})).status,200,'existing link remains readable');await db.doc(`${root}/config/retention`).set(retention);
  assert.equal((await call({operation:'revoke',id},'LOCAL-B')).status,404);
  assert.equal((await call({operation:'list'},'LOCAL-B')).body.shares.length,0);
  assert.equal((await call({operation:'list'},'LOCAL-A')).body.shares[0].id,id);
@@ -40,5 +43,6 @@ try{
  const uid=accounts['LOCAL-B'],grantId=createHash('sha256').update(uid).digest('hex');await db.doc(`camellia_users/${uid}/admin/referral_trial`).set({source:'referral_trial',plan:'plus',status:'trialing',grantId,expiresAt:new Date(now+7*86400000).toISOString()});await db.doc(`${root}/referral_grants/${grantId}`).set({uidHash:grantId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+7*86400000).toISOString()});
  const trial=await call(input,'LOCAL-B');assert.equal(trial.status,200);await db.doc(`${root}/referral_grants/${grantId}`).update({revoked:true});assert.equal((await call(input,'LOCAL-B')).status,403);
  await db.doc(`${root}/config/partner_sharing`).update({enabled:false});assert.equal((await call({operation:'read',token:trial.body.token})).status,404);assert.equal((await call({operation:'revoke',id:trial.body.id},'LOCAL-B')).status,200,'stop preserves owner cleanup');
+ const {expiryCleanup}=await vite.ssrLoadModule('/lib/server/retention.ts');const later=now+8*86400000;const cleanup=await expiryCleanup(db,'partner_shares',{now:later});assert.ok(cleanup.eligible>0);assert.equal((await db.doc(`camellia_users/${accounts['LOCAL-A']}/partner_shares/${id}`).get()).exists,true);await expiryCleanup(db,'partner_shares',{now:later,apply:true,approvedDigest:cleanup.digest});assert.equal((await db.doc(`${root}/partner_shares/${id}`).get()).exists,false);assert.equal((await db.doc(`camellia_users/${accounts['LOCAL-A']}/partner_shares/${id}`).get()).exists,false,'approved expiry removes owner mirror too');
  console.log('PASS real local HTTP issuance→anonymous third-party view→owner revoke→404; protected paid/referral rights, Free denial, double gate, opaque hash, private projection, cross-owner refusal, history, expiry/scrub and stopped cleanup. Auth/provider are fixtures; no real users or Production links.');
 }finally{delete process.env.CAMELLIA_PARTNER_SHARING_ENABLED;await new Promise(r=>http?http.close(r):r());await vite.close();await db.terminate();await deleteApp(app);delete globalThis[Symbol.for('share-http-deps')];}
