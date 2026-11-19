@@ -1,0 +1,33 @@
+{
+  "dateUTC": "2026-11-19T12:55:50.890287+00:00",
+  "base": "fe7f85947a0799f9b4d4097e34c389839c3f7ec1",
+  "versions": {
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
+    "react-server-dom-webpack": "19.2.9"
+  },
+  "checks": {
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "unit": "66/66",
+    "firestore": "15 scripts PASS (local emulator only)",
+    "build": "PASS"
+  },
+  "browser": "Local real Chromium: 375/390/412/768/1280; actual Free screens/storage with injected auth/provider/sync. No real login/cloud/Production test.",
+  "audit": {
+    "react_server_dom_webpack_flagged": false,
+    "remaining": {
+      "info": 0,
+      "low": 3,
+      "moderate": 18,
+      "high": 16,
+      "critical": 0,
+      "total": 37
+    }
+  },
+  "production": "NOT DEPLOYED; exploitability not tested or asserted",
+  "files": {
+    "package.json": "916e8000ae3e2836c2536871e8be0d2df73d8c42a70b62eaae8a967d53b0aa59",
+    "package-lock.json": "fef8b2cb43e7352aa8c58e65d4339db0e335ddc9de12c46ae324e20afb57c2e0"
+  }
+}
