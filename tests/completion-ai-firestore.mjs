@@ -76,6 +76,7 @@ try {
         cachedPerMillion: 0,
         sourceUrl: 'https://example.org/fixture',
         checkedAt: '2026-11-11',
+        validUntil: new Date(Date.now()+86400000).toISOString(),
       },
     },
   };

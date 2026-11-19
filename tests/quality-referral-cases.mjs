@@ -7,9 +7,11 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false },
 });
 try {
-  const { referralConfiguration, REFERRAL_INTEGRATION_READY } =
+  const { referralConfiguration } =
     await server.ssrLoadModule('/lib/referral/config.ts');
-  assert.equal(REFERRAL_INTEGRATION_READY, false);
+  const {referralDeploymentReady}=await server.ssrLoadModule('/lib/referral/readiness.ts');
+  assert.equal(referralDeploymentReady({}),false);
+  assert.equal(referralDeploymentReady({CAMELLIA_REFERRAL_ENABLED:'true'}),false);
   const none = referralConfiguration({});
   assert.ok(
     none.missing.includes('monthlyBudgetYen') &&

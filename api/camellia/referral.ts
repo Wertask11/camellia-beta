@@ -1,4 +1,4 @@
-import { REFERRAL_INTEGRATION_READY } from '../../lib/referral/config.js';
+import {referralDeploymentReady,referralIntakeReady} from '../../lib/referral/readiness.js';
 import { serverAdmin, adminConfigured } from '../../lib/server/admin.js';
 import {
   requireEligibleUser,
@@ -20,18 +20,20 @@ export default async function referral(req: Req, res: Res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  let ready=false;
+  if(referralDeploymentReady()&&adminConfigured()){try{ready=await referralIntakeReady(serverAdmin().db);}catch{/* Fail closed without leaking configuration or identities. */}}
   if (req.method === 'GET')
     return res
       .status(200)
       .json({
-        enabled: REFERRAL_INTEGRATION_READY,
+        enabled: ready,
         trialDays: 7,
         referrerMonthlyRewards: 3,
         automaticBilling: false,
       });
   if (
     req.method !== 'POST' ||
-    !REFERRAL_INTEGRATION_READY ||
+    !ready ||
     !adminConfigured()
   )
     return res.status(503).json({ error: 'REFERRAL_NOT_AVAILABLE' });
@@ -63,7 +65,14 @@ export default async function referral(req: Req, res: Res) {
         ))
       )
         throw new ReferralError(429, 'SLOW_DOWN');
-      return res.status(200).json(await service.capture(body.token));
+      let anonymousUid: string | undefined;
+      const header=req.headers?.authorization;
+      if(typeof header==='string'&&header.startsWith('Bearer ')){
+        let anonymous;try{anonymous=await auth.verifyIdToken(header.slice(7),true);}catch{return res.status(401).json({error:'LOGIN_REQUIRED'});}
+        if(anonymous.firebase?.sign_in_provider!=='anonymous')throw new ReferralError(403,'NEW_REGISTRATION_REQUIRED');
+        anonymousUid=anonymous.uid;
+      }
+      return res.status(200).json(await service.capture(body.token,anonymousUid));
     }
     const header = req.headers?.authorization,
       user = await requireEligibleUser(

@@ -14,7 +14,7 @@ export class ReferralRegistration {
     private auth: Pick<Auth, 'getUser'>,
     private now = Date.now,
   ) {}
-  async capture(token: unknown) {
+  async capture(token: unknown, anonymousUid?: string) {
     if (!validToken(token)) throw new ReferralError(400, 'INVALID_REFERRAL');
     const cfg = referralConfiguration(
         (await this.db.doc(`${SERVER_ROOT}/config/referral`).get()).data(),
@@ -32,11 +32,18 @@ export class ReferralRegistration {
       .get();
     if (!code.exists || code.data()?.revoked)
       throw new ReferralError(404, 'INVALID_REFERRAL');
+    let anonymousProof: { anonymousOwner: string; anonymousCreatedAt: string } | undefined;
+    if (anonymousUid) {
+      const account = await this.auth.getUser(anonymousUid), linked = await this.db.collection('camellia_auth_identities').where('camelliaUid','==',anonymousUid).limit(1).get();
+      if (account.disabled || account.emailVerified || account.providerData.length || linked.size || !Number.isFinite(Date.parse(account.metadata.creationTime))) throw new ReferralError(403,'NEW_REGISTRATION_REQUIRED');
+      anonymousProof = { anonymousOwner: referralHash(anonymousUid), anonymousCreatedAt: account.metadata.creationTime };
+    }
     const intent = randomBytes(32).toString('base64url');
     await this.db
       .doc(`${SERVER_ROOT}/referral_intents/${referralHash(intent)}`)
       .create({
         codeHash: referralHash(token),
+        ...anonymousProof,
         createdAt: Timestamp.fromMillis(now),
         expiresAt: Timestamp.fromMillis(now + 10 * 60 * 1000),
       });
@@ -62,7 +69,7 @@ export class ReferralRegistration {
         throw new ReferralError(409, 'REGISTRATION_INTENT_INVALID');
       if (
         !profile.exists ||
-        identity.createdAt < v.createdAt.toMillis() ||
+        (identity.createdAt < v.createdAt.toMillis() && !(v.anonymousOwner === referralHash(uid) && Date.parse(v.anonymousCreatedAt) === identity.createdAt)) ||
         profile.createTime!.toMillis() < v.createdAt.toMillis()
       )
         throw new ReferralError(403, 'NEW_REGISTRATION_REQUIRED');
@@ -77,6 +84,6 @@ export class ReferralRegistration {
         completedAt: Timestamp.fromMillis(this.now()),
       });
     });
-    return new ReferralService(this.db, this.auth, this.now).grant(uid, token);
+    return new ReferralService(this.db, this.auth, this.now).grant(uid, token, intent);
   }
 }

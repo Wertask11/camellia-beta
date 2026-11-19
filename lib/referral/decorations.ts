@@ -3,7 +3,7 @@ import { SERVER_ROOT } from '../server/admin.js';
 import { ReferralService, ReferralError } from './service.js';
 import type { Auth } from 'firebase-admin/auth';
 export type TreeDecoration = { id: string; label: string; assetPath: string };
-function approvedCatalog(value: unknown): TreeDecoration[] {
+export function approvedCatalog(value: unknown): TreeDecoration[] {
   if (!value || typeof value !== 'object') return [];
   const v = value as Record<string, unknown>;
   if (

@@ -26,6 +26,7 @@ export async function referralMembership(
     g.uidHash !== referralHash(uid) ||
     t.expiresAt !== g.expiresAt ||
     typeof g.createdAt !== 'string' ||
+    Date.parse(g.createdAt) > now ||
     Date.parse(g.expiresAt) - Date.parse(g.createdAt) !== 7 * 86400000 ||
     Date.parse(g.expiresAt) <= now
   )

@@ -1,0 +1,9 @@
+{
+  "approved": false,
+  "notice": "デザイン案。運営承認・本番設定ではない。権利付与・紹介開始を行わない。",
+  "items": [
+    {"id":"quiet-leaves","label":"しずかな葉","assetPath":"/decorations/quiet-leaves.svg"},
+    {"id":"camellia-petals","label":"花びらの余白","assetPath":"/decorations/camellia-petals.svg"},
+    {"id":"warm-ring","label":"あたたかな輪","assetPath":"/decorations/warm-ring.svg"}
+  ]
+}

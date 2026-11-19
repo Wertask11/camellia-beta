@@ -30,6 +30,7 @@ export async function prepareTrialGeneration(options: {
     throw new Error('TRIAL_AI_NOT_CONFIGURED');
   let upperCost = 0;
   for (const model of models) {
+    if (!Number.isFinite(Date.parse(config.pricing?.[model]?.validUntil)) || Date.parse(config.pricing[model].validUntil) <= Date.now()) throw new Error('TRIAL_AI_NOT_CONFIGURED');
     const input = await options.countInput(model);
     if (
       !Number.isSafeInteger(input) ||
