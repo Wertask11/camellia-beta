@@ -1,0 +1,28 @@
+{
+  "source": "76c42e2c1ff230a342bd8642980c9ed84e1bd795",
+  "kind": "Real local Chromium, injected Auth/API/OS permission/provider. No Preview/Production/login/payment/push/sharing/referral launch.",
+  "results": [
+    {
+      "feature": "share",
+      "exitCode": 0
+    },
+    {
+      "feature": "referral",
+      "exitCode": 0
+    },
+    {
+      "feature": "push",
+      "exitCode": 0
+    },
+    {
+      "feature": "place-intake",
+      "exitCode": 0
+    },
+    {
+      "feature": "billing-analytics",
+      "exitCode": 0
+    }
+  ],
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

@@ -2,6 +2,7 @@ import { billingSubscriptionPath } from '../billing/webhook.js';
 import { referralMembership } from '../referral/membership.js';
 import type { Firestore, DocumentSnapshot } from 'firebase-admin/firestore';
 import { membershipFromRecord } from './model.js';
+import{storedConversationPolicy,publicConversationPolicy}from'./conversation-policy.js';
 export const subscriptionPath = (uid: string) =>
   `camellia_users/${uid}/admin/subscription`;
 export const shareQuotaPath = (uid: string) =>
@@ -35,5 +36,7 @@ export async function memberStatus(
       : legacy;
   const referral =
     base.plan === 'free' ? await referralMembership(db, uid, now, read) : undefined;
-  return { ...base, ...referral, sharingReady: false };
+  const required=base===paid&&paid.plan==='plus'&&billing.data()?.conversationPolicyRequired===true;
+  const policy=required?storedConversationPolicy(billing.data()?.conversationPolicy,now):undefined;
+  return { ...base, ...referral, sharingReady: false,...(required?{conversationPolicyRequired:true,conversationPolicy:policy?publicConversationPolicy(policy):undefined}:{}) };
 }

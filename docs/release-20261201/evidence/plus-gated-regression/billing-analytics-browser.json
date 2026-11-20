@@ -1,0 +1,61 @@
+{
+  "kind": "Local real Chromium with injected Auth/payment fixtures; no real login, Stripe call, charge or Preview/Production acceptance",
+  "results": [
+    {
+      "width": 375,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true,
+      "explicit_payment_analytics_stop": true
+    },
+    {
+      "width": 390,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true,
+      "explicit_payment_analytics_stop": true
+    },
+    {
+      "width": 412,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true,
+      "explicit_payment_analytics_stop": true
+    },
+    {
+      "width": 768,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true,
+      "explicit_payment_analytics_stop": true
+    },
+    {
+      "width": 1280,
+      "consent_required": true,
+      "retry_same_intent": true,
+      "start_event_once": true,
+      "overflow": false,
+      "escape": true,
+      "explicit_payment_analytics_stop": true
+    },
+    {
+      "mode": "disabled",
+      "passed": true
+    },
+    {
+      "mode": "portal",
+      "passed": true
+    }
+  ],
+  "legacyFixtureDateField": "2026-11-19",
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

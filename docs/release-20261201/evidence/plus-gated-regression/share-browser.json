@@ -1,0 +1,53 @@
+{
+  "kind": "Local real Chromium with injected Auth/membership/share/native-share fixtures. No actual login, recipient or Production URL. HTTP/Firestore issuance and third-party read are separately tested.",
+  "results": [
+    {
+      "width": 375,
+      "explicit_recipient_and_consent": true,
+      "creation_does_not_send": true,
+      "native_share_explicit_only": true,
+      "revoke": true,
+      "no_horizontal_overflow": true,
+      "escape": true
+    },
+    {
+      "width": 390,
+      "explicit_recipient_and_consent": true,
+      "creation_does_not_send": true,
+      "native_share_explicit_only": true,
+      "revoke": true,
+      "no_horizontal_overflow": true,
+      "escape": true
+    },
+    {
+      "width": 412,
+      "explicit_recipient_and_consent": true,
+      "creation_does_not_send": true,
+      "native_share_explicit_only": true,
+      "revoke": true,
+      "no_horizontal_overflow": true,
+      "escape": true
+    },
+    {
+      "width": 768,
+      "explicit_recipient_and_consent": true,
+      "creation_does_not_send": true,
+      "native_share_explicit_only": true,
+      "revoke": true,
+      "no_horizontal_overflow": true,
+      "escape": true
+    },
+    {
+      "width": 1280,
+      "explicit_recipient_and_consent": true,
+      "creation_does_not_send": true,
+      "native_share_explicit_only": true,
+      "revoke": true,
+      "no_horizontal_overflow": true,
+      "escape": true
+    }
+  ],
+  "legacyFixtureDateField": "2026-11-19",
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

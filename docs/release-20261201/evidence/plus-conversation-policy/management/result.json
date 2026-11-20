@@ -1,0 +1,66 @@
+{
+  "kind": "Local real Chromium, root route and screen; injected Auth/payment. No real email, Stripe or Preview acceptance.",
+  "results": [
+    {
+      "width": 375,
+      "missing_profile_and_suspended_access_still_manage": true,
+      "portal_failure_keeps_history": true,
+      "no_purchase_or_record_change": true,
+      "logout_preserves_local_records": true,
+      "overflow": false,
+      "page_errors": []
+    },
+    {
+      "width": 390,
+      "missing_profile_and_suspended_access_still_manage": true,
+      "portal_failure_keeps_history": true,
+      "no_purchase_or_record_change": true,
+      "logout_preserves_local_records": true,
+      "overflow": false,
+      "page_errors": []
+    },
+    {
+      "width": 412,
+      "missing_profile_and_suspended_access_still_manage": true,
+      "portal_failure_keeps_history": true,
+      "no_purchase_or_record_change": true,
+      "logout_preserves_local_records": true,
+      "overflow": false,
+      "page_errors": []
+    },
+    {
+      "width": 768,
+      "missing_profile_and_suspended_access_still_manage": true,
+      "portal_failure_keeps_history": true,
+      "no_purchase_or_record_change": true,
+      "logout_preserves_local_records": true,
+      "overflow": false,
+      "page_errors": []
+    },
+    {
+      "width": 1280,
+      "missing_profile_and_suspended_access_still_manage": true,
+      "portal_failure_keeps_history": true,
+      "no_purchase_or_record_change": true,
+      "logout_preserves_local_records": true,
+      "overflow": false,
+      "page_errors": []
+    },
+    {
+      "email_pending_same_browser": true,
+      "other_device_email_entry": false,
+      "no_consumer_consent_or_transfer": true,
+      "callback_scrubbed": true,
+      "unpaid_identity_no_portal_or_checkout": true
+    },
+    {
+      "email_pending_same_browser": false,
+      "other_device_email_entry": true,
+      "no_consumer_consent_or_transfer": true,
+      "callback_scrubbed": true,
+      "unpaid_identity_no_portal_or_checkout": true
+    }
+  ],
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

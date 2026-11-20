@@ -7,6 +7,7 @@ import { isTransientNetworkError } from './provider-recovery.js';
 import { defaultConversationModel, isConversationModel } from './models.js';
 import {safeConversationTiming,type ConversationTiming} from './performance.js';
 import { CONVERSATION_MODEL_PROMPTS, modelAllowsAction } from './model-server.js';
+import type{ConversationRateDecision}from'../membership/conversation-policy.js';
 
 export { immediateSafetyReply } from './safety.js';
 
@@ -193,7 +194,7 @@ export function createGeminiChatHandler(deps: {
   generate:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls?:GenerationControls)=>Promise<string>;
   generateStream?:(contents:ReturnType<typeof buildGeminiContents>,prompt:string,controls:GenerationControls)=>Promise<string>;
   claimRequest?:(uid:string,requestId:string)=>Promise<{finish:(state:'success'|'error'|'aborted')=>Promise<void>}>;
-  limiter?:{take:(uid:string,lane?:'basic'|'referral_extension')=>boolean|Promise<boolean>};now?:()=>number;
+  limiter?:{take:(uid:string,lane?:'basic'|'referral_extension')=>ConversationRateDecision|Promise<ConversationRateDecision>};now?:()=>number;
 }) {
  const limiter=deps.limiter??createInMemoryRateLimiter(),clock=deps.now??Date.now;
  return async(req:{method?:string;headers:Record<string,string|string[]|undefined>;body?:unknown},res:ChatApiResponse,receivedAt=clock())=>{
@@ -220,7 +221,7 @@ export function createGeminiChatHandler(deps: {
   if(body.usageLane!==undefined&&(typeof body.usageLane!=='string'||!['basic','referral_extension'].includes(body.usageLane)))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
   if(body.requestId!==undefined&&!validAiRequestId(body.requestId))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
   if(body.modelId!==undefined&&!isConversationModel(body.modelId))return res.status(400).json({error:'invalid_request',category:'invalid_request'});
-  const modelId=defaultConversationModel(body.modelId),message=redactContactDetails(body.message).trim(),history=sanitizeHistory(body.history);
+  const modelId=defaultConversationModel(body.modelId),message=redactContactDetails(body.message).trim();let history=sanitizeHistory(body.history);
   const urgent=immediateSafetyReply(message);
   if(urgent)return res.status(200).json({reply:urgent,provider:'fallback',safety:true,modelId,timing:safeConversationTiming(timing)});
   const controller=new AbortController(),disconnect=()=>controller.abort();
@@ -236,6 +237,12 @@ export function createGeminiChatHandler(deps: {
    try{allowed=await limiter.take(identity.uid,body.usageLane==='referral_extension'?'referral_extension':'basic');}catch(error){if(error&&typeof error==='object'&&'code'in error&&error.code==='TRIAL_AI_NOT_READY')return res.status(429).json({error:'trial_frame_unavailable',category:'trial_limited'});if(error&&typeof error==='object'&&'code'in error&&error.code==='FREE_DAILY_LIMIT')return res.status(429).json({error:'daily_limit_reached',category:'daily_limited'});return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
    timeline.T4=clock();timing.server_rate_limit_ms=Math.max(0,timeline.T4-limitStart);
    if(!allowed)return res.status(429).json({error:'temporarily_unavailable',category:'rate_limited'});
+   if(typeof allowed==='object'){
+    const limits=allowed.historyLimits;
+    if(allowed.allowed!==true||!Number.isSafeInteger(limits?.historyMessages)||limits.historyMessages<0||limits.historyMessages>8||!Number.isSafeInteger(limits.historyChars)||limits.historyChars<1||limits.historyChars>500)throw new Error('CONVERSATION_POLICY_INVALID');
+    history=limits.historyMessages?history.slice(-limits.historyMessages).map(item=>({...item,text:item.text.slice(0,limits.historyChars)})):[];
+    while(history[0]?.role==='assistant')history.shift();
+   }
    controller.signal.throwIfAborted();
    const contextStart=clock();
    const context=deps.loadContext?await deps.loadContext(identity.uid).catch(()=>({context:''})):await Promise.all([deps.getTodayMood(identity.uid,token).catch(()=>undefined),deps.getTodayContext?.(identity.uid,token).catch(()=>'')??Promise.resolve('')]).then(([mood,text])=>({mood,context:text}));

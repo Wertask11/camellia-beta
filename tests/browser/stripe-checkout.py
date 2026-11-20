@@ -7,21 +7,23 @@ async def main():
   browser=await p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
   results=[]
   for width in [375,390,412,768,1280]:
-   page=await browser.new_page(viewport={'width':width,'height':844});page.on('pageerror',lambda e:print('PAGE ERROR',e,flush=True));captured=[]
+   page=await browser.new_page(viewport={'width':width,'height':844});page.on('pageerror',lambda e:print('PAGE ERROR',e,flush=True));captured=[];second_request=asyncio.Event()
    async def handler(route):
     req=route.request
     if '/api/camellia/billing' in req.url:
      b=req.post_data_json
-     if b['operation']=='status':return await route.fulfill(json={'ready':True,'customer':False,'priceYen':500,'termsVersion':'local-terms','disclosureVersion':'local-disclosure','termsUrl':'http://127.0.0.1:4181/terms.html','disclosureUrl':'http://127.0.0.1:4181/billing.html'})
-     captured.append(b);return await route.fulfill(status=503,json={'error':'BILLING_UNAVAILABLE'})
+     if b['operation']=='status':return await route.fulfill(json={'ready':True,'customer':False,'priceYen':500,'conversationPolicy':{'version':'local-policy-1','dailyLimit':30,'historyMessages':8,'historyChars':500},'termsVersion':'local-terms','disclosureVersion':'local-disclosure','termsUrl':'http://127.0.0.1:4181/terms.html','disclosureUrl':'http://127.0.0.1:4181/billing.html'})
+     captured.append(b)
+     if len(captured)==2:second_request.set()
+     return await route.fulfill(status=503,json={'error':'BILLING_UNAVAILABLE'})
     if req.url.startswith('http://127.0.0.1:4181'):return await route.continue_()
     return await route.abort()
    await page.route('**/*',handler)
    await page.goto('http://127.0.0.1:4181/fixture');dialog=page.get_by_role('dialog');await dialog.wait_for()
    purchase=page.get_by_role('button',name='月額500円の支払い手続きへ');await purchase.wait_for();assert await purchase.is_disabled()
-   await page.get_by_role('checkbox').check();assert await purchase.is_enabled();await purchase.click();await page.get_by_role('alert').wait_for();await purchase.click()
+   await page.get_by_role('checkbox').check();assert await purchase.is_enabled();await purchase.click();await page.get_by_role('alert').wait_for();await purchase.click();await asyncio.wait_for(second_request.wait(),timeout=5)
    assert len(captured)==2 and captured[0]['input']['requestId']==captured[1]['input']['requestId']
-   assert captured[0]['input']['consent'] and 'uid' not in captured[0]['input']
+   assert captured[0]['input']['consent'] and 'uid' not in captured[0]['input'];assert captured[0]['input']['conversationPolicyVersion']=='local-policy-1';await page.get_by_text('この申込みの会話条件：',exact=False).wait_for()
    assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth')
    assert await dialog.evaluate('(e)=>e.scrollWidth<=e.clientWidth+1')
    assert (await page.evaluate('window.events')).count('plus_start')==1
@@ -30,14 +32,14 @@ async def main():
    results.append({'width':width,'consent_required':True,'retry_same_intent':True,'start_event_once':True,'overflow':False,'escape':True})
    await page.close()
   # Actual disabled/unconfigured and Portal management states, independent of paid flags in browser.
-  for mode in ['disabled','portal']:
+  for mode in ['disabled','portal','unreviewed']:
    page=await browser.new_page(viewport={'width':390,'height':844})
    async def disabled(route):
-    if '/api/camellia/billing' in route.request.url:return await route.fulfill(json={'ready':False,'customer':mode=='portal','priceYen':500})
+    if '/api/camellia/billing' in route.request.url:return await route.fulfill(json={'ready':mode=='unreviewed','customer':mode=='portal','priceYen':500})
     if route.request.url.startswith('http://127.0.0.1:4181'):return await route.continue_()
     return await route.abort()
    await page.route('**/*',disabled);await page.goto('http://127.0.0.1:4181/fixture?mode='+mode)
-   if mode=='disabled':await page.get_by_role('button',name='支払い受付は準備中').wait_for();assert await page.get_by_role('button',name='支払い受付は準備中').is_disabled()
+   if mode in ['disabled','unreviewed']:await page.get_by_role('button',name='支払い受付は準備中').wait_for();assert await page.get_by_role('button',name='支払い受付は準備中').is_disabled()
    else:await page.get_by_role('button',name='支払い履歴・解約を確認する').wait_for()
    results.append({'mode':mode,'passed':True});await page.close()
   await browser.close()

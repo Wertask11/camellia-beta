@@ -21,7 +21,7 @@ try {
  const event={id:'evt_local',object:'event',type:'invoice.paid',livemode:false,created:1795046401,data:{object:{id:'in_local'}}};
  const sign=v=>{const raw=Buffer.from(JSON.stringify(v));return [raw,sdk.webhooks.generateTestHeaderString({payload:raw.toString(),secret})];};
  const normalized=await adapter.verify(...sign(event));
- assert.equal(normalized.kind,'paid');assert.equal(normalized.amount,500);assert.equal(normalized.customerId,'cus_local');
+ assert.equal(normalized.kind,'paid');assert.equal(normalized.amount,500);assert.equal(normalized.customerId,'cus_local');const contractId='12345678-1234-4234-8234-123456789012',legacyInvoice=invoice;invoice={...invoice,parent:{...invoice.parent,subscription_details:{...invoice.parent.subscription_details,metadata:{camellia_contract:contractId}}}};assert.equal((await adapter.verify(...sign(event))).contractId,contractId);invoice={...invoice,parent:{...invoice.parent,subscription_details:{...invoice.parent.subscription_details,metadata:{camellia_contract:'INVALID'}}}};await assert.rejects(()=>adapter.verify(...sign(event)));invoice=legacyInvoice;
  await assert.rejects(()=>adapter.verify(...sign({...event,livemode:true})));
  const [raw,sig]=sign(event);await assert.rejects(()=>adapter.verify(Buffer.concat([raw,Buffer.from(' ')]),sig));
  assert.equal(await adapter.verify(...sign({...event,type:'checkout.session.completed'})),null,'completion redirect/event cannot grant Plus');

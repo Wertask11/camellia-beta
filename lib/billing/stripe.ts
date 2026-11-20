@@ -80,10 +80,13 @@ export function stripeAdapter(stripe: Stripe, options: { secret: string; mode: S
       }
       const price = await stripe.prices.retrieve(options.priceId);
       if (!stripePriceValid(price, options.priceId, options.mode)) throw new Error('STRIPE_PRICE_MISMATCH');
+      // Canonical finalized invoice metadata, never an unsigned request/redirect or mutable customer hint.
+      const contractId=invoice.parent?.subscription_details?.metadata?.camellia_contract;
+      if(contractId!==undefined&&!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(contractId))throw new Error('STRIPE_CONTRACT_MISMATCH');
       return { id: event.id, kind, customerId, priceId: options.priceId, paymentReceipt: invoice.id,
         amount: kind === 'paid' ? invoice.amount_paid : 0, currency: 'JPY',
         periodStart: iso(line.period.start), periodEnd: iso(line.period.end), occurredAt: iso(event.created),
-        ...(refundedYen === undefined ? {} : { refundedYen }) } satisfies BillingEvent;
+        ...(refundedYen === undefined ? {} : { refundedYen }),...(contractId?{contractId}:{}) } satisfies BillingEvent;
     } catch {
       // Canonical lookup failures must be retried by Stripe, never acknowledged as a verified payment.
       throw new BillingProviderUnavailable();

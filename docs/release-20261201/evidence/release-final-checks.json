@@ -1,0 +1,37 @@
+{
+  "atUTC": "2026-11-20T02:40:07.064993+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795",
+  "unitSuites": 78,
+  "firestoreScripts": 25,
+  "checks": {
+    "lint": {
+      "log": "work/release-final-lint.log",
+      "sha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c",
+      "bytes": 246
+    },
+    "types": {
+      "log": "work/release-final-types.log",
+      "sha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369",
+      "bytes": 257
+    },
+    "unit": {
+      "log": "work/release-final-unit.log",
+      "sha256": "c1ea9bcd467cfbf6c6c98a0fe08d7db9ba6ceed36f2adb78adedb95864692b8b",
+      "bytes": 46249
+    },
+    "firestore": {
+      "log": "work/release-final-firestore.log",
+      "sha256": "a704899c6d504c8b52a48ca89beb6691c6c0563fc6f0ac9e8cba6a5009f6c1d8",
+      "bytes": 32415
+    },
+    "build": {
+      "log": "work/release-final-build.log",
+      "sha256": "173994836a6057794dcc607107b73376c7cf2873e4b639dd748de401536c0cfc",
+      "bytes": 3697
+    }
+  },
+  "packageLockSha256": "5dadd675bc86af886de1a48d4a7f416727c384a3964fe39d11fd741138f5ebef",
+  "productionMutations": false,
+  "pricingGuard": "new paid expansion only; both configured model prices approved and in validity; Free30/legacy protected",
+  "fixtures": "Auth/Stripe/Gemini/OS synthetic; local demo Firestore only"
+}

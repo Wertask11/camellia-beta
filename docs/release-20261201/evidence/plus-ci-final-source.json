@@ -1,0 +1,35 @@
+{
+  "baseRefName": "feat/camellia-billing-management-20261119",
+  "headRefOid": "76c42e2c1ff230a342bd8642980c9ed84e1bd795",
+  "number": 99,
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-11-20T02:39:37Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Wertask11/camellia-beta/actions/runs/44661846772/job/136041690967",
+      "name": "quality",
+      "startedAt": "2026-11-20T02:35:11Z",
+      "status": "COMPLETED",
+      "workflowName": "Release quality"
+    },
+    {
+      "__typename": "StatusContext",
+      "context": "Vercel",
+      "startedAt": "2026-11-20T02:41:15Z",
+      "state": "SUCCESS",
+      "targetUrl": "https://vercel.com/school-park/camellia-beta/8w6RZrGFPXjmCYEQXb81BGKeNYW4"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-11-20T02:41:15Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://vercel.com/github",
+      "name": "Vercel Preview Comments",
+      "startedAt": "2026-11-20T02:41:15Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ],
+  "url": "https://github.com/Wertask11/camellia-beta/pull/99"
+}

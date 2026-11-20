@@ -1,0 +1,55 @@
+{
+  "recordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795",
+  "kind": "Local real Chromium; injected Auth/API/provider/OS, no Preview real-account acceptance.",
+  "files": [
+    {
+      "path": "checkout/checkout-1280.png",
+      "sha256": "ecf7d5ffce5828592f29330ae8e95d70a4c0bf1da6d6bd6caf6a2d352f97bf98"
+    },
+    {
+      "path": "checkout/checkout-375.png",
+      "sha256": "fb443df9e2eacc7c3360ccfc7d61e959827b1ee74bf648dbe00515963c714506"
+    },
+    {
+      "path": "checkout/checkout-390.png",
+      "sha256": "e8906fb9ea59e951d8d6ad2c352fa9f21c4b1ab3aac0d6dd68283ae380ab2e85"
+    },
+    {
+      "path": "checkout/checkout-412.png",
+      "sha256": "cb9d9ab0ac404ca29bdd0ac6396d9dc80741190d4ba587df45b73e7d8ce4ff11"
+    },
+    {
+      "path": "checkout/checkout-768.png",
+      "sha256": "beca97333b4cbf83f28422ccba7f460c9d0e253c895a87791588bd0161bd808d"
+    },
+    {
+      "path": "checkout/checkout-browser.json",
+      "sha256": "f9d42177ac7c6be01d320b21a0590a5bfdbaf452a68f47dfa735a462456944bb"
+    },
+    {
+      "path": "management/1280.png",
+      "sha256": "fcd4d0b45be49e0f5804b7ce0222122adf15ca848644b3cb8bfd9fd5f8f92bc2"
+    },
+    {
+      "path": "management/375.png",
+      "sha256": "8113a4eba10977ee145301370b6758c62537f469ed876dbd3365a04d2c853b1f"
+    },
+    {
+      "path": "management/390.png",
+      "sha256": "2ae4b82e1ab8df03e7c782170d8de3416dcc42b051d617fbb5c220269551e663"
+    },
+    {
+      "path": "management/412.png",
+      "sha256": "2befe330feb59c9bc6a4f5411201ffdac2c9b7d7dbba35c46f5ce5258796bcf0"
+    },
+    {
+      "path": "management/768.png",
+      "sha256": "a01f9f99724eb6eca189c500ed334afb0926dd76ec9c547abcb2a4b147920926"
+    },
+    {
+      "path": "management/result.json",
+      "sha256": "2ed48ca7021395c2d4f69438d8abaf3fcc533d3ee44b58d9a90799441df9409a"
+    }
+  ]
+}

@@ -104,7 +104,7 @@ const handler = createGeminiChatHandler({
   claimRequest:(uid,requestId)=>claimAiRequest(serverAdmin().db,uid,requestId),
   getTodayMood:async()=>undefined,
   loadContext:uid=>loadConversationContext(uid,serverAdmin().db as unknown as Parameters<typeof loadConversationContext>[1]),
-  ...(adminConfigured() ? {limiter:{take:async(uid:string,lane?:'basic'|'referral_extension')=>{const db=serverAdmin().db;return await createSharedRateLimiter(db).take(uid)&&await takeMemberFreeDaily(db,uid,Date.now(),true,lane);}}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
+  ...(adminConfigured() ? {limiter:{take:async(uid:string,lane?:'basic'|'referral_extension')=>{const db=serverAdmin().db;return await createSharedRateLimiter(db).take(uid)&&await takeMemberFreeDaily(db,uid,Date.now(),true,lane,true);}}} : (process.env.VERCEL_ENV==='production'||process.env.CAMELLIA_SHARED_RATE_LIMIT_REQUIRED === 'true') ? {limiter:{take:async()=>{throw new Error('SHARED_LIMIT_UNAVAILABLE');}}} : {}),
   generate:(contents,prompt,controls)=>generate(contents,prompt,controls,false),
   generateStream:(contents,prompt,controls)=>generate(contents,prompt,controls,true),
 });

@@ -2,20 +2,22 @@
 
 |判定|現在|根拠・残る条件|
 |---|---|---|
-|A 開発完成|PARTIAL|無料/ID保護、Stripe/共有/紹介/通知/店舗申請/原価枠/支払い計測のコードと自動試験を追加。未決定を除いても、全種類の保持・完全削除、計測実運用、共有Auth全閉鎖の扱い等に残件がある。40表を省略していない|
+|A 開発完成|PARTIAL|無料/ID保護、Stripe/共有/紹介/通知/店舗申請/原価枠/支払い計測のコードと自動試験を追加。未決定を除いても、全種類の保持・完全削除、計測実運用、共有Auth全閉鎖の扱い等に残件がある。独立支払い管理と新規Plusの承認済み条件→契約→会話の接続は追加した。40表を省略していない|
 |B 本番技術準備|NOT READY|main未merge・Production未deploy。Rules/index/env/claims変更なし。固定Previewへの最終候補反映とReady証拠を下欄で記録するが、実ログイン/実端末/実配信/新sourceの運用受入が必要|
-|C 正式リリース準備|NOT READY|実店舗0、実Stripe受入0、実通知0、PostHog着信未確認。予算/枠/期間/保持/最終装飾/有料仕様と公開の運営判断待ち|
+|C 正式リリース準備|NOT READY|確認済み実店舗0、実Stripe受入0、実通知0、PostHog着信未確認。予算/枠/期間/保持/最終装飾/有料仕様と公開の運営判断待ち|
 
 正式公開目標2026-12-01は維持する。現在のNo-Goは日付の延期を勝手に決める意味ではなく、必要な受入・承認前に公開済み/完成済みと扱わないという判定。
 
 ## main・本番・Preview
 
-Production/mainは `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。最新の公開GET読取は evidence/production-readonly-latest.json。トップ/manifest/公開statusは200、Circle enabled、Place server disabled、checkoutReady false、Gemini statusはdataPolicy unknown/rateLimit firestore。これは新候補の本番合格証拠ではない。実会話は送っていない。
+Production/mainは `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。最新の公開GET読取は evidence/public-readonly-20261120.json。トップ/manifest/公開statusは200、Circle enabled、Place server disabled、checkoutReady false、Gemini statusはdataPolicy unknown/rateLimit firestore。これは新候補の本番合格証拠ではない。実会話は送っていない。
 
 固定Previewは既存URLを維持する：
 https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/
 
-固定Preview用branchを `ae5003618203733ec1300a91ee836bcd1281f11e` へ通常のfast-forwardで更新した。アプリコードは `145aa5d`、追加差分は検証証拠/報告書。GitHub deployment 7924926841 は environment=Preview / production_environment=false / success。PR #97のquality CIもSUCCESS。証拠は evidence/fixed-preview.json と pr-snapshot.json。直接HTTPは当環境からURLErrorとなり、固定URLの実画面・実ログインは未確認で、本人へ2つの会話の実操作確認を依頼中。 個別PR Previewを新しいLINE callbackとして追加しない。main統合・本番反映・全新規フラグON・課金・通知・紹介は別承認で、今回開始しない。
+固定Preview用branchを `76c42e2c1ff230a342bd8642980c9ed84e1bd795` へ通常のfast-forwardで更新した。アプリ/Buildとも同じcommit。PR99のquality CI全ステップSUCCESS、更新後のVercel status SUCCESSを確認。GitHubの同じSHAのdeploymentはPreview / production_environment=false。証拠はevidence/fixed-preview-final.json。mainはfe7f859のまま。
+
+2026-11-20の直接HTTPはこの実行環境からURLErrorで、実画面・実ログインは未確認。ローカル5幅をPreview実受入へ読み替えない。個別Previewを新しいLINE callbackとして登録しない。後続の報告書だけのcommitは固定branchへ再pushせず、アプリ/Build/報告headを分ける。main統合・Production・Rules/env/claims/機能公開/課金/配信/受付は今回開始していない。
 
 ## 先に確認する残件
 
@@ -30,7 +32,7 @@ https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.a
 
 - 専用支払い管理UI `/?open=billing` を追加。プロフィール未作成・個人記録削除後・Camellia側停止中のAPI/UIをローカルで確認。メール認証を女性対象の新規登録同意と分離した。実メール/LINE/GoogleとStripe Sandbox、固定Previewでの受入は残る。
 - 種類別の保持/完全削除のライフサイクルを、永久装飾・不正重複抑止・会計保存と矛盾しない形で確定/接続する。現行の許可済み期限削除と「全種類完了」を混同しない。
-- Plusの新しい数値的上限/文脈範囲は未決定。承認フラグだけで新しい数値が実ランタイムへ適用済みとはしない。決定後は既存権利を保護して設定/適用/受入する。
+- Plusの数値は未決定だが、型/承認/versionを持つ設定→不変の契約台帳→正規Stripe Invoice→実ランタイムの上限/文脈制限まで接続した（PR99、plus-conversation-policy.md）。設定は未適用。既存権利は維持。承認値と実Stripeでの受入は残る。
 - PostHog実着信、残る中/低リスクの到達性、初期bundle/実画像/モバイル通信、実認証/同期/複数アカウントを受入する。
 
 上記が残るため、完了したように見せずPARTIALとする。Stripe契約と実店舗だけが残っている、とは報告しない。

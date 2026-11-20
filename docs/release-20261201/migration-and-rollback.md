@@ -23,3 +23,8 @@
 - コードの巻戻しでStripe・通知購読・公開共有・店舗権限の状態が自動で戻るとはみなさない。各事業台帳を保持し、正規処理で失効・取消・再審査する。安易なコレクション全削除は禁止。
 
 本番ロールバック・実復旧・Rules適用は未実施。ローカルの原本保護/復元/削除回帰の結果と本番運用受入を分ける。
+
+
+## 新しいPlus契約との互換性
+
+billing_contracts・正規Invoiceの契約参照・billing_subscriptionのconversationPolicyRequired/conversationPolicyを理解するserverを維持する。新規契約発行後は、この条件を捨てる旧Webhook/日次上限実装へロールバックしない。通常無料・legacy Plusを保護する。受付停止はcheckoutEnabledを用い、paid権利・正規Webhook・Portalを止める操作と分離する。詳細はplus-conversation-policy.md。

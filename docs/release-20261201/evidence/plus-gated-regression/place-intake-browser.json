@@ -1,0 +1,43 @@
+{
+  "kind": "Local Chromium with injected Auth and API fixtures. Synthetic cafe only; no actual submission, rights assignment, real login or published store. Firestore authorization tested separately.",
+  "results": [
+    {
+      "width": 375,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 390,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 412,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 768,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    },
+    {
+      "width": 1280,
+      "explicit_submit": true,
+      "review_and_nonpublic_assignment": true,
+      "scope_revocation": true,
+      "no_overflow": true
+    }
+  ],
+  "legacyFixtureDateField": "2026-11-19",
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

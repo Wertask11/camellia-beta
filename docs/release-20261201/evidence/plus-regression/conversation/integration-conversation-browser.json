@@ -1,0 +1,63 @@
+{
+  "kind": "Local real Chromium UI/storage with injected Auth/provider; no actual Gemini or OS keyboard.",
+  "source": "145aa5d",
+  "results": [
+    {
+      "width": 375,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 390,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 412,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 768,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 1280,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    }
+  ],
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}
