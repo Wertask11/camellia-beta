@@ -1,0 +1,9 @@
+{
+  "atUTC": "2026-11-20T02:31:18.043038+00:00",
+  "project": 594848,
+  "operation": "read-only skill discovery",
+  "status": "unresponsive",
+  "timeoutMs": 12000,
+  "evidenceOfIngestion": false,
+  "projectChanges": false
+}

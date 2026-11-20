@@ -47,3 +47,6 @@ Geminiコードの既定primaryはgemini-3.8-flash、fallbackはgemini-3.1-flash
 - https://ai.google.dev/gemini-api/docs/pricing
 
 Stripe/Googleの外部資料は2026-11-19時点。モデル単価は設定・通貨・契約で変わるため、実請求との未照合を明示する。
+
+
+承認後のPlus設定は、plus-conversation-policy.mdのtyped policyとして新規契約へ保存/適用できる実装を追加した。値は未適用。無料30回と旧権利を維持し、方針の数値だけをグローバル変更して過去の契約を書き換えない。billing_contractsの保持も運営承認が必要。

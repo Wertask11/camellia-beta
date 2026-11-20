@@ -1,0 +1,42 @@
+{
+  "kind": "Local real Chromium with injected Auth/quota/provider; no real trial or Gemini",
+  "results": [
+    {
+      "width": 375,
+      "no_automatic_extension": true,
+      "explicit_trial_retry": true,
+      "same_model_and_original_message": true,
+      "no_overflow": true
+    },
+    {
+      "width": 390,
+      "no_automatic_extension": true,
+      "explicit_trial_retry": true,
+      "same_model_and_original_message": true,
+      "no_overflow": true
+    },
+    {
+      "width": 412,
+      "no_automatic_extension": true,
+      "explicit_trial_retry": true,
+      "same_model_and_original_message": true,
+      "no_overflow": true
+    },
+    {
+      "width": 768,
+      "no_automatic_extension": true,
+      "explicit_trial_retry": true,
+      "same_model_and_original_message": true,
+      "no_overflow": true
+    },
+    {
+      "width": 1280,
+      "no_automatic_extension": true,
+      "explicit_trial_retry": true,
+      "same_model_and_original_message": true,
+      "no_overflow": true
+    }
+  ],
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

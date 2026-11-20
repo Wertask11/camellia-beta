@@ -31,3 +31,6 @@ MyのPlus案内内「支払い完了の計測を止める」は本人認証で�
 自動試験は実Firestore emulatorとローカルHTTPへ送信する注入driverで検証する。実際のStripe/Webhook/Project594848へのイベントは送っていない。375/390/412/768/1280幅のChromiumで支払い同意・同じintent再試行・計測停止・Escape・横overflowを確認した。認証/決済応答はfixture。
 
 PostHog接続は応答せず、中断後の25秒で打ち切った再試行も失敗した。実プロジェクトの着信・新funnel・D1/D7/D30・転換実績は未検証で、架空の人数/率を報告しない。新しいschema/sourceを既存のInsightsと混同しない条件で、運営がテスト決済と実着信を確認してから公開する。
+
+
+新しいStripe契約では、分析の同意windowをCheckout intent/契約の作成と同じ取引で保存する。契約参照が一致する正規Invoiceだけをその申込みへ帰属させる。既存subscription等で申込が拒否された場合は同意windowを更新しない。clientが計測を停止した再試行では将来配送用のbindingを除去する。実PostHog着信は別途検証する。

@@ -1,0 +1,69 @@
+{
+  "atUTC": "2026-11-20T02:41:35.763505+00:00",
+  "kind": "Verified-certificate GET only; no login/write/generation/payment/notification",
+  "results": [
+    {
+      "origin": "https://camellia-beta.vercel.app",
+      "path": "/",
+      "status": 200,
+      "bytes": 13300
+    },
+    {
+      "origin": "https://camellia-beta.vercel.app",
+      "path": "/manifest.webmanifest",
+      "status": 200,
+      "bytes": 560
+    },
+    {
+      "origin": "https://camellia-beta.vercel.app",
+      "path": "/api/camellia/chat",
+      "status": 200,
+      "bytes": 103,
+      "publicStatus": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "origin": "https://camellia-beta.vercel.app",
+      "path": "/api/camellia/circle?status=1",
+      "status": 200,
+      "bytes": 76,
+      "publicStatus": {
+        "enabled": true,
+        "configurationStatus": "ready",
+        "storageStatus": "initialized"
+      }
+    },
+    {
+      "origin": "https://camellia-beta.vercel.app",
+      "path": "/api/camellia/place?status=1",
+      "status": 200,
+      "bytes": 17,
+      "publicStatus": {
+        "enabled": false
+      }
+    },
+    {
+      "origin": "https://camellia-beta.vercel.app",
+      "path": "/api/camellia/membership",
+      "status": 200,
+      "bytes": 79,
+      "publicStatus": {
+        "plan": "free",
+        "trial": false,
+        "paid": false,
+        "checkoutReady": false,
+        "priceYen": 500
+      }
+    },
+    {
+      "origin": "https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app",
+      "path": "/",
+      "status": "unavailable",
+      "errorType": "URLError"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "source": "76c42e2c1ff230a342bd8642980c9ed84e1bd795",
+  "kind": "Local real Chromium, injected Auth/cloud/provider. Not actual Preview acceptance.",
+  "results": [
+    {
+      "feature": "free",
+      "exitCode": 0
+    },
+    {
+      "feature": "recovery",
+      "exitCode": 0
+    },
+    {
+      "feature": "conversation",
+      "exitCode": 0
+    },
+    {
+      "feature": "trial-lanes",
+      "exitCode": 0
+    }
+  ],
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

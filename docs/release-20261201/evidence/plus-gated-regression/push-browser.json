@@ -1,0 +1,47 @@
+{
+  "kind": "Local Chromium UI with injected Auth, Notification/ServiceWorker/PushManager and server fixtures. No real permission, subscription, provider call or OS display.",
+  "results": [
+    {
+      "width": 375,
+      "no_permission_on_open": true,
+      "explicit_permission_and_registration": true,
+      "stop": true,
+      "no_overflow": true
+    },
+    {
+      "width": 390,
+      "no_permission_on_open": true,
+      "explicit_permission_and_registration": true,
+      "stop": true,
+      "no_overflow": true
+    },
+    {
+      "width": 412,
+      "no_permission_on_open": true,
+      "explicit_permission_and_registration": true,
+      "stop": true,
+      "no_overflow": true
+    },
+    {
+      "width": 768,
+      "no_permission_on_open": true,
+      "explicit_permission_and_registration": true,
+      "stop": true,
+      "no_overflow": true
+    },
+    {
+      "width": 1280,
+      "no_permission_on_open": true,
+      "explicit_permission_and_registration": true,
+      "stop": true,
+      "no_overflow": true
+    },
+    {
+      "mode": "unconfigured",
+      "no_permission": true
+    }
+  ],
+  "legacyFixtureDateField": "2026-11-19",
+  "evidenceRecordedAtUTC": "2026-11-20T02:42:41.209861+00:00",
+  "productSource": "76c42e2c1ff230a342bd8642980c9ed84e1bd795"
+}

@@ -38,3 +38,11 @@
 ## 支払い管理の直接入口
 
 `/?open=billing` はプロフィール再作成・個人記録の引き継ぎを要求しない本人確認専用入口。販売者情報からも開ける。以前と同じメール・LINE・Googleを使い、別IDへ自動統合しない。ローカル合成検証と、Stripe Sandbox/実Authの受入を区別する。詳細は[billing-management.md](billing-management.md)。Stripe接続障害時の解約窓口と受付手順も、課金前に運営が確認する。
+
+
+## Plus会話条件の承認と契約保護
+
+plus-conversation-policy.mdの型/承認/versionを必要とし、数値未決定では新規checkoutを開けない。無料30回・旧Plusを維持する。billing_contractsと確定Invoiceの参照を照合し、現在のグローバル値で既存契約を改変しない。新契約発行後のロールバックはこのserver互換性を維持する。支払い分析の同意時刻は実際に作成した申込みへだけ紐付け、停止/重複/既存契約による申込拒否で更新しない。
+
+
+追加枠付きの新規Plusを承認する場合は、両provider modelの実単価と有効期限・出典/通貨・paidExpansionApprovedを確認する。無効/期限切れは追加枠と新規申込みだけ停止し、無料30回/旧権利を保護する。camellia_plus_cost_unavailable の監視と、翌年単価更新・契約条件・提供表示を運営が確認する。設定数値の提案は未適用のまま。

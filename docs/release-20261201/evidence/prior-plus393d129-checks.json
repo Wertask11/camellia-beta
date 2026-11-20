@@ -1,0 +1,40 @@
+{
+  "atUTC": "2026-11-20T02:31:18.037125+00:00",
+  "productSource": "393d1294b6117b23a18c8c3864079687855b0d37",
+  "unitSuites": 78,
+  "firestoreScripts": 25,
+  "checks": {
+    "lint": {
+      "log": "work/plus-final-lint.log",
+      "sha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c",
+      "bytes": 246
+    },
+    "types": {
+      "log": "work/plus-final-types.log",
+      "sha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369",
+      "bytes": 257
+    },
+    "unit": {
+      "log": "work/plus-final-unit.log",
+      "sha256": "da449fa9cc027f5c845e8191ddc4296ed26771a7d0eff8fbb0cbb50c8f97b855",
+      "bytes": 46077
+    },
+    "firestore": {
+      "log": "work/plus-final-firestore.log",
+      "sha256": "6783786828458fbc9dde6be3da6fb14dbae395c944f16fd0bd482e6d6c1b2aa6",
+      "bytes": 30960
+    },
+    "build": {
+      "log": "work/plus-final-build.log",
+      "sha256": "deb783f2b797d72e34b56b1f598ef5ead66e894c1c3e9ef1b40cea7430351913",
+      "bytes": 2821
+    },
+    "extraConsentRetry": {
+      "log": "work/plus-final-consent-retry.log",
+      "sha256": "37b25bb97d4e6b591cb2932ee45c97e07b904efb8982094300c5b05539b3a0b8"
+    }
+  },
+  "packageLockSha256": "5dadd675bc86af886de1a48d4a7f416727c384a3964fe39d11fd741138f5ebef",
+  "productionMutations": false,
+  "fixtures": "Auth/Stripe/Gemini/OS are synthetic. Only local demo Firestore is mutated."
+}

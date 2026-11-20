@@ -1,6 +1,6 @@
 # リリース完成状況（開発進捗・正式公開未完了）
 
-対象 main: `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。統合コード145aa5dに、支払い管理を独立させたアプリコード `af3de9e2226d15f57e7e1fb1e34323ae1e14f830` を追加。mainへmerge・Production deployしていない。
+対象 main: `fe7f85947a0799f9b4d4097e34c389839c3f7ec1`。統合コード145aa5dに、支払い管理af3de9eと、新規Plus条件・申込みへの計測帰属を接続したアプリコード `76c42e2c1ff230a342bd8642980c9ed84e1bd795` を追加。mainへmerge・Production deployしていない。
 
 正式目標は2026-12-01。現時点の判定は **PARTIAL / Go不可（受入前）**。開発・本番技術・正式公開を分ける。未決定・未検証をPASSにしていない。
 
@@ -21,7 +21,7 @@
 |⑨|登録前の価値体験|コード完了・Preview本人確認|登録不要の無料、メールID、LINE/Google互換を維持・再試験。|新sourceでの本人実ログイン受入待ち|
 |⑩|Check→提案→Place/Discover→Action→Reflection|部分実装・実体験待ち|選択→私的体験→任意Reflection/Memoryを5幅で再操作。|実際の来店・体験確認ではない|
 |⑪|店舗実在・許可・情報・履歴・停止|コード完了・実掲載待ち|私的連絡先を分離した申請、CAS審査、担当付与/解除、保管終了を追加。|実在確認/許諾/写真/実掲載0。新規保持の承認待ち|
-|⑫|Plus500円・店舗基本無料・原価と転換計測|部分実装・事業未準備|Stripe500円、署名/正規照合、専用token/原価枠、計測Outbox、原本削除後も開ける支払い管理UIを接続。|実費/請求書・決済契約・料金運用未照合|
+|⑫|Plus500円・店舗基本無料・原価と転換計測|部分実装・事業未準備|Stripe500円、署名/正規照合、専用token/原価枠、計測Outbox、独立した支払い管理、新規Plus契約ごとの承認済み会話条件を実ランタイムへ接続。|実費/請求書・決済契約・料金運用未照合|
 |⑬|正式リリース可否は運営判断|維持|main/Production/Rules/env/claims/各運用を変更せず、3判定を分離。|公開判断は運営。日付だけで自動公開しない|
 |⑭-1|発見目的のToday・Check非強制|コード完了・Preview本人確認|Checkなし選択・保存・復旧・無料体験を現在sourceで再試験。|実端末の受入待ち|
 |⑭-2|CircleのPlaceを手動選択|コード完了・新連携OFF|既存の本人手動Place紐付け・原文非混入・停止時非表示を再試験。|新連携OFF。新sourceの実2アカウント受入待ち|
@@ -38,7 +38,7 @@
 |⑮-7|正式リリース後のみ紹介開始|停止維持|12/1対象方針を維持。正式受入・設定不足なら受付できない。|日付だけでキャンペーンを開始しない|
 |⑮-8|数値基準・超過時・重複規則・期間は保留|未決定を保留・安全に拒否|数値は設定式・未設定停止。月3件超過後の新規側はgrantに統一。|予算/AI枠/終了日/重複/最終装飾等は運営判断|
 |⑯-1|希望に合う場所・体験を伝える|コード完了・実掲載待ち|希望に合う場所・体験という価値を維持し、募集/申請入口を追加。|実店舗受入待ち|
-|⑯-2|異なるジャンルを少数ずつ|構造完了・実店舗0|少数・異分野を扱うカタログ構造を維持。デモ3件を明記。|実店舗0を実績として扱わない|
+|⑯-2|異なるジャンルを少数ずつ|構造完了・確認済み実店舗0|少数・異分野を扱うカタログ構造を維持。デモ3件を明記。|確認済み実店舗0を実績として扱わない|
 |⑯-3|認知・予約・再発見、成果保証しない|部分実装|閲覧/公式/予約/地図/問い合わせのクリックと来店を区別。|予約成立/来店/購入の実績値なし|
 |⑯-4|基本情報＋体験必須・限定企画任意|コード完了・審査で必須|基本情報・体験紹介・4審査証跡、任意特典を維持。連絡先は非公開。|実在・許諾・営業時間等の運営確認待ち|
 |⑯-5|既存地図・予約・問合せが基本|コード完了|既存外部導線とURL安全性、問い合わせ等のエラー表示を維持。|実店舗の実リンクと画像配信受入待ち|
@@ -48,7 +48,7 @@
 |⑯-9|任意のMemory・Reflection・Circle連携|コード完了・ローカルPASS|任意Reflection/Memory、別欄の公開Circle、自動原文共有なしを再試験。|新sourceの実環境同期・新連携受入待ち|
 |⑯-10|完成目標・営業方法・件数・有料額・来店方式|未決定を保留|4分野4店を提案として残し、営業→申請→審査手順を用意。|件数/営業方法/有料額/来店方式を勝手に決めない|
 |保護|既存データ／Auth／Fortune／Tree／会話／Circle|ローカル境界PASS・実運用未確認|v3/v4・CAS・tombstone・legacy会話・ID隔離を全試験。無料日30回を登録IDにも適用。|共有Auth自体の削除は個人記録削除と別。実環境の再受入待ち|
-|安全|認証と認可、他人のデータ、店舗境界、共有|ローカル境界PASS・本番設定未変更|server認可、scope、秘密ID非公開、取引署名、重大/高リスク依存0へ修正。|中18/低5（実行）等は残存。新規台帳の保持/完全削除は未完部分あり|
+|安全|認証と認可、他人のデータ、店舗境界、共有|ローカル境界PASS・本番設定未変更|server認可、scope、秘密ID非公開、取引署名、重大/高リスク依存0へ修正。|11/20再監査で中15/低1（実行）、中24/低3（全体）が残存。新規台帳の保持/完全削除は未完部分あり|
 |UX|スマホ・読込・空状態・アクセシビリティ・低速|5幅PASS・実機一部未確認|5幅の無料/ID復旧/会話両方向切替/公開前UIを再検証。入口を1つの固定Previewで維持。|実iPhone/Android OSキーボード/VoiceOver/TalkBack・回線/画像の実配信は未検証|
 
 ## 機能別100点評価
@@ -92,13 +92,14 @@ branchとheadは読取時点。後続は前段をbaseにした独立PR。#91/#94
 |[#95](https://github.com/Wertask11/camellia-beta/pull/95)|`feat/camellia-trial-token-budget-20261119`|`3ee94738eece36a92a49e064b7ea4a01a9103bb0`|`feat/camellia-release-controls-20261119`|https://camellia-beta-git-feat-camellia-trial-token-553bda-school-park.vercel.app|
 |[#96](https://github.com/Wertask11/camellia-beta/pull/96)|`feat/camellia-billing-analytics-20261119`|`446f3f510257627dd76e4b2644b3d980ec218d42`|`feat/camellia-trial-token-budget-20261119`|https://camellia-beta-git-feat-camellia-billing-anal-d41693-school-park.vercel.app|
 |[#97](https://github.com/Wertask11/camellia-beta/pull/97)|`feat/camellia-release-integration-20261119`|`ae5003618203733ec1300a91ee836bcd1281f11e`|`feat/camellia-billing-analytics-20261119`|https://camellia-beta-7g536o3ce-school-park.vercel.app|
-|[#98](https://github.com/Wertask11/camellia-beta/pull/98)|`feat/camellia-billing-management-20261119`|`61ac5c91a129bc1969674467511d1e2f711d47a2`|`feat/camellia-release-integration-20261119`|Vercel success: BLrSc3qtogLgDCS7MHaJcn52hxNb|
+|[#98](https://github.com/Wertask11/camellia-beta/pull/98)|`feat/camellia-billing-management-20261119`|`0a4f4fd50f5659d07d62bcef9d8af10b2c64e170`|`feat/camellia-release-integration-20261119`|https://camellia-beta-h6ru7hmnw-school-park.vercel.app|
+|[#99](https://github.com/Wertask11/camellia-beta/pull/99)|`feat/camellia-plus-conversation-policy-20261119`|`76c42e2c1ff230a342bd8642980c9ed84e1bd795`|`feat/camellia-billing-management-20261119`|同じ固定Previewへ更新、deployment証拠はrelease-readiness.md|
 
 固定Preview: https://camellia-beta-git-codex-camellia-alpha-relea-161533-school-park.vercel.app/ 。最新候補の反映/Ready証拠はrelease-readiness.mdを参照。
 
 ## 明確に残ること
 
-- 実店舗・写真/掲載許可0、実Stripeテスト0、実Web Push/OS表示0。契約や外部受入を合成データで代用しない。
+- 実店舗・写真/掲載許可0、実Stripeテスト未検証、実Web Push/OS表示0。契約や外部受入を合成データで代用しない。
 - PostHog接続が応答せず、実着信・Insight/新funnel・D1/D7/D30・実転換率は未検証。配送コードとHTTP fixture成功を実着信へ読み替えない。
 - 紹介予算/専用枠/終了日、Plus会話方針、他体験重複、装飾最終案、種類別保持の運営決定待ち。推奨値はproposed-settings.mdで未承認のまま。
 - 保持の設定・安全停止・許可済み期限削除は実装したが、紹介成立/Identity HMAC/予算・永久権利の全ライフサイクル削除、決済法定記録、全事業者監査の削除は未接続/運用設計待ち。expiresAtだけで物理削除済みと言わない。設定承認だけで全種類の削除が完成すると案内しない。

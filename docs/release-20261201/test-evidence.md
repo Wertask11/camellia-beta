@@ -1,6 +1,17 @@
 # 新sourceの検証証拠
 
-監査開始2026-11-19。ログの正確な時刻はUTCで保存する。先行統合コードは `145aa5db8e631b4c7d9fe37a77730cd38b4c3a47`。最新の支払い管理追加後は下欄のaf3de9eを参照。その後の変更は試験結果のsource表記と報告書。統合中に発見した紹介trialの通常枠迂回を修正し、専用レーン/明示再試行UIもこのsourceで再検証した。前回の本人確認や旧合格結果をこのsourceの実受入に流用していない。
+監査開始2026-11-19。ログの正確な時刻はUTCで保存する。先行統合コードは `145aa5db8e631b4c7d9fe37a77730cd38b4c3a47`。最新の支払い管理追加後は下欄のaf3de9eを参照。その後の変更は試験結果のsource表記と報告書。統合中に発見した紹介trialの通常枠迂回を修正し、専用レーン/明示再試行UIもこのsourceで再検証した。前回の本人確認や旧合格結果をこのsourceの実受入に流用していない。最新のアプリ/固定Previewは76c42e2。
+
+## Plus契約条件・計測帰属の追加後
+
+最新アプリコード `76c42e2c1ff230a342bd8642980c9ed84e1bd795`。先行93bbead（上限/文脈/契約参照）、c44fe92（送信失敗時の枠消費を明示）に、実際のCheckout intent作成時だけ分析同意を保存する修正を加えた。数値は未承認/未適用。
+
+- 追加枠の無効単価停止を含め、全78 unit、25 Firestore emulator scripts、lint、typecheck、Production相当buildを新sourceで再実行し全てPASS。最終結果/ログhashはevidence/release-final-checks.json。過去93bbeadの合格結果を393d129へ流用しない。
+- 新しいpaid契約条件の固定、正規Invoiceの契約参照、日次上限/文脈、無料利用分の引継ぎ、旧権利/別operator権利/不明契約/条件破損の保護、両model×6 Safetyを検証する。実Stripe/Geminiではない。
+- 料金/同意/version、未承認時の拒否、同一intent再試行、計測停止、独立した支払い管理を5幅で操作。無料/メールID復旧/両方向style切替/紹介枠/共有/紹介/通知/店舗申請も再実行し、evidence/plus-*へ分離する。
+- 支払い計測ブラウザの初回は2回目のHTTP要求より先にPythonが件数を判定して失敗。2件目の実通信をEventで待って、同じ件数/同じrequestIdの検証を維持して再実行した。assertionの削除や固定sleepで合格にしていない。
+- 分析bindingの移動時の変数参照漏れは型/lintで検出し、修正した393d129で再実行。失敗時のローカルFirestore取引はrollbackされ、実データ・実決済へ影響していない。
+- 2026-11-20のPostHog read-only skill discoveryも12秒で応答せず。新しい実着信/Insights/D1/D7/D30は引き続き未検証。プロジェクトへの書込や合成イベント送信はしていない。
 
 ## 支払い管理追加後の再検証
 
@@ -60,3 +71,14 @@ PostHog connectorは応答せず、中断後の25秒と10秒で打ち切った�
 ## 性能と残る警告
 
 buildは成功したが、500KB超のclient chunk警告と将来のVite native config loader向けJSON import警告が残る。警告の閾値を上げて隠していない。静的JS/gzipサイズはevidence/integration-build-sizes.jsonで、初期通信量/実回線速度の測定ではない。モバイル回線、Firestore実読取数、画像CDN、実Geminiのfirst token/総時間の最終受入は未完了。
+
+
+## 最終候補76c42e2の確定証拠
+
+- `work/release-final-{lint,types,unit,firestore,build}.log`：lint/typecheck/78 unit/25 emulator/Production相当build全てPASS。新しい追加枠の単価停止、無料30回/旧Plusの保護、同意撤回時のbinding除去も含む。ログhashはevidence/release-final-checks.json。buildのindex setupはskipped。
+- 全5幅の無料/ID復旧/両方向model切替/紹介枠がPASS：evidence/plus-regression/summary.json。共有/紹介/通知/店舗申請/支払い計測がPASS：plus-gated-regression/summary.json。料金同意/version/未承認拒否/同intent再試行と独立支払い管理もPASS：plus-conversation-policy/checkout と management。認証/Stripe/Gemini/OSは合成。各execution.jsonはsource・証拠記録時刻・hashを保持。既存fixtureの古い日付fieldはlegacyFixtureDateFieldとして残し、実行日と混同しない。
+- PR99の76c42e2でquality全step SUCCESS。Vercel Preview buildもSUCCESS。同じ固定branchをこのSHAへFF更新した。証拠はplus-ci-final-source.jsonとfixed-preview-final.json。後続の報告書commitとアプリsourceを分離する。
+- 11/20のProduction公開GETはトップ/manifest/Chat/Circle/Place/membershipすべて200。Chat enabled/dataPolicy unknown/rateLimit firestore、Circle enabled/ready、Place server disabled、checkoutReady false。これは旧本番の公開応答であり新候補のProduction合格ではない。実生成・ログイン・支払い・配信は行っていない。
+- 固定Previewへの直接HTTPはURLError。実メール/LINE/Google・端末同期・実Gemini・実Stripe・実OS通知・PostHog着信を未検証のまま保持する。
+
+11/20にnpm auditを再取得。実行依存critical0/high0/moderate15/low1、全体critical0/high0/moderate24/low3。結果はrelease-audit-production.json / release-audit-all.json。監査のexit 1は残る中/低の指摘で、指摘ゼロとは報告しない。以前の監査数を新しい取得結果へ流用していない。
