@@ -1,3 +1,7 @@
+import {
+  requestReceiptClosed,
+  providerUsageClosed,
+} from './retention-safety.js';
 import { FieldPath, type Firestore } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
 import { SERVER_ROOT } from './admin.js';
@@ -99,9 +103,9 @@ export async function expiryCleanup(
       let safe =
         v.legalHold !== true && (!hold.exists || hold.data()?.active === false);
       // A lease expiring does not prove the provider did not run or bill a request.
-      if (collection === 'ai_request_receipts' && v.state === 'started')
+      if (collection === 'ai_request_receipts' && !requestReceiptClosed(v))
         safe = false;
-      if (collection === 'ai_usage_receipts' && v.usageIncomplete === true)
+      if (collection === 'ai_usage_receipts' && !providerUsageClosed(v))
         safe = false;
       if (collection === 'place_application_audit') {
         if (
