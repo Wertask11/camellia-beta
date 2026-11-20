@@ -20,5 +20,10 @@ try{
  await db.doc(`camellia_users/${uid}/admin/subscription`).set({plan:'plus',source:'operator_trial',status:'trialing',expiresAt:new Date(at+40*86400000).toISOString()});assert.equal(await takeMemberFreeDaily(db,uid,at+1000),true);
  // Cancellation and ordinary renewal keep the frozen contract; no auto upgrade to global config.
  await db.doc(`camellia_users/${uid}/admin/subscription`).delete();clock=at+30*86400000+1000;assert.equal((await send({...event,id:'evt_local_renew',occurredAt:new Date(clock).toISOString(),paymentReceipt:'in_local_renew',periodStart:new Date(at+30*86400000).toISOString(),periodEnd:new Date(at+60*86400000).toISOString()})).status,200);assert.equal((await db.doc(billingSubscriptionPath(uid)).get()).data().conversationPolicy.dailyLimit,32);
+ // A consent window belonging to another actual checkout must never attribute this payment.
+ const outbox=db.collection(`${root}/billing_analytics_outbox`),before=(await outbox.get()).size;
+ await db.doc(`${root}/config/retention`).set({collections:{billing_analytics_outbox:{approved:true,approvedBy:'LOCAL',approvedAt:born,retentionMs:86400000}}});await binding.update({analyticsProfileId:randomUUID(),analyticsProfileEpoch:1,analyticsConsentFrom:new Date(clock-1000).toISOString(),analyticsConsentUntil:new Date(clock+60000).toISOString(),analyticsCheckoutContractId:randomUUID()});
+ assert.equal((await send({...event,id:'evt_unrelated_analytics',paymentReceipt:'in_unrelated_analytics',periodStart:new Date(clock-1000).toISOString(),periodEnd:new Date(clock+30*86400000).toISOString(),occurredAt:new Date(clock).toISOString()})).status,200);assert.equal((await outbox.get()).size,before);
+
  console.log('PASS accepted paid policy snapshot→verified webhook→atomic day quota + trusted history limits, Free usage carried into upgrade, JST reset, global edits/legacy receipts/operator grants protected, corruption falls back to Free, renewal snapshot retained. Emulator/processor fixtures; no payment or business values applied.');
 }finally{await vite.close();await db.terminate();await deleteApp(app);}

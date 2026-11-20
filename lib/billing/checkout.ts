@@ -43,12 +43,12 @@ export class StripeCheckoutService {
    ...(policy?{conversationPolicy:publicConversationPolicy(policy)}:{}),
    customer: typeof customer?.customerId === 'string', termsVersion: cfg.termsVersion, disclosureVersion: cfg.disclosureVersion, termsUrl: `${cfg.origin}/terms.html`, disclosureUrl: `${cfg.origin}/billing.html`, ...(pending.data()?.identityCreatedAt === identityCreatedAt && pending.data()!.expiresAt > this.now() ? { pendingRequestId: pending.data()!.requestId } : {}) };
  }
- private async customer(uid: string, identityCreatedAt: string, analyticsProfileId?: string) {
+ private async customer(uid: string, identityCreatedAt: string) {
   const ref = this.db.doc(ownerPath(uid)), old = (await ref.get()).data();
   if (old && old.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
   if (typeof old?.customerId === 'string'){
    const profile=await this.db.doc(`camellia_users/${uid}`).get();if(!profile.exists||profile.data()?.personalDeleteInProgress===true)throw new CheckoutError(409,'RECORDS_UNAVAILABLE');
-   await this.db.doc(billingCustomerPath('stripe',old.customerId)).set(this.analyticsBinding(analyticsProfileId,uid,profile.createTime?.toMillis()),{merge:true});return old.customerId as string;
+   return old.customerId as string;
   }
   const key = hash(`${uid}:${identityCreatedAt}`);
   // Do not forward email, name, UID, health records or conversation text in Stripe metadata.
@@ -58,7 +58,7 @@ export class StripeCheckoutService {
    const [current, profile] = await Promise.all([tx.get(ref), tx.get(this.db.doc(`camellia_users/${uid}`))]);
    if (!profile.exists || profile.data()?.personalDeleteInProgress === true) throw new CheckoutError(409, 'RECORDS_UNAVAILABLE');
    if (current.exists && (current.data()?.customerId !== customer.id || current.data()?.identityCreatedAt !== identityCreatedAt)) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
-   const binding = { uid, provider: 'stripe', identityCreatedAt, ...this.analyticsBinding(analyticsProfileId,uid,profile.createTime?.toMillis()) };
+   const binding = { uid, provider: 'stripe', identityCreatedAt };
    tx.set(this.db.doc(billingCustomerPath('stripe', customer.id)), binding, { merge: true });
    tx.set(ref, { customerId: customer.id, identityCreatedAt }, { merge: true });
   });
@@ -78,7 +78,7 @@ export class StripeCheckoutService {
   // The overlap/upgrade policy is not decided. Preserve any valid paid/trial right and never charge twice.
   if ((await memberStatus(this.db, uid, this.now())).plan === 'plus') throw new CheckoutError(409, 'EXISTING_PLUS');
   if (!stripePriceValid(await this.stripe.prices.retrieve(cfg.priceId), cfg.priceId, this.mode)) throw new CheckoutError(503, 'BILLING_NOT_READY');
-  const customer = await this.customer(uid, identityCreatedAt, v.analyticsProfileId as string | undefined);
+  const customer = await this.customer(uid, identityCreatedAt);
   const subscriptions = await this.stripe.subscriptions.list({ customer, status: 'all', limit: 100 });
   if (subscriptions.has_more || subscriptions.data.some(s => !['canceled','incomplete_expired'].includes(s.status))) throw new CheckoutError(409, 'EXISTING_SUBSCRIPTION');
   const ref = this.db.doc(`${SERVER_ROOT}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`), at = this.now();
@@ -93,10 +93,11 @@ export class StripeCheckoutService {
    const old = snapshot.data();
    if (old && old.expiresAt > at) {
     if (old.requestId !== v.requestId || old.identityCreatedAt !== identityCreatedAt || old.priceId !== cfg.priceId || old.termsVersion !== cfg.termsVersion || old.disclosureVersion !== cfg.disclosureVersion || JSON.stringify(storedConversationPolicy(old.conversationPolicy,this.now()))!==JSON.stringify(policy)) throw new CheckoutError(409, 'CHECKOUT_PENDING');
+    if(!uuid(v.analyticsProfileId))tx.set(this.db.doc(billingCustomerPath('stripe',customer)),this.analyticsBinding(undefined,uid),{merge:true});
     return old as { id: string; requestId: string; expiresAt: number; url?: string; createdAt: number };
    }
    const next = { id: randomUUID(), requestId: v.requestId as string, identityCreatedAt, priceId: cfg.priceId, expiresAt: at + 45*60000, createdAt: at, status: 'creating', termsVersion: cfg.termsVersion, disclosureVersion: cfg.disclosureVersion,conversationPolicy:policy };
-   tx.set(ref, next);tx.create(this.db.doc(`${SERVER_ROOT}/billing_contracts/${next.id}`),{provider:'stripe',customerId:customer,uid,identityCreatedAt,conversationPolicy:policy,createdAt:new Date(at)});return next;
+   tx.set(ref, next);tx.create(this.db.doc(`${SERVER_ROOT}/billing_contracts/${next.id}`),{provider:'stripe',customerId:customer,uid,identityCreatedAt,conversationPolicy:policy,createdAt:new Date(at)});tx.set(this.db.doc(billingCustomerPath('stripe',customer)),{...this.analyticsBinding(v.analyticsProfileId,uid,profile.createTime?.toMillis()),analyticsCheckoutContractId:next.id},{merge:true});return next;
   });
   if ('url' in intent && intent.url) return { url: stripeHostedUrl(intent.url, 'checkout') };
   if (this.now() - intent.createdAt >= 14*60000) throw new CheckoutError(409, 'CHECKOUT_REVIEW_REQUIRED');

@@ -25,7 +25,7 @@ try{
  networkUncertain=true;await assert.rejects(()=>service.start(uid,created,input));assert.equal(createCount,1);
  networkUncertain=false;const all=await Promise.all(Array.from({length:5},()=>service.start(uid,created,input)));assert.equal(createCount,1);assert.ok(all.every(x=>x.url.startsWith('https://checkout.stripe.com/')));
  const status=await service.status(uid,created);assert.equal(status.pendingRequestId,input.requestId);
- const bind=(await db.doc(billingCustomerPath('stripe','cus_0')).get()).data();assert.equal(bind.uid,uid);const contracts=await db.collection(`${root}/billing_contracts`).get();assert.ok(contracts.docs.some(d=>d.data().uid===uid&&d.data().conversationPolicy.version===config.conversationPolicy.version));assert.equal(bind.analyticsProfileId,input.analyticsProfileId);
+ const bind=(await db.doc(billingCustomerPath('stripe','cus_0')).get()).data();assert.equal(bind.uid,uid);const contracts=await db.collection(`${root}/billing_contracts`).get();assert.ok(contracts.docs.some(d=>d.data().uid===uid&&d.data().conversationPolicy.version===config.conversationPolicy.version));assert.equal(bind.analyticsProfileId,input.analyticsProfileId);assert.equal(bind.analyticsCheckoutContractId,contracts.docs.find(d=>d.data().uid===uid).id);
  assert.equal((await db.doc(billingSubscriptionPath(uid)).get()).exists,false,'URL never creates paid rights');
  await assert.rejects(()=>service.start(uid,created,{...input,requestId:randomUUID()}),e=>e.code==='CHECKOUT_PENDING');
  await assert.rejects(()=>service.start(uid,'2026-11-19T00:00:00Z',input),e=>e.code==='BILLING_IDENTITY_CONFLICT');
@@ -36,7 +36,7 @@ try{
  await db.doc(`camellia_users/${uid}`).delete();assert.ok((await service.portal(uid,created)).url,'personal record deletion does not hide cancellation');
  await db.doc(`${root}/config/billing`).set(config);await db.doc(`camellia_users/${uid}`).set({agreedAt:created,personalDeleteInProgress:true});await assert.rejects(()=>service.start(uid,created,input));
  await db.doc(`camellia_users/${uid}`).set({agreedAt:created});
- at+=46*60000;subList=[{status:'incomplete'}];await assert.rejects(()=>service.start(uid,created,{...input,requestId:randomUUID()}),e=>e.code==='EXISTING_SUBSCRIPTION');
+ const originalAnalytics=(await db.doc(billingCustomerPath('stripe','cus_0')).get()).data();at+=46*60000;subList=[{status:'incomplete'}];await assert.rejects(()=>service.start(uid,created,{...input,requestId:randomUUID()}),e=>e.code==='EXISTING_SUBSCRIPTION');assert.equal((await db.doc(billingCustomerPath('stripe','cus_0')).get()).data().analyticsConsentUntil,originalAnalytics.analyticsConsentUntil,'blocked purchase cannot refresh conversion consent window');
  subList=[];await db.doc(`camellia_users/${uid}/admin/subscription`).set({plan:'plus',source:'operator_trial',status:'trialing',expiresAt:new Date(at+86400000).toISOString()});await assert.rejects(()=>service.start(uid,created,input),e=>e.code==='EXISTING_PLUS');
  console.log('PASS Stripe Checkout intent/processor idempotency under network loss + concurrency, exact plan, no metadata/false Plus, identity fence, consent, pending recovery, protected Portal/cancellation after record reset, history projection and trial overlap stop. Emulator/provider fixtures; no actual Stripe session/payment.');
 }finally{await vite.close();await db.terminate();await deleteApp(app);}

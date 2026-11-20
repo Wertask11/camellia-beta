@@ -165,7 +165,7 @@ export function createBillingWebhook(options: {
           sub = subscription.data();
         const currentBinding=currentCustomer.data();
         if(currentBinding?.uid!==binding.uid||currentBinding?.identityCreatedAt!==binding.identityCreatedAt||currentBinding?.provider!==provider)throw new BillingError(409);
-        const analyticsAllowed=approvedRetention(retention.data(),['billing_analytics_outbox'])&&typeof binding.analyticsProfileId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId)&&Number.isFinite(binding.analyticsProfileEpoch)&&Date.parse(binding.analyticsConsentUntil)>now&&Date.parse(binding.analyticsConsentFrom)<=Date.parse(event.occurredAt)&&Date.parse(event.occurredAt)<=Date.parse(binding.analyticsConsentUntil);
+        const analyticsAllowed=approvedRetention(retention.data(),['billing_analytics_outbox'])&&(currentBinding.analyticsCheckoutContractId===undefined||currentBinding.analyticsCheckoutContractId===event.contractId)&&typeof currentBinding.analyticsProfileId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(currentBinding.analyticsProfileId)&&Number.isFinite(currentBinding.analyticsProfileEpoch)&&Date.parse(currentBinding.analyticsConsentUntil)>now&&Date.parse(currentBinding.analyticsConsentFrom)<=Date.parse(event.occurredAt)&&Date.parse(event.occurredAt)<=Date.parse(currentBinding.analyticsConsentUntil);
         if (
           config?.approved !== true ||
           config.enabled !== true ||
@@ -221,9 +221,9 @@ export function createBillingWebhook(options: {
                   `${SERVER_ROOT}/billing_analytics_outbox/${hash(`${provider}:${event.paymentReceipt}`)}`,
                 ),
                 {
-                  attributionVersion:'checkout_v1',ownerHash:owner,customerBindingId:customer.id,profileEpoch:binding.analyticsProfileEpoch,consentFrom:binding.analyticsConsentFrom,consentUntil:binding.analyticsConsentUntil,
+                  attributionVersion:'checkout_v1',ownerHash:owner,customerBindingId:customer.id,profileEpoch:currentBinding.analyticsProfileEpoch,consentFrom:currentBinding.analyticsConsentFrom,consentUntil:currentBinding.analyticsConsentUntil,
                   event: 'plus_complete',
-                  distinctId: `camellia_${binding.analyticsProfileId}`,
+                  distinctId: `camellia_${currentBinding.analyticsProfileId}`,
                   insertId: randomUUID(),
                   properties: { currency: 'JPY', amount: PLUS_PRICE_YEN },
                   timestamp: event.occurredAt,
