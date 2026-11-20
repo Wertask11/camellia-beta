@@ -8,6 +8,7 @@ import { stripePriceValid, type StripeMode } from './stripe.js';
 import { billingDisclosure } from './disclosure.js';
 import { memberStatus } from '../membership/server.js';
 import {approvedConversationPolicy,storedConversationPolicy,publicConversationPolicy} from '../membership/conversation-policy.js';
+import{paidExpansionReady}from'../membership/paid-expansion.js';
 export class CheckoutError extends Error { constructor(readonly status: number, readonly code: string) { super(code); } }
 const hash = (v: string) => createHash('sha256').update(v).digest('hex');
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -30,7 +31,7 @@ export function stripeHostedUrl(value: unknown, kind: 'checkout' | 'portal') {
 export class StripeCheckoutService {
  constructor(private db: Firestore, private stripe: Stripe, private mode: StripeMode, private now = Date.now) {}
  async configuration() { return checkoutConfiguration((await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data(), this.mode); }
- async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data();return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&Boolean(approvedConversationPolicy(config.conversationPolicy,this.now()))&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_contracts','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']);}
+ async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data(),policy=approvedConversationPolicy(config?.conversationPolicy,this.now());return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&Boolean(policy)&&(policy!.dailyLimit===30||paidExpansionReady((await this.db.doc(`${SERVER_ROOT}/config/ai_observation`).get()).data(),this.now()))&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_contracts','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']);}
  async status(uid: string, identityCreatedAt: string) {
   const cfg = await this.configuration();
   const [owner, pending] = await Promise.all([this.db.doc(ownerPath(uid)).get(), this.db.doc(`${SERVER_ROOT}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`).get()]);
@@ -83,11 +84,12 @@ export class StripeCheckoutService {
   if (subscriptions.has_more || subscriptions.data.some(s => !['canceled','incomplete_expired'].includes(s.status))) throw new CheckoutError(409, 'EXISTING_SUBSCRIPTION');
   const ref = this.db.doc(`${SERVER_ROOT}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`), at = this.now();
   const intent = await this.db.runTransaction(async tx => {
-   const [snapshot, profile,binding,currentConfig,retention] = await Promise.all([tx.get(ref), tx.get(this.db.doc(`camellia_users/${uid}`)),tx.get(this.db.doc(billingCustomerPath('stripe',customer))),tx.get(this.db.doc(`${SERVER_ROOT}/config/billing`)),tx.get(this.db.doc(`${SERVER_ROOT}/config/retention`))]);
+   const [snapshot, profile,binding,currentConfig,retention,pricing] = await Promise.all([tx.get(ref), tx.get(this.db.doc(`camellia_users/${uid}`)),tx.get(this.db.doc(billingCustomerPath('stripe',customer))),tx.get(this.db.doc(`${SERVER_ROOT}/config/billing`)),tx.get(this.db.doc(`${SERVER_ROOT}/config/retention`)),policy.dailyLimit>30?tx.get(this.db.doc(`${SERVER_ROOT}/config/ai_observation`)):Promise.resolve(undefined)]);
    if (!profile.exists || profile.data()?.personalDeleteInProgress === true) throw new CheckoutError(409, 'RECORDS_UNAVAILABLE');
    const live=currentConfig.data();
    if(!checkoutConfiguration(live,this.mode)?.checkoutEnabled||live?.benefitsApproved!==true||live?.conversationPolicyReviewed!==true||!approvedRetention(retention.data(),['billing_customers','billing_contracts','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']))throw new CheckoutError(503,'BILLING_NOT_READY');
    if(JSON.stringify(checkoutConfiguration(live,this.mode))!==JSON.stringify(cfg))throw new CheckoutError(409,'BILLING_TERMS_CHANGED');
+   if(policy.dailyLimit>30&&!paidExpansionReady(pricing?.data(),this.now()))throw new CheckoutError(503,'BILLING_NOT_READY');
    if(JSON.stringify(approvedConversationPolicy(live.conversationPolicy,this.now()))!==JSON.stringify(policy))throw new CheckoutError(409,'BILLING_TERMS_CHANGED');
    if(binding.data()?.uid!==uid||binding.data()?.identityCreatedAt!==identityCreatedAt||binding.data()?.provider!=='stripe')throw new CheckoutError(409,'BILLING_IDENTITY_CONFLICT');
    const old = snapshot.data();
