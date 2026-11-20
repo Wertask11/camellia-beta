@@ -1,4 +1,5 @@
 import { schoolParkAuth } from '../schoolpark/firebase';
+import { captureReferralGrant } from '../analytics/posthog';
 const KEY = 'camellia-referral-registration';
 let completing = false;
 export function clearPendingReferral() {
@@ -8,8 +9,10 @@ export function clearPendingReferral() {
     /* No personal record is changed. */
   }
 }
-let capturePromise:Promise<void>|undefined;
-export function captureReferralRegistration(){return capturePromise??=captureRegistration();}
+let capturePromise: Promise<void> | undefined;
+export function captureReferralRegistration() {
+  return (capturePromise ??= captureRegistration());
+}
 async function captureRegistration() {
   const url = new URL(location.href),
     token = url.searchParams.get('referral');
@@ -24,10 +27,13 @@ async function captureRegistration() {
     return;
   try {
     await schoolParkAuth.authStateReady();
-    const anonymous=schoolParkAuth.currentUser;
-    if(anonymous&&!anonymous.isAnonymous)return;
-    const captureHeaders:Record<string,string>={'Content-Type':'application/json'};
-    if(anonymous?.isAnonymous)captureHeaders.Authorization=`Bearer ${await anonymous.getIdToken()}`;
+    const anonymous = schoolParkAuth.currentUser;
+    if (anonymous && !anonymous.isAnonymous) return;
+    const captureHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (anonymous?.isAnonymous)
+      captureHeaders.Authorization = `Bearer ${await anonymous.getIdToken()}`;
     const response = await fetch('/api/camellia/referral', {
         method: 'POST',
         headers: captureHeaders,
@@ -43,7 +49,12 @@ async function captureRegistration() {
     )
       localStorage.setItem(
         KEY,
-        JSON.stringify({ token, intent: v.intent, expiresAt: v.expiresAt }),
+        JSON.stringify({
+          token,
+          intent: v.intent,
+          expiresAt: v.expiresAt,
+          analyticsId: crypto.randomUUID(),
+        }),
       );
   } catch {
     /* Do not interrupt Check-first onboarding. */
@@ -99,7 +110,13 @@ export async function completePendingReferral(uid: string) {
       }),
       signal: AbortSignal.timeout(15000),
     });
+    if (schoolParkAuth.currentUser?.uid !== uid) return;
     if (response.ok || [400, 403, 404, 409].includes(response.status)) {
+      if (response.ok) {
+        const outcome = (await response.json()) as { granted?: unknown };
+        if (outcome.granted === true && typeof pending.analyticsId === 'string')
+          captureReferralGrant(pending.analyticsId);
+      }
       const current = JSON.parse(localStorage.getItem(KEY) || 'null');
       if (current?.intent === pending.intent && current.uid === uid)
         clearPendingReferral();

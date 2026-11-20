@@ -233,6 +233,7 @@ export type ReflectionStage =
   | 'recent'
   | 'weekly';
 export type AnalyticsEventName =
+  | 'referral_view' | 'referral_link_created' | 'referral_link_revoked' | 'referral_link_shared' | 'referral_trial_granted' | 'tree_decoration_claimed' | 'tree_decoration_equipped'
   | 'camellia_id_prompt_view' | 'camellia_id_start' | 'camellia_id_complete' | 'camellia_id_error' | 'record_transfer_complete' | 'record_transfer_error' | 'reflection_saved' | 'place_comparison_view'
   | 'discover_action_selected' | 'place_recommendation_view' | 'place_selected' | 'my_view'
   | 'partner_share_view' | 'partner_share_created' | 'partner_share_sent' | 'partner_share_revoked' | 'partner_share_open'

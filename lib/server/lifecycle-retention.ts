@@ -109,6 +109,18 @@ export async function lifecycleCleanup(
 ) {
   if (!Object.hasOwn(definitions, name))
     throw new Error('RETENTION_COLLECTION_NOT_ALLOWED');
+  if (
+    options.approvedDigest !== undefined &&
+    !/^[a-f0-9]{64}$/.test(options.approvedDigest)
+  )
+    throw new Error('RETENTION_PLAN_CHANGED');
+  if (
+    options.now !== undefined &&
+    (!Number.isFinite(options.now) ||
+      options.now < 0 ||
+      options.now > 8640000000000000)
+  )
+    throw new Error('INVALID_RETENTION_TIME');
   if (options.after !== undefined && !identifier(options.after))
     throw new Error('INVALID_RETENTION_CURSOR');
   const collection = name as keyof typeof definitions,
