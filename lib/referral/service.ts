@@ -175,6 +175,7 @@ export class ReferralService {
         ).toISOString(),
         grant = {
           uidHash: referralHash(uid),
+          ownerUid:uid,
           campaignId: config.campaignId,
           createdAt: new Date(now).toISOString(),
           expiresAt,
