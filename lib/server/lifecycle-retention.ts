@@ -1,3 +1,7 @@
+import {
+  requestReceiptClosed,
+  providerUsageClosed,
+} from './retention-safety.js';
 import { createHash } from 'node:crypto';
 import {
   FieldPath,
@@ -266,6 +270,7 @@ export async function lifecycleCleanup(
             : undefined;
           if (
             !g ||
+            !Number.isFinite(ms(g.expiresAt)) ||
             ms(g.expiresAt) > now ||
             g.budgetReconciled !== true ||
             g.costReviewRequired === true ||
@@ -284,7 +289,12 @@ export async function lifecycleCleanup(
             !(await campaignClosed())
           )
             reason = 'IDENTITY_WINDOW_NOT_REVIEWED';
-          else if (!g || ms(g.expiresAt) > now || g.budgetReconciled !== true)
+          else if (
+            !g ||
+            !Number.isFinite(ms(g.expiresAt)) ||
+            ms(g.expiresAt) > now ||
+            g.budgetReconciled !== true
+          )
             reason = 'UNSETTLED_TRIAL';
         } else if (collection === 'referral_grants') {
           if (
@@ -360,6 +370,7 @@ export async function lifecycleCleanup(
               grants.docs.some(
                 (d) =>
                   d.data().budgetReconciled !== true ||
+                  !Number.isFinite(ms(d.data().expiresAt)) ||
                   ms(d.data().expiresAt) > now,
               )
             )
@@ -582,7 +593,9 @@ export async function lifecycleCleanup(
           collection === 'ai_usage_receipts'
         ) {
           if (
-            (v.state === 'started' || v.usageIncomplete === true) &&
+            (collection === 'ai_request_receipts'
+              ? !requestReceiptClosed(v)
+              : !providerUsageClosed(v)) &&
             (review?.providerUsageReviewed !== true ||
               JSON.stringify(review.targetVersion) !==
                 JSON.stringify(stamp(row)))

@@ -1,0 +1,55 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "dateUTC": "2026-11-20T04:57:44Z",
+  "kind": "Repeatable local acceptance. Fixtures are never Preview/Production/real provider success.",
+  "results": [
+    {
+      "feature": "free",
+      "exitCode": 0
+    },
+    {
+      "feature": "recovery",
+      "exitCode": 0
+    },
+    {
+      "feature": "conversation",
+      "exitCode": 0
+    },
+    {
+      "feature": "trial-lanes",
+      "exitCode": 0
+    },
+    {
+      "feature": "billing-management",
+      "exitCode": 0
+    },
+    {
+      "feature": "slow-recovery",
+      "exitCode": 0
+    },
+    {
+      "feature": "stripe-checkout",
+      "exitCode": 0
+    },
+    {
+      "feature": "share",
+      "exitCode": 0
+    },
+    {
+      "feature": "referral",
+      "exitCode": 0
+    },
+    {
+      "feature": "push",
+      "exitCode": 0
+    },
+    {
+      "feature": "place-intake",
+      "exitCode": 0
+    },
+    {
+      "feature": "billing-analytics",
+      "exitCode": 0
+    }
+  ]
+}

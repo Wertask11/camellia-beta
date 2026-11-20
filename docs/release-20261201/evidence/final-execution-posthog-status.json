@@ -1,0 +1,24 @@
+{
+  "atUTC": "2026-11-20T04:35:29.944681+00:00",
+  "projectId": 594848,
+  "plugin": {
+    "name": "PostHog",
+    "installed": true,
+    "status": "ENABLED"
+  },
+  "authoritativeSkillDiscovery": [
+    {
+      "command": "learn -s \"query events ingestion funnels privacy\"",
+      "unresponsive": true,
+      "waitMs": 12000
+    },
+    {
+      "command": "learn -s \"read events hogql query\"",
+      "unresponsive": true,
+      "waitMs": 12000
+    }
+  ],
+  "eventsQueried": false,
+  "ingestionVerified": false,
+  "mutations": false
+}

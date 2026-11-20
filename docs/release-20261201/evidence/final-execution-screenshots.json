@@ -1,0 +1,331 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "screenshots": [
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-analytics/billing-analytics-1280.png",
+      "sha256": "d5140e83df88b178085c37c018571963bb51936f6992407fc9e1a46d3e67bb4e",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-analytics/billing-analytics-375.png",
+      "sha256": "d48cbc59c0d9d25b72a53de989dd2e8dd33f5744140e51b7b602e2e92a47f631",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-analytics/billing-analytics-390.png",
+      "sha256": "8650be3fc6e1e40fcf7521d2e5a81983da53f460fbfe1877b9b6a90c879fd34e",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-analytics/billing-analytics-412.png",
+      "sha256": "3e908fb6a48b65b08d962813359e63fcc5e06ecbef846accb9b620f86694e8c2",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-analytics/billing-analytics-768.png",
+      "sha256": "073f81c5509e01ec0245f35b12b730fb455d3f39f8d1ab780f0840f2e627ddda",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-management/1280.png",
+      "sha256": "aaa621286232edbce70dfbd5480acb3bef89b31534182807b026c681667368e8",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-management/375.png",
+      "sha256": "9b0f4de445ffc86f15b39285a07d21defa8a48382c023b858983f6637d49624b",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-management/390.png",
+      "sha256": "92b5ab334bcae01e7546f19516c8dc2ccd32db6f797281159f79de14a5229317",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-management/412.png",
+      "sha256": "b65f63c380ed7a6ddf714360a6e7e1ee322148cf9b2ba7fa928fe6a88523758b",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/billing-management/768.png",
+      "sha256": "95863571914be35f92280b08bb451bde246738c9bfb2da550f01d25cb59f10c6",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/conversation/integration-conversation-1280.png",
+      "sha256": "7a7c5709afcc4bfa7657a3f9ed8f9682114ff19603c368ebb0b02b23486e9bf2",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/conversation/integration-conversation-375.png",
+      "sha256": "929c18292852a00e9bed0f645353b2aa4e425dda503fb62d199bda4e7473d5ff",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/conversation/integration-conversation-390.png",
+      "sha256": "94f58ec1c17473118cb16cea9925a80db30576067f8f3591ffad887a66c5eb68",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/conversation/integration-conversation-412.png",
+      "sha256": "d2534bbee5d97e9c01323ea18d97daf32861b86f939e3faaeb7e51181b3607c4",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/conversation/integration-conversation-768.png",
+      "sha256": "7ac5ddc96bc07a56024115fd304bb1ceccca9043000508c38dd0e21c376082f4",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/free/1280.png",
+      "sha256": "472b00a40617db2b6a44b95c671f39287a128eda916592910248f3549c2c74b3",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/free/375.png",
+      "sha256": "5d8eb632a701361c0aaafbc202511cf994124edb71a36b15a6944e841d50592e",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/free/390.png",
+      "sha256": "726b92bcdddf401985dc45c4a1cc01c6113ddaa474bf2388b355a871e6759515",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/free/412.png",
+      "sha256": "7dd3de7af23faeb56307cb1110b6a9fbfd813d47bfacb93b66932f01ef9faa93",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/free/768.png",
+      "sha256": "2db00fabfb29138b7d4eb48b17fc6787703b4fb0bf3427e40c70d3bdb5b839a3",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/place-intake/place-intake-1280.png",
+      "sha256": "176f8c021e0d7ade9d105dbac67dea71983e89227a0b584a95d7eaf70f6fc251",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/place-intake/place-intake-375.png",
+      "sha256": "bf96f71baf91f1e07ada7d1639f16d437410e7e2686c0ac4c656d304b52a6f68",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/place-intake/place-intake-390.png",
+      "sha256": "a5ddc6a38a231254d0425a91c5c2ae9928c23266c05c7b74d55bf30a4ef589ba",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/place-intake/place-intake-412.png",
+      "sha256": "69878bd101dae3758665a7a338b81d95bdbf8bf0dba2a8221d941aa89e96a252",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/place-intake/place-intake-768.png",
+      "sha256": "a14c7492f4d0eef3e19f90f98785efe2f5babfceec6d9a2bfd7675c7c61f56b4",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/push/push-1280.png",
+      "sha256": "9b7588d772d20261e9642c637c2086e50f11862d18cf8a52abba69180f371a5f",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/push/push-375.png",
+      "sha256": "dd53e6e83059da8ed37a4fb8c71abaaa68a181cdf31d07cc0fb529dc421e3956",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/push/push-390.png",
+      "sha256": "0042fea012ead7e50e9c9043050873ad573312cc74145bd86f88716dbb37470e",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/push/push-412.png",
+      "sha256": "d1fa58d64571fb94c99dbf3e403645cf1fea24e84514b8a9085b57eccfe3f86b",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/push/push-768.png",
+      "sha256": "c68521fa537cf42264cc36a75173e1f54c37747638da5a5005d4f1feee016638",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/recovery/1280.png",
+      "sha256": "fa734b03f27773fb864cb94231fe9501e75f4ad2c893234d094b9b71b02ac91e",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/recovery/375.png",
+      "sha256": "b06dd108c370c82b737797294a45fdd4f75e14f94bf802deaf8316f721a6d8bc",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/recovery/390.png",
+      "sha256": "315bd79c433e7d876b43111c7d3bc8ec58042a372bcf5b432ea3c8d5c7a4639e",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/recovery/412.png",
+      "sha256": "e8d9a2da611963f6a7185a636dea909b9ee9de619d8195463d23b39c36d5ed87",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/recovery/768.png",
+      "sha256": "9be56865049ef0bc57b9b8e4fc6782e413792f4a65d28bab212f103b098ba255",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/decorations-1280.png",
+      "sha256": "70bcf7860011878214f311021eb2cf623f7f34b1d26ec4f771c89c26c64797e2",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/decorations-375.png",
+      "sha256": "f83d23c7be94fb1ddd8528f48811583c65c2552a120ab0f2a47fc5f92d64b02d",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/decorations-390.png",
+      "sha256": "15d45d3a482c7e89e261190c67066c3674ddcd4c1a5addffb7506c36326e87dd",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/decorations-412.png",
+      "sha256": "fc7dcc89d31658aeec6564008877f1883879c62cfb600e53699c301e372fe8f6",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/decorations-768.png",
+      "sha256": "7b0263b24964741360dd600edc5b14a1e94a10e254461093eee4ae1030de5d0d",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/referral-1280.png",
+      "sha256": "8a676b3f49795b3d83f766fbf4e27b6068e508c484f0611fc2a57325613ddaa8",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/referral-375.png",
+      "sha256": "adbe5dbe6aa5c20994100ee964e02e5b74b68a78248b1a021612372326c8d796",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/referral-390.png",
+      "sha256": "1156506377312edb95ea54165b5237fef59ebb883f70cf9e81b03d28a2c94480",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/referral-412.png",
+      "sha256": "b96c6f0755543026c40d1df1b5e9ff9bbbefd2146a5da9a728ab305222bf56a5",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/referral/referral-768.png",
+      "sha256": "521246221410213be50fe4b9b19173a085cf126942060c7e25605742993d5172",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/share/share-1280.png",
+      "sha256": "a4827afcd21136ae09656bc7565187eeec5fc981a3cdb3b191d991ac05c8c103",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/share/share-375.png",
+      "sha256": "a9e9170e465bc1e15923ab9991bc4ea29265c8a046f02097c89c231bdb321624",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/share/share-390.png",
+      "sha256": "7523cb2332a8c2ecc040304e5920602d9df189740d273be622ae940d0cc47b84",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/share/share-412.png",
+      "sha256": "13e53017aeaafc8171a986f661e4856269a4d6b8429255f24b877b7e465df150",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/share/share-768.png",
+      "sha256": "b8cc98168138501a9e6586cb3921417e28c5816af8bf1c45637943e05d89e21c",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/slow-recovery/1280.png",
+      "sha256": "435218f67065637ea2279ee2544f7e5f700e0e40ec7505f34dc4ea8cf9479e24",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/slow-recovery/375.png",
+      "sha256": "d179c88b2e422487b1032809e587cd95fc97e316ebef11bf0e3598d4e283bffb",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/slow-recovery/390.png",
+      "sha256": "4601ed989554ac4a16acaba272e050a23f188f74b54b8d0d3328907b5ef74486",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/slow-recovery/412.png",
+      "sha256": "20053016557f3e347cf4312327c228c715f6e66657b86a9ce449e9e9e2bc3129",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/slow-recovery/768.png",
+      "sha256": "dbe098a567e0dc0ea5172139953a555124ca0b0e77fb4851c4b076cd22bbfa1b",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/stripe-checkout/checkout-1280.png",
+      "sha256": "ecf7d5ffce5828592f29330ae8e95d70a4c0bf1da6d6bd6caf6a2d352f97bf98",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/stripe-checkout/checkout-375.png",
+      "sha256": "fb443df9e2eacc7c3360ccfc7d61e959827b1ee74bf648dbe00515963c714506",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/stripe-checkout/checkout-390.png",
+      "sha256": "e8906fb9ea59e951d8d6ad2c352fa9f21c4b1ab3aac0d6dd68283ae380ab2e85",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/stripe-checkout/checkout-412.png",
+      "sha256": "cb9d9ab0ac404ca29bdd0ac6396d9dc80741190d4ba587df45b73e7d8ce4ff11",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/stripe-checkout/checkout-768.png",
+      "sha256": "beca97333b4cbf83f28422ccba7f460c9d0e253c895a87791588bd0161bd808d",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/trial-lanes/referral-ai-lanes-1280.png",
+      "sha256": "629d02f1567a926a9aca7500dbf1a3d8ec2c3ac17c5fae470a7878a284e5f7a8",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/trial-lanes/referral-ai-lanes-375.png",
+      "sha256": "840a5512dd0e91f5507ed53ed9adb3fe0c7a87b6fec4181be9d688f68fcd674f",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/trial-lanes/referral-ai-lanes-390.png",
+      "sha256": "1ab1e080d2e65bfaaafffc2800e0344e4fe1859e69a6e79b3a59704501d420e9",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/trial-lanes/referral-ai-lanes-412.png",
+      "sha256": "83bcfc53dab6a0440678c6135738ec7be055415951807c9ec2c6ea41437fa41f",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    },
+    {
+      "path": "/workspace/outputs/camellia-final-execution-20261120/screenshots/trial-lanes/referral-ai-lanes-768.png",
+      "sha256": "345409bb08922070bd4da650fb25e00ba830ac18723c3c4b1de539fa67df8e3d",
+      "browserSource": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05"
+    }
+  ],
+  "location": "workspace output artifact, not git binaries"
+}

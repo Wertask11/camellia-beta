@@ -184,6 +184,73 @@ try {
       }),
     /INVALID_RETENTION_REVIEW/,
   );
+  await policy('ai_usage_receipts', 'closed_usage');
+  await db.doc(`${root}/ai_usage_receipts/actual-unknown-schema`).set({
+    createdAt: old,
+    usage: {
+      input: null,
+      output: null,
+      thinking: null,
+      cached: null,
+      total: null,
+    },
+    estimate: { status: 'usage_incomplete', invoiceVerified: false },
+  });
+  assert.equal(
+    (await lifecycleCleanup(db, 'ai_usage_receipts', { now })).held
+      .UNSETTLED_PROVIDER_USAGE,
+    1,
+  );
+  await policy('ai_request_receipts', 'closed_request');
+  await db
+    .doc(`${root}/ai_request_receipts/legacy-unknown`)
+    .set({ createdAt: old, expiresAt: new Date(now - 10000) });
+  assert.equal(
+    (await lifecycleCleanup(db, 'ai_request_receipts', { now })).held
+      .UNSETTLED_PROVIDER_USAGE,
+    1,
+  );
+  await db
+    .doc(`${root}/referral_grants/invalid-expiry`)
+    .set({ budgetReconciled: true, expiresAt: 'unknown' });
+  await db
+    .doc(`${root}/referral_ai_reservations/invalid-parent`)
+    .set({ grantId: 'invalid-expiry', createdAt: old, released: true });
+  await policy('referral_ai_reservations', 'settled_trial');
+  assert.equal(
+    (await lifecycleCleanup(db, 'referral_ai_reservations', { now })).held
+      .UNSETTLED_TRIAL,
+    1,
+  );
+  const { expiryCleanup } = await vite.ssrLoadModule(
+    '/lib/server/retention.ts',
+  );
+  await policy('ai_usage_receipts', 'closed_usage');
+  await db
+    .doc(`${root}/ai_usage_receipts/actual-unknown-schema`)
+    .update({ expiresAt: new Date(now - 10000) });
+  assert.equal(
+    (await expiryCleanup(db, 'ai_usage_receipts', { now })).eligible,
+    0,
+    'expired unknown actual SDK usage is held by the legacy expiry worker too',
+  );
+  await db
+    .doc(`${root}/ai_usage_receipts/known-closed`)
+    .set({
+      createdAt: old,
+      expiresAt: new Date(now - 10000),
+      usage: { input: 0, output: 0, thinking: 0, cached: 0, total: 0 },
+      estimate: { status: 'estimate', amountYen: 0, invoiceVerified: false },
+    });
+  assert.equal(
+    (await lifecycleCleanup(db, 'ai_usage_receipts', { now })).eligible,
+    1,
+    'known zero usage is distinct from unavailable usage',
+  );
+  assert.equal(
+    (await expiryCleanup(db, 'ai_usage_receipts', { now })).eligible,
+    1,
+  );
   console.log(
     'PASS real local Rules reject all lifecycle/private config reads and writes, unknown-provider manual closure, review/hold own lifecycle, live staff scope hold, orphan intake audit review, monthly budget review, invalid review fields. Local emulator only; no real admin roles, cloud jobs or provider actions.',
   );

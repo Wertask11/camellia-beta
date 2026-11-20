@@ -1,0 +1,65 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "checks": {
+    "lint": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "startedUTC": "2026-11-20T04:41:44.674235+00:00",
+      "finishedUTC": "2026-11-20T04:41:50.069897+00:00",
+      "exitCode": 0,
+      "log": "work/final-execution-lint.log",
+      "sha256": "657925270594e5dfc7c050aa7643dbfbd75196aba33680f7cff41dc223b90c4c"
+    },
+    "typecheck": {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "startedUTC": "2026-11-20T04:41:50.070859+00:00",
+      "finishedUTC": "2026-11-20T04:41:53.525732+00:00",
+      "exitCode": 0,
+      "log": "work/final-execution-typecheck.log",
+      "sha256": "a82b01604e656c8ff78f81fc29fcef7dfd57b58ade6f4f6ea42f6c373f0e4369"
+    },
+    "unit": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "startedUTC": "2026-11-20T04:41:53.526211+00:00",
+      "finishedUTC": "2026-11-20T04:43:07.552595+00:00",
+      "exitCode": 0,
+      "log": "work/final-execution-unit.log",
+      "sha256": "ed26f346b2a110c57d292ac9399709c264029f6167b22e20304a29d578bc112e"
+    },
+    "firestore": {
+      "command": [
+        "npm",
+        "run",
+        "test:firestore"
+      ],
+      "startedUTC": "2026-11-20T04:43:07.553174+00:00",
+      "finishedUTC": "2026-11-20T04:45:46.416122+00:00",
+      "exitCode": 0,
+      "log": "work/final-execution-firestore.log",
+      "sha256": "5094bf21d95410f2cd0ffb2b5f24bef758953a320d7edfab2d161e5c60d28b39"
+    },
+    "build": {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "startedUTC": "2026-11-20T04:45:46.416773+00:00",
+      "finishedUTC": "2026-11-20T04:45:55.587228+00:00",
+      "exitCode": 0,
+      "log": "work/final-execution-build.log",
+      "sha256": "f8201db779fb0848a9ef8f055322a153e8c50953018024322ddbe0d7343122c2"
+    }
+  },
+  "localOnly": true
+}
