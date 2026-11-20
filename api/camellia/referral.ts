@@ -1,4 +1,7 @@
-import {referralDeploymentReady,referralIntakeReady} from '../../lib/referral/readiness.js';
+import {
+  referralDeploymentReady,
+  referralIntakeReady,
+} from '../../lib/referral/readiness.js';
 import { serverAdmin, adminConfigured } from '../../lib/server/admin.js';
 import {
   requireEligibleUser,
@@ -20,22 +23,22 @@ export default async function referral(req: Req, res: Res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
-  let ready=false;
-  if(referralDeploymentReady()&&adminConfigured()){try{ready=await referralIntakeReady(serverAdmin().db);}catch{/* Fail closed without leaking configuration or identities. */}}
+  let ready = false;
+  if (referralDeploymentReady() && adminConfigured()) {
+    try {
+      ready = await referralIntakeReady(serverAdmin().db);
+    } catch {
+      /* Fail closed without leaking configuration or identities. */
+    }
+  }
   if (req.method === 'GET')
-    return res
-      .status(200)
-      .json({
-        enabled: ready,
-        trialDays: 7,
-        referrerMonthlyRewards: 3,
-        automaticBilling: false,
-      });
-  if (
-    req.method !== 'POST' ||
-    !ready ||
-    !adminConfigured()
-  )
+    return res.status(200).json({
+      enabled: ready,
+      trialDays: 7,
+      referrerMonthlyRewards: 3,
+      automaticBilling: false,
+    });
+  if (req.method !== 'POST' || !adminConfigured())
     return res.status(503).json({ error: 'REFERRAL_NOT_AVAILABLE' });
   const body =
     req.body && typeof req.body === 'object' && !Array.isArray(req.body)
@@ -43,7 +46,9 @@ export default async function referral(req: Req, res: Res) {
       : {};
   if (
     Buffer.byteLength(JSON.stringify(body)) > 1000 ||
-    Object.keys(body).some((k) => !['operation', 'token', 'intent'].includes(k))
+    Object.keys(body).some(
+      (k) => !['operation', 'token', 'intent', 'id', 'after'].includes(k),
+    )
   )
     return res.status(400).json({ error: 'INVALID_REFERRAL' });
   try {
@@ -55,6 +60,37 @@ export default async function referral(req: Req, res: Res) {
         Date.now,
         'referral_rate_windows',
       );
+    // Issuing/granting is gated separately. Owners can still revoke old links during an intake stop.
+    if (body.operation === 'history' || body.operation === 'revoke') {
+      const h = req.headers?.authorization;
+      let owner;
+      try {
+        owner = await auth.verifyIdToken(
+          typeof h === 'string' && h.startsWith('Bearer ') ? h.slice(7) : '',
+          true,
+        );
+      } catch {
+        return res.status(401).json({ error: 'LOGIN_REQUIRED' });
+      }
+      if (
+        owner.firebase?.sign_in_provider === 'anonymous' ||
+        (owner.firebase?.sign_in_provider === 'password' &&
+          owner.email_verified !== true)
+      )
+        return res.status(403).json({ error: 'LOGIN_REQUIRED' });
+      if (!(await limit.take(owner.uid)))
+        throw new ReferralError(429, 'SLOW_DOWN');
+      const codes = new ReferralService(db, auth);
+      return res
+        .status(200)
+        .json(
+          body.operation === 'history'
+            ? await codes.history(owner.uid, body.after)
+            : await codes.revokeCode(owner.uid, body.id),
+        );
+    }
+    if (!ready)
+      return res.status(503).json({ error: 'REFERRAL_NOT_AVAILABLE' });
     if (body.operation === 'capture') {
       const forwarded = req.headers?.['x-vercel-forwarded-for'];
       if (
@@ -66,13 +102,21 @@ export default async function referral(req: Req, res: Res) {
       )
         throw new ReferralError(429, 'SLOW_DOWN');
       let anonymousUid: string | undefined;
-      const header=req.headers?.authorization;
-      if(typeof header==='string'&&header.startsWith('Bearer ')){
-        let anonymous;try{anonymous=await auth.verifyIdToken(header.slice(7),true);}catch{return res.status(401).json({error:'LOGIN_REQUIRED'});}
-        if(anonymous.firebase?.sign_in_provider!=='anonymous')throw new ReferralError(403,'NEW_REGISTRATION_REQUIRED');
-        anonymousUid=anonymous.uid;
+      const header = req.headers?.authorization;
+      if (typeof header === 'string' && header.startsWith('Bearer ')) {
+        let anonymous;
+        try {
+          anonymous = await auth.verifyIdToken(header.slice(7), true);
+        } catch {
+          return res.status(401).json({ error: 'LOGIN_REQUIRED' });
+        }
+        if (anonymous.firebase?.sign_in_provider !== 'anonymous')
+          throw new ReferralError(403, 'NEW_REGISTRATION_REQUIRED');
+        anonymousUid = anonymous.uid;
       }
-      return res.status(200).json(await service.capture(body.token,anonymousUid));
+      return res
+        .status(200)
+        .json(await service.capture(body.token, anonymousUid));
     }
     const header = req.headers?.authorization,
       user = await requireEligibleUser(

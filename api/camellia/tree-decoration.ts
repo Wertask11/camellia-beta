@@ -50,10 +50,12 @@ export default async function decoration(req: Req, res: Res) {
       req.method !== 'POST' ||
       Buffer.byteLength(JSON.stringify(v)) > 500 ||
       Object.keys(v).some(
-        (k) => !['operation', 'creditId', 'decorationId'].includes(k),
+        (k) => !['operation', 'creditId', 'decorationId', 'after'].includes(k),
       )
     )
       return res.status(400).json({ error: 'INVALID_DECORATION' });
+    if (v.operation === 'list')
+      return res.status(200).json(await service.list(user.uid, v.after));
     if (v.operation === 'equip')
       return res
         .status(200)

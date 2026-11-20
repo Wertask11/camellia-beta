@@ -13,6 +13,7 @@ type State = {
   active: TreeDecoration | null;
   catalogReady: boolean;
   moreCredits: boolean;
+  nextCursor?: string;
 };
 export function TreeDecorations({
   onActive,
@@ -65,7 +66,16 @@ export function TreeDecorations({
     setBusy(true);
     setError('');
     try {
-      setValue(await request(body));
+      const next = await request(body);
+      setValue((old) =>
+        body.operation === 'list' && old && next
+          ? {
+              ...next,
+              owned: [...old.owned, ...next.owned],
+              choices: [...old.choices, ...next.choices],
+            }
+          : next,
+      );
     } catch {
       setError('変更できませんでした。少し時間をおいてお試しください。');
     } finally {
@@ -183,7 +193,14 @@ export function TreeDecorations({
         </div>
       ))}
       {value?.moreCredits && (
-        <p>ほかの取得済み選択権は運営へ確認できます。権利は保持しています。</p>
+        <button
+          disabled={busy || !value.nextCursor}
+          onClick={() =>
+            void change({ operation: 'list', after: value.nextCursor })
+          }
+        >
+          以前の装飾・選択権を見る
+        </button>
       )}
     </details>
   );
