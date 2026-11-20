@@ -4,6 +4,7 @@ import type { Auth } from 'firebase-admin/auth';
 import{approvedRetention}from'../server/retention-policy.js';
 import { SERVER_ROOT } from '../server/admin.js';
 import { PLUS_PRICE_YEN } from '../membership/model.js';
+import{storedConversationPolicy}from'../membership/conversation-policy.js';
 export type BillingEvent = {
   id: string;
   kind: 'paid' | 'cancel' | 'expired' | 'refund' | 'payment_failed';
@@ -16,6 +17,7 @@ export type BillingEvent = {
   periodEnd: string;
   occurredAt: string;
   refundedYen?: number;
+  contractId?:string;
 };
 /** Selected processor must verify the raw signed payload and normalize canonical invoice/subscription state. */
 export type BillingAdapter = {
@@ -49,6 +51,7 @@ function normalize(value: unknown): BillingEvent {
     'periodEnd',
     'occurredAt',
     'refundedYen',
+    'contractId',
   ];
   if (
     Object.keys(v).some((k) => !allowed.includes(k)) ||
@@ -80,6 +83,7 @@ function normalize(value: unknown): BillingEvent {
     throw new BillingError(400);
   if (v.kind !== 'refund' && v.refundedYen !== undefined)
     throw new BillingError(400);
+  if(v.contractId!==undefined&&(typeof v.contractId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.contractId)))throw new BillingError(400);
   return {
     id: String(v.id),
     kind: v.kind as BillingEvent['kind'],
@@ -92,6 +96,7 @@ function normalize(value: unknown): BillingEvent {
     periodEnd: new Date(String(v.periodEnd)).toISOString(),
     occurredAt: new Date(String(v.occurredAt)).toISOString(),
     ...(v.kind === 'refund' ? { refundedYen: Number(v.refundedYen) } : {}),
+    ...(v.contractId?{contractId:String(v.contractId)}:{}),
   };
 }
 export function createBillingWebhook(options: {
@@ -147,17 +152,19 @@ export function createBillingWebhook(options: {
         digest = hash(JSON.stringify(event)),
         now = options.now?.() ?? Date.now();
       const result = await db.runTransaction(async (tx) => {
-        const [cfg, oldEvent, invoice, subscription, legacy,retention] =
+        const [cfg, oldEvent, invoice, subscription, legacy,retention,currentCustomer,contract] =
             await Promise.all([
               tx.get(db.doc(`${SERVER_ROOT}/config/billing`)),
               tx.get(eventRef),
               tx.get(invoiceRef),
               tx.get(subRef),
-              tx.get(legacyRef),tx.get(db.doc(`${SERVER_ROOT}/config/retention`)),
+              tx.get(legacyRef),tx.get(db.doc(`${SERVER_ROOT}/config/retention`)),tx.get(customer.ref),event.contractId?tx.get(db.doc(`${SERVER_ROOT}/billing_contracts/${event.contractId}`)):Promise.resolve(undefined),
             ]),
           config = cfg.data(),
           receipt = invoice.data(),
           sub = subscription.data();
+        const currentBinding=currentCustomer.data();
+        if(currentBinding?.uid!==binding.uid||currentBinding?.identityCreatedAt!==binding.identityCreatedAt||currentBinding?.provider!==provider)throw new BillingError(409);
         const analyticsAllowed=approvedRetention(retention.data(),['billing_analytics_outbox'])&&typeof binding.analyticsProfileId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(binding.analyticsProfileId)&&Number.isFinite(binding.analyticsProfileEpoch)&&Date.parse(binding.analyticsConsentUntil)>now&&Date.parse(binding.analyticsConsentFrom)<=Date.parse(event.occurredAt)&&Date.parse(event.occurredAt)<=Date.parse(binding.analyticsConsentUntil);
         if (
           config?.approved !== true ||
@@ -224,6 +231,10 @@ export function createBillingWebhook(options: {
                   createdAt: new Date(now),
                 },
               );
+            const agreement=contract?.data(),contractPolicy=storedConversationPolicy(agreement?.conversationPolicy,now);
+            if(event.contractId&&(!agreement||agreement.uid!==binding.uid||agreement.identityCreatedAt!==binding.identityCreatedAt||agreement.provider!==provider||agreement.customerId!==event.customerId))throw new BillingError(409);
+            // Freeze the accepted contract. Global edits never silently rewrite an existing paid right.
+            const policySnapshot=event.contractId?{conversationPolicyRequired:true,conversationContractId:event.contractId,...(contractPolicy?{conversationPolicy:contractPolicy}:{})}:sub?.conversationPolicyRequired===true?{conversationPolicyRequired:true,...(sub.conversationPolicy?{conversationPolicy:sub.conversationPolicy}:{}),...(sub.conversationContractId?{conversationContractId:sub.conversationContractId}:{})}:{};
             tx.set(subRef, {
               plan: 'plus',
               source: 'verified_payment',
@@ -237,6 +248,7 @@ export function createBillingWebhook(options: {
                 sub?.paymentReceipt === event.paymentReceipt &&
                 sub.cancelAtPeriodEnd === true,
               verifiedAt: new Date(now).toISOString(),
+              ...policySnapshot,
             });
             effect = 'paid_period_recorded';
           }

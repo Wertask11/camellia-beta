@@ -13,7 +13,7 @@ async def main():
     if '/api/camellia/billing' in req.url:
      if 'analytics=stop' in req.url:return await route.fulfill(json={'stopped':True})
      b=req.post_data_json
-     if b['operation']=='status':return await route.fulfill(json={'ready':True,'customer':False,'priceYen':500,'termsVersion':'local-terms','disclosureVersion':'local-disclosure','termsUrl':'http://127.0.0.1:4188/terms.html','disclosureUrl':'http://127.0.0.1:4188/billing.html'})
+     if b['operation']=='status':return await route.fulfill(json={'ready':True,'customer':False,'priceYen':500,'conversationPolicy':{'version':'local-policy-1','dailyLimit':30,'historyMessages':8,'historyChars':500},'termsVersion':'local-terms','disclosureVersion':'local-disclosure','termsUrl':'http://127.0.0.1:4188/terms.html','disclosureUrl':'http://127.0.0.1:4188/billing.html'})
      captured.append(b);return await route.fulfill(status=503,json={'error':'BILLING_UNAVAILABLE'})
     if req.url.startswith('http://127.0.0.1:4188'):return await route.continue_()
     return await route.abort()
