@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type Stripe from 'stripe';
 import {FieldValue,type Firestore } from 'firebase-admin/firestore';
 import{approvedRetention}from'../server/retention-policy.js';
-import { SERVER_ROOT } from '../server/admin.js';
+import {billingRoot,billingConfigPath} from './scope.js';
 import { billingCustomerPath } from './webhook.js';
 import { stripePriceValid, type StripeMode } from './stripe.js';
 import { billingDisclosure } from './disclosure.js';
@@ -12,7 +12,7 @@ import{paidExpansionReady}from'../membership/paid-expansion.js';
 export class CheckoutError extends Error { constructor(readonly status: number, readonly code: string) { super(code); } }
 const hash = (v: string) => createHash('sha256').update(v).digest('hex');
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-const ownerPath = (uid: string) => `${SERVER_ROOT}/billing_owners/${hash(uid)}`;
+const ownerPath = (uid: string,mode:StripeMode) => `${billingRoot(mode)}/billing_owners/${hash(uid)}`;
 export type CheckoutConfig = { mode: StripeMode; priceId: string; origin: string; checkoutEnabled: boolean; termsVersion: string; disclosureVersion: string; portalConfiguration: string };
 export function checkoutConfiguration(value: unknown, mode: StripeMode): CheckoutConfig | undefined {
  const v = value as Record<string, unknown> | undefined;
@@ -30,22 +30,22 @@ export function stripeHostedUrl(value: unknown, kind: 'checkout' | 'portal') {
 /** Protected intent and provider idempotency keys survive network failures and concurrent taps. */
 export class StripeCheckoutService {
  constructor(private db: Firestore, private stripe: Stripe, private mode: StripeMode, private now = Date.now) {}
- async configuration() { return checkoutConfiguration((await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data(), this.mode); }
- async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data(),policy=approvedConversationPolicy(config?.conversationPolicy,this.now());return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&Boolean(policy)&&(policy!.dailyLimit===30||paidExpansionReady((await this.db.doc(`${SERVER_ROOT}/config/ai_observation`).get()).data(),this.now()))&&approvedRetention((await this.db.doc(`${SERVER_ROOT}/config/retention`).get()).data(),['billing_customers','billing_contracts','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']);}
+ async configuration() { return checkoutConfiguration((await this.db.doc(billingConfigPath('billing',this.mode)).get()).data(), this.mode); }
+ async intakeReady(cfg:CheckoutConfig|undefined){if(!cfg?.checkoutEnabled)return false;const config=(await this.db.doc(billingConfigPath('billing',this.mode)).get()).data(),policy=approvedConversationPolicy(config?.conversationPolicy,this.now());return config?.benefitsApproved===true&&config?.conversationPolicyReviewed===true&&Boolean(policy)&&(policy!.dailyLimit===30||paidExpansionReady((await this.db.doc(billingConfigPath('ai_observation',this.mode)).get()).data(),this.now()))&&approvedRetention((await this.db.doc(billingConfigPath('retention',this.mode)).get()).data(),['billing_customers','billing_contracts','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']);}
  async status(uid: string, identityCreatedAt: string) {
   const cfg = await this.configuration();
-  const [owner, pending] = await Promise.all([this.db.doc(ownerPath(uid)).get(), this.db.doc(`${SERVER_ROOT}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`).get()]);
+  const [owner, pending] = await Promise.all([this.db.doc(ownerPath(uid,this.mode)).get(), this.db.doc(`${billingRoot(this.mode)}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`).get()]);
   const customer = owner.data();
   if (customer && customer.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
-  if (!cfg) return { ready: false, priceYen: 500, customer: typeof customer?.customerId === 'string' };
+  if (!cfg) return { ready: false, mode:this.mode, priceYen: 500, customer: typeof customer?.customerId === 'string' };
   const price = await this.stripe.prices.retrieve(cfg.priceId);
-  const policy=approvedConversationPolicy((await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data()?.conversationPolicy,this.now());
-  return { ready: await this.intakeReady(cfg) && stripePriceValid(price, cfg.priceId, this.mode), priceYen: 500,
+  const policy=approvedConversationPolicy((await this.db.doc(billingConfigPath('billing',this.mode)).get()).data()?.conversationPolicy,this.now());
+  return { mode:this.mode,ready: await this.intakeReady(cfg) && stripePriceValid(price, cfg.priceId, this.mode), priceYen: 500,
    ...(policy?{conversationPolicy:publicConversationPolicy(policy)}:{}),
    customer: typeof customer?.customerId === 'string', termsVersion: cfg.termsVersion, disclosureVersion: cfg.disclosureVersion, termsUrl: `${cfg.origin}/terms.html`, disclosureUrl: `${cfg.origin}/billing.html`, ...(pending.data()?.identityCreatedAt === identityCreatedAt && pending.data()!.expiresAt > this.now() ? { pendingRequestId: pending.data()!.requestId } : {}) };
  }
  private async customer(uid: string, identityCreatedAt: string) {
-  const ref = this.db.doc(ownerPath(uid)), old = (await ref.get()).data();
+  const ref = this.db.doc(ownerPath(uid,this.mode)), old = (await ref.get()).data();
   if (old && old.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
   if (typeof old?.customerId === 'string'){
    const profile=await this.db.doc(`camellia_users/${uid}`).get();if(!profile.exists||profile.data()?.personalDeleteInProgress===true)throw new CheckoutError(409,'RECORDS_UNAVAILABLE');
@@ -60,7 +60,7 @@ export class StripeCheckoutService {
    if (!profile.exists || profile.data()?.personalDeleteInProgress === true) throw new CheckoutError(409, 'RECORDS_UNAVAILABLE');
    if (current.exists && (current.data()?.customerId !== customer.id || current.data()?.identityCreatedAt !== identityCreatedAt)) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
    const binding = { uid, provider: 'stripe', identityCreatedAt };
-   tx.set(this.db.doc(billingCustomerPath('stripe', customer.id)), binding, { merge: true });
+   tx.set(this.db.doc(billingCustomerPath('stripe', customer.id,this.mode)), binding, { merge: true });
    tx.set(ref, { customerId: customer.id, identityCreatedAt }, { merge: true });
   });
   return customer.id;
@@ -72,19 +72,19 @@ export class StripeCheckoutService {
   if (Object.keys(v).some(k => !['requestId','termsVersion','disclosureVersion','conversationPolicyVersion','consent','analyticsProfileId'].includes(k)) || !uuid(v.requestId) || v.consent !== true || v.analyticsProfileId !== undefined && !uuid(v.analyticsProfileId)) throw new CheckoutError(400, 'INVALID_CHECKOUT');
   const cfg = await this.configuration();
   if (!cfg||!await this.intakeReady(cfg)) throw new CheckoutError(503, 'BILLING_NOT_READY');
-  const policy=approvedConversationPolicy((await this.db.doc(`${SERVER_ROOT}/config/billing`).get()).data()?.conversationPolicy,this.now());
+  const policy=approvedConversationPolicy((await this.db.doc(billingConfigPath('billing',this.mode)).get()).data()?.conversationPolicy,this.now());
   if(!policy)throw new CheckoutError(503,'BILLING_NOT_READY');
   if(v.conversationPolicyVersion!==policy.version)throw new CheckoutError(409,'BILLING_TERMS_CHANGED');
   if (v.termsVersion !== cfg.termsVersion || v.disclosureVersion !== cfg.disclosureVersion) throw new CheckoutError(409, 'BILLING_TERMS_CHANGED');
   // The overlap/upgrade policy is not decided. Preserve any valid paid/trial right and never charge twice.
-  if ((await memberStatus(this.db, uid, this.now())).plan === 'plus') throw new CheckoutError(409, 'EXISTING_PLUS');
+  if ((await memberStatus(this.db, uid, this.now(),undefined,this.mode)).plan === 'plus') throw new CheckoutError(409, 'EXISTING_PLUS');
   if (!stripePriceValid(await this.stripe.prices.retrieve(cfg.priceId), cfg.priceId, this.mode)) throw new CheckoutError(503, 'BILLING_NOT_READY');
   const customer = await this.customer(uid, identityCreatedAt);
   const subscriptions = await this.stripe.subscriptions.list({ customer, status: 'all', limit: 100 });
   if (subscriptions.has_more || subscriptions.data.some(s => !['canceled','incomplete_expired'].includes(s.status))) throw new CheckoutError(409, 'EXISTING_SUBSCRIPTION');
-  const ref = this.db.doc(`${SERVER_ROOT}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`), at = this.now();
+  const ref = this.db.doc(`${billingRoot(this.mode)}/billing_checkouts/${hash(`${uid}:${identityCreatedAt}`)}`), at = this.now();
   const intent = await this.db.runTransaction(async tx => {
-   const [snapshot, profile,binding,currentConfig,retention,pricing] = await Promise.all([tx.get(ref), tx.get(this.db.doc(`camellia_users/${uid}`)),tx.get(this.db.doc(billingCustomerPath('stripe',customer))),tx.get(this.db.doc(`${SERVER_ROOT}/config/billing`)),tx.get(this.db.doc(`${SERVER_ROOT}/config/retention`)),policy.dailyLimit>30?tx.get(this.db.doc(`${SERVER_ROOT}/config/ai_observation`)):Promise.resolve(undefined)]);
+   const [snapshot, profile,binding,currentConfig,retention,pricing] = await Promise.all([tx.get(ref), tx.get(this.db.doc(`camellia_users/${uid}`)),tx.get(this.db.doc(billingCustomerPath('stripe',customer,this.mode))),tx.get(this.db.doc(billingConfigPath('billing',this.mode))),tx.get(this.db.doc(billingConfigPath('retention',this.mode))),policy.dailyLimit>30?tx.get(this.db.doc(billingConfigPath('ai_observation',this.mode))):Promise.resolve(undefined)]);
    if (!profile.exists || profile.data()?.personalDeleteInProgress === true) throw new CheckoutError(409, 'RECORDS_UNAVAILABLE');
    const live=currentConfig.data();
    if(!checkoutConfiguration(live,this.mode)?.checkoutEnabled||live?.benefitsApproved!==true||live?.conversationPolicyReviewed!==true||!approvedRetention(retention.data(),['billing_customers','billing_contracts','billing_checkouts','billing_events','billing_receipts','billing_analytics_outbox']))throw new CheckoutError(503,'BILLING_NOT_READY');
@@ -95,11 +95,11 @@ export class StripeCheckoutService {
    const old = snapshot.data();
    if (old && old.expiresAt > at) {
     if (old.requestId !== v.requestId || old.identityCreatedAt !== identityCreatedAt || old.priceId !== cfg.priceId || old.termsVersion !== cfg.termsVersion || old.disclosureVersion !== cfg.disclosureVersion || JSON.stringify(storedConversationPolicy(old.conversationPolicy,this.now()))!==JSON.stringify(policy)) throw new CheckoutError(409, 'CHECKOUT_PENDING');
-    if(!uuid(v.analyticsProfileId))tx.set(this.db.doc(billingCustomerPath('stripe',customer)),this.analyticsBinding(undefined,uid),{merge:true});
+    if(!uuid(v.analyticsProfileId))tx.set(this.db.doc(billingCustomerPath('stripe',customer,this.mode)),this.analyticsBinding(undefined,uid),{merge:true});
     return old as { id: string; requestId: string; expiresAt: number; url?: string; createdAt: number };
    }
    const next = { id: randomUUID(), requestId: v.requestId as string, identityCreatedAt, priceId: cfg.priceId, expiresAt: at + 45*60000, createdAt: at, status: 'creating', termsVersion: cfg.termsVersion, disclosureVersion: cfg.disclosureVersion,conversationPolicy:policy };
-   tx.set(ref, next);tx.create(this.db.doc(`${SERVER_ROOT}/billing_contracts/${next.id}`),{provider:'stripe',customerId:customer,uid,identityCreatedAt,conversationPolicy:policy,createdAt:new Date(at)});tx.set(this.db.doc(billingCustomerPath('stripe',customer)),{...this.analyticsBinding(v.analyticsProfileId,uid,profile.createTime?.toMillis()),analyticsCheckoutContractId:next.id},{merge:true});return next;
+   tx.set(ref, next);tx.create(this.db.doc(`${billingRoot(this.mode)}/billing_contracts/${next.id}`),{provider:'stripe',customerId:customer,uid,identityCreatedAt,conversationPolicy:policy,createdAt:new Date(at)});tx.set(this.db.doc(billingCustomerPath('stripe',customer,this.mode)),{...this.analyticsBinding(v.analyticsProfileId,uid,profile.createTime?.toMillis()),analyticsCheckoutContractId:next.id},{merge:true});return next;
   });
   if ('url' in intent && intent.url) return { url: stripeHostedUrl(intent.url, 'checkout') };
   if (this.now() - intent.createdAt >= 14*60000) throw new CheckoutError(409, 'CHECKOUT_REVIEW_REQUIRED');
@@ -124,7 +124,7 @@ export class StripeCheckoutService {
   return { url };
  }
  async portal(uid: string, identityCreatedAt: string) {
-  const cfg = await this.configuration(), owner = (await this.db.doc(ownerPath(uid)).get()).data();
+  const cfg = await this.configuration(), owner = (await this.db.doc(ownerPath(uid,this.mode)).get()).data();
   if (!cfg || !owner?.customerId || owner.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
   // Approved configuration may allow cancellation/payment methods/invoice history, never arbitrary paid plan changes.
   const configuration = await this.stripe.billingPortal.configurations.retrieve(cfg.portalConfiguration);
@@ -133,7 +133,7 @@ export class StripeCheckoutService {
   return { url: stripeHostedUrl(session.url, 'portal') };
  }
  async history(uid: string, identityCreatedAt: string) {
-  const owner = (await this.db.doc(ownerPath(uid)).get()).data();
+  const owner = (await this.db.doc(ownerPath(uid,this.mode)).get()).data();
   if (!owner) return { invoices: [], more: false };
   if (owner.identityCreatedAt !== identityCreatedAt) throw new CheckoutError(409, 'BILLING_IDENTITY_CONFLICT');
   const invoices = await this.stripe.invoices.list({ customer: owner.customerId, limit: 12 });

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import type { Auth } from 'firebase-admin/auth';
 import{approvedRetention}from'../server/retention-policy.js';
-import { SERVER_ROOT } from '../server/admin.js';
+import {billingRoot,billingConfigPath,billingEntitlementPath,type BillingMode} from './scope.js';
 import { PLUS_PRICE_YEN } from '../membership/model.js';
 import{storedConversationPolicy}from'../membership/conversation-policy.js';
 export type BillingEvent = {
@@ -22,13 +22,14 @@ export type BillingEvent = {
 /** Selected processor must verify the raw signed payload and normalize canonical invoice/subscription state. */
 export type BillingAdapter = {
   id: string;
+  mode?:BillingMode;
   verify: (raw: Uint8Array, signature: string) => Promise<unknown>;
 };
 const hash = (v: string) => createHash('sha256').update(v).digest('hex');
-export const billingCustomerPath = (provider: string, id: string) =>
-  `${SERVER_ROOT}/billing_customers/${hash(`${provider}:${id}`)}`;
+export const billingCustomerPath = (provider: string, id: string,mode:BillingMode='live') =>
+  `${billingRoot(mode)}/billing_customers/${hash(`${provider}:${id}`)}`;
 export const billingSubscriptionPath = (uid: string) =>
-  `camellia_users/${uid}/admin/billing_subscription`;
+  billingEntitlementPath(uid);
 export class BillingProviderUnavailable extends Error {}
 class BillingError extends Error {
   constructor(readonly status: number) {
@@ -118,11 +119,11 @@ export function createBillingWebhook(options: {
       } catch (error) {
         throw new BillingError(error instanceof BillingProviderUnavailable ? 503 : 400);
       }
-      const provider = options.adapter.id;
+      const provider = options.adapter.id,mode=options.adapter.mode??'live';
       if (!/^[a-z0-9-]{1,60}$/.test(provider)) throw new BillingError(503);
       const { db, auth } = options.dependencies(),
         customer = await db
-          .doc(billingCustomerPath(provider, event.customerId))
+          .doc(billingCustomerPath(provider, event.customerId,mode))
           .get(),
         binding = customer.data();
       if (
@@ -142,32 +143,32 @@ export function createBillingWebhook(options: {
         throw new BillingError(409);
       const owner = hash(binding.uid),
         eventRef = db.doc(
-          `${SERVER_ROOT}/billing_events/${hash(`${provider}:${event.id}`)}`,
+          `${billingRoot(mode)}/billing_events/${hash(`${provider}:${event.id}`)}`,
         ),
         invoiceRef = db.doc(
-          `${SERVER_ROOT}/billing_receipts/${hash(`${provider}:${event.paymentReceipt}`)}`,
+          `${billingRoot(mode)}/billing_receipts/${hash(`${provider}:${event.paymentReceipt}`)}`,
         ),
-        subRef = db.doc(billingSubscriptionPath(binding.uid)),
+        subRef = db.doc(billingEntitlementPath(binding.uid,mode)),
         legacyRef = db.doc(`camellia_users/${binding.uid}/admin/subscription`),
         digest = hash(JSON.stringify(event)),
         now = options.now?.() ?? Date.now();
       const result = await db.runTransaction(async (tx) => {
         const [cfg, oldEvent, invoice, subscription, legacy,retention,currentCustomer,contract] =
             await Promise.all([
-              tx.get(db.doc(`${SERVER_ROOT}/config/billing`)),
+              tx.get(db.doc(billingConfigPath('billing',mode))),
               tx.get(eventRef),
               tx.get(invoiceRef),
               tx.get(subRef),
-              tx.get(legacyRef),tx.get(db.doc(`${SERVER_ROOT}/config/retention`)),tx.get(customer.ref),event.contractId?tx.get(db.doc(`${SERVER_ROOT}/billing_contracts/${event.contractId}`)):Promise.resolve(undefined),
+              tx.get(legacyRef),tx.get(db.doc(billingConfigPath('retention',mode))),tx.get(customer.ref),event.contractId?tx.get(db.doc(`${billingRoot(mode)}/billing_contracts/${event.contractId}`)):Promise.resolve(undefined),
             ]),
           config = cfg.data(),
           receipt = invoice.data(),
           sub = subscription.data();
         const currentBinding=currentCustomer.data();
         if(currentBinding?.uid!==binding.uid||currentBinding?.identityCreatedAt!==binding.identityCreatedAt||currentBinding?.provider!==provider)throw new BillingError(409);
-        const analyticsAllowed=approvedRetention(retention.data(),['billing_analytics_outbox'])&&(currentBinding.analyticsCheckoutContractId===undefined||currentBinding.analyticsCheckoutContractId===event.contractId)&&typeof currentBinding.analyticsProfileId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(currentBinding.analyticsProfileId)&&Number.isFinite(currentBinding.analyticsProfileEpoch)&&Date.parse(currentBinding.analyticsConsentUntil)>now&&Date.parse(currentBinding.analyticsConsentFrom)<=Date.parse(event.occurredAt)&&Date.parse(event.occurredAt)<=Date.parse(currentBinding.analyticsConsentUntil);
+        const analyticsAllowed=mode==='live'&&approvedRetention(retention.data(),['billing_analytics_outbox'])&&(currentBinding.analyticsCheckoutContractId===undefined||currentBinding.analyticsCheckoutContractId===event.contractId)&&typeof currentBinding.analyticsProfileId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(currentBinding.analyticsProfileId)&&Number.isFinite(currentBinding.analyticsProfileEpoch)&&Date.parse(currentBinding.analyticsConsentUntil)>now&&Date.parse(currentBinding.analyticsConsentFrom)<=Date.parse(event.occurredAt)&&Date.parse(event.occurredAt)<=Date.parse(currentBinding.analyticsConsentUntil);
         if (
-          config?.approved !== true ||
+          config?.approved !== true || options.adapter?.mode!==undefined&&config.mode!==mode ||
           config.enabled !== true ||
           config.provider !== provider ||
           config.priceYen !== PLUS_PRICE_YEN ||
@@ -218,7 +219,7 @@ export function createBillingWebhook(options: {
             if (receipt?.analyticsEnqueued !== true && analyticsAllowed)
               tx.create(
                 db.doc(
-                  `${SERVER_ROOT}/billing_analytics_outbox/${hash(`${provider}:${event.paymentReceipt}`)}`,
+                  `${billingRoot(mode)}/billing_analytics_outbox/${hash(`${provider}:${event.paymentReceipt}`)}`,
                 ),
                 {
                   attributionVersion:'checkout_v1',ownerHash:owner,customerBindingId:customer.id,profileEpoch:currentBinding.analyticsProfileEpoch,consentFrom:currentBinding.analyticsConsentFrom,consentUntil:currentBinding.analyticsConsentUntil,
@@ -269,7 +270,7 @@ export function createBillingWebhook(options: {
             { merge: true },
           );
           if (
-            legacy.data()?.source === 'verified_payment' &&
+            mode==='live'&&legacy.data()?.source === 'verified_payment' &&
             legacy.data()?.paymentReceipt === event.paymentReceipt &&
             refundedYen >= PLUS_PRICE_YEN
           )

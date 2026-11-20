@@ -10,9 +10,10 @@ async def main():
    page=await browser.new_page(viewport={'width':width,'height':844});page.on('pageerror',lambda e:print('PAGE ERROR',e,flush=True));captured=[];second_request=asyncio.Event()
    async def handler(route):
     req=route.request
+    if '/api/camellia/membership' in req.url:return await route.fulfill(json={'plan':'plus','paid':True,'trial':False,'billingMode':'test','expiresAt':'2099-01-01T00:00:00Z','priceYen':500})
     if '/api/camellia/billing' in req.url:
      b=req.post_data_json
-     if b['operation']=='status':return await route.fulfill(json={'ready':True,'customer':False,'priceYen':500,'conversationPolicy':{'version':'local-policy-1','dailyLimit':30,'historyMessages':8,'historyChars':500},'termsVersion':'local-terms','disclosureVersion':'local-disclosure','termsUrl':'http://127.0.0.1:4181/terms.html','disclosureUrl':'http://127.0.0.1:4181/billing.html'})
+     if b['operation']=='status':return await route.fulfill(json={'mode':'test','ready':True,'customer':False,'priceYen':500,'conversationPolicy':{'version':'local-policy-1','dailyLimit':30,'historyMessages':8,'historyChars':500},'termsVersion':'local-terms','disclosureVersion':'local-disclosure','termsUrl':'http://127.0.0.1:4181/terms.html','disclosureUrl':'http://127.0.0.1:4181/billing.html'})
      captured.append(b)
      if len(captured)==2:second_request.set()
      return await route.fulfill(status=503,json={'error':'BILLING_UNAVAILABLE'})
@@ -30,6 +31,7 @@ async def main():
    await page.screenshot(path=str(out/f'checkout-{width}.png'))
    await page.keyboard.press('Escape');assert await page.locator('body').get_attribute('data-closed')=='true'
    results.append({'width':width,'consent_required':True,'retry_same_intent':True,'start_event_once':True,'overflow':False,'escape':True})
+   await page.goto('http://127.0.0.1:4181/fixture?mode=plan');await page.get_by_text('Stripeテストの権利を確認中です。',exact=False).wait_for();assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth')
    await page.close()
   # Actual disabled/unconfigured and Portal management states, independent of paid flags in browser.
   for mode in ['disabled','portal','unreviewed']:

@@ -4,6 +4,7 @@ import {
   type Firestore,
   type DocumentSnapshot,
 } from 'firebase-admin/firestore';
+import { billingRoot } from '../billing/scope.js';
 import { SERVER_ROOT } from './admin.js';
 
 const definitions = {
@@ -105,8 +106,23 @@ export async function lifecycleCleanup(
     approvedDigest?: string;
     after?: string;
     now?: number;
+    stripeTest?: boolean;
   } = {},
 ) {
+  if (
+    options.stripeTest !== undefined &&
+    typeof options.stripeTest !== 'boolean'
+  )
+    throw new Error('RETENTION_COLLECTION_NOT_ALLOWED');
+  if (
+    options.stripeTest &&
+    !name.startsWith('billing_') &&
+    !['retention_audit', 'retention_dispositions', 'retention_holds'].includes(
+      name,
+    )
+  )
+    throw new Error('RETENTION_COLLECTION_NOT_ALLOWED');
+  const root = billingRoot(options.stripeTest ? 'test' : 'live');
   if (!Object.hasOwn(definitions, name))
     throw new Error('RETENTION_COLLECTION_NOT_ALLOWED');
   if (
@@ -127,10 +143,14 @@ export async function lifecycleCleanup(
     definition = definitions[collection],
     now = options.now ?? Date.now();
   return db.runTransaction(async (tx) => {
-    const config = await tx.get(db.doc(`${SERVER_ROOT}/config/retention`)),
+    const config = await tx.get(db.doc(`${root}/config/retention`)),
       cfg = config.data(),
       p = cfg?.collections?.[collection];
-    if (cfg?.paused === true) throw new Error('RETENTION_PAUSED');
+    const globalStop = options.stripeTest
+      ? await tx.get(db.doc(`${SERVER_ROOT}/config/retention`))
+      : undefined;
+    if (globalStop?.data()?.paused === true || cfg?.paused === true)
+      throw new Error('RETENTION_PAUSED');
     if (
       cfg?.lifecycleVersion !== 'lifecycle_v1' ||
       p?.approved !== true ||
@@ -153,7 +173,7 @@ export async function lifecycleCleanup(
     const previous =
       options.apply && options.approvedDigest
         ? await tx.get(
-            db.doc(`${SERVER_ROOT}/retention_audit/${options.approvedDigest}`),
+            db.doc(`${root}/retention_audit/${options.approvedDigest}`),
           )
         : undefined;
     if (previous?.exists) {
@@ -170,7 +190,7 @@ export async function lifecycleCleanup(
       };
     }
     let query = db
-      .collection(`${SERVER_ROOT}/${collection}`)
+      .collection(`${root}/${collection}`)
       .orderBy(FieldPath.documentId())
       .limit(20);
     if (options.after) query = query.startAfter(options.after);
@@ -188,10 +208,7 @@ export async function lifecycleCleanup(
       if (typeof value !== 'string')
         throw new Error('INVALID_RETENTION_REFERENCE');
       const q = await tx.get(
-        db
-          .collection(`${SERVER_ROOT}/${c}`)
-          .where(field, '==', value)
-          .limit(101),
+        db.collection(`${root}/${c}`).where(field, '==', value).limit(101),
       );
       deps.set(
         `${c}:${field}:${value}`,
@@ -200,7 +217,7 @@ export async function lifecycleCleanup(
       return q;
     };
     const campaignClosed = async () => {
-      const c = (await get(`${SERVER_ROOT}/config/referral`)).data();
+      const c = (await get(`${root}/config/referral`)).data();
       return (
         c?.accepting === false &&
         Number.isFinite(ms(c.endsAt)) &&
@@ -221,16 +238,14 @@ export async function lifecycleCleanup(
         extras: string[] = [];
       let reason = '',
         anchor = ms(v[definition.time]);
-      const hold = await get(
-        `${SERVER_ROOT}/retention_holds/${hash(row.ref.path)}`,
-      );
+      const hold = await get(`${root}/retention_holds/${hash(row.ref.path)}`);
       if (
         v.legalHold === true ||
         (hold.exists && hold.data()?.active !== false)
       )
         reason = 'LEGAL_HOLD';
       const disposition = await get(
-          `${SERVER_ROOT}/retention_dispositions/${hash(row.ref.path)}`,
+          `${root}/retention_dispositions/${hash(row.ref.path)}`,
         ),
         review = disposition.data();
       if (!reason) {
@@ -247,7 +262,7 @@ export async function lifecycleCleanup(
           if (!uidValid(v.ownerUid)) reason = 'UNKNOWN_OWNER';
         } else if (collection === 'referral_ai_reservations') {
           const g = identifier(v.grantId)
-            ? (await get(`${SERVER_ROOT}/referral_grants/${v.grantId}`)).data()
+            ? (await get(`${root}/referral_grants/${v.grantId}`)).data()
             : undefined;
           if (
             !g ||
@@ -262,7 +277,7 @@ export async function lifecycleCleanup(
             reason = 'UNSETTLED_TRIAL';
         } else if (collection === 'referral_identities') {
           const g = identifier(v.grantId)
-            ? (await get(`${SERVER_ROOT}/referral_grants/${v.grantId}`)).data()
+            ? (await get(`${root}/referral_grants/${v.grantId}`)).data()
             : undefined;
           if (
             p.identityWindowDeletionApproved !== true ||
@@ -331,7 +346,7 @@ export async function lifecycleCleanup(
               end = new Date(anchor).toISOString();
             const grants = await tx.get(
               db
-                .collection(`${SERVER_ROOT}/referral_grants`)
+                .collection(`${root}/referral_grants`)
                 .where('createdAt', '>=', start)
                 .where('createdAt', '<', end)
                 .limit(101),
@@ -356,7 +371,7 @@ export async function lifecycleCleanup(
         ) {
           if (!(await campaignClosed())) reason = 'ACTIVE_CAMPAIGN';
           const grant = identifier(v.grantId)
-            ? await get(`${SERVER_ROOT}/referral_grants/${v.grantId}`)
+            ? await get(`${root}/referral_grants/${v.grantId}`)
             : undefined;
           if (
             grant?.exists &&
@@ -385,7 +400,7 @@ export async function lifecycleCleanup(
             p.parentCascadeReviewed === true &&
             identifier(v.postId)
           ) {
-            const parent = await get(`${SERVER_ROOT}/circle_posts/${v.postId}`);
+            const parent = await get(`${root}/circle_posts/${v.postId}`);
             closed = ['deleted', 'removed'].includes(
               String(parent.data()?.status),
             );
@@ -413,7 +428,7 @@ export async function lifecycleCleanup(
             collection === 'circle_reports'
               ? row
               : identifier(v.reportId)
-                ? await get(`${SERVER_ROOT}/circle_reports/${v.reportId}`)
+                ? await get(`${root}/circle_reports/${v.reportId}`)
                 : undefined;
           if (
             p.caseClosureReviewed !== true ||
@@ -436,7 +451,7 @@ export async function lifecycleCleanup(
             post =
               identifier(v.targetId) && kind
                 ? await get(
-                    `${SERVER_ROOT}/${kind === 'post' ? 'circle_posts' : 'circle_comments'}/${v.targetId}`,
+                    `${root}/${kind === 'post' ? 'circle_posts' : 'circle_comments'}/${v.targetId}`,
                   )
                 : undefined;
           if (!identifier(v.targetId) || !kind) reason = 'UNKNOWN_PARENT';
@@ -460,7 +475,7 @@ export async function lifecycleCleanup(
         ) {
           const slug = collection === 'places' ? row.id : v.slug,
             place = identifier(slug)
-              ? await get(`${SERVER_ROOT}/places/${slug}`)
+              ? await get(`${root}/places/${slug}`)
               : undefined;
           if (
             p.permissionEvidenceClosureReviewed !== true ||
@@ -478,7 +493,7 @@ export async function lifecycleCleanup(
               reason = 'PLACE_SCOPE_REVIEW_REQUIRED';
             if (
               !(await related('place_audit', 'slug', slug)).empty ||
-              (await get(`${SERVER_ROOT}/place_agreements/${slug}`)).exists
+              (await get(`${root}/place_agreements/${slug}`)).exists
             )
               reason = 'DEPENDENT_PLACE_RECORD';
             const apps = await related('place_applications', 'placeSlug', slug);
@@ -496,9 +511,7 @@ export async function lifecycleCleanup(
             collection === 'place_applications'
               ? row
               : identifier(v.applicationId)
-                ? await get(
-                    `${SERVER_ROOT}/place_applications/${v.applicationId}`,
-                  )
+                ? await get(`${root}/place_applications/${v.applicationId}`)
                 : undefined;
           if (!app?.exists) {
             if (
@@ -537,13 +550,11 @@ export async function lifecycleCleanup(
             typeof v.targetCollection !== 'string' ||
             !Object.hasOwn(definitions, v.targetCollection) ||
             !identifier(v.targetId) ||
-            hash(`${SERVER_ROOT}/${v.targetCollection}/${v.targetId}`) !==
-              row.id
+            hash(`${root}/${v.targetCollection}/${v.targetId}`) !== row.id
           )
             reason = 'UNKNOWN_REVIEW_TARGET';
           else if (
-            (await get(`${SERVER_ROOT}/${v.targetCollection}/${v.targetId}`))
-              .exists
+            (await get(`${root}/${v.targetCollection}/${v.targetId}`)).exists
           )
             reason = 'LIVE_REVIEW_TARGET';
           if (collection === 'retention_holds' && v.active !== false)
@@ -623,11 +634,11 @@ export async function lifecycleCleanup(
             : NaN;
           let owner: unknown = v.uid ?? review?.ownerUid;
           if (!owner && typeof v.owner === 'string') {
-            const o = await get(`${SERVER_ROOT}/billing_owners/${v.owner}`);
+            const o = await get(`${root}/billing_owners/${v.owner}`);
             if (typeof o.data()?.customerId === 'string')
               owner = (
                 await get(
-                  `${SERVER_ROOT}/billing_customers/${hash(`stripe:${o.data()!.customerId}`)}`,
+                  `${root}/billing_customers/${hash(`stripe:${o.data()!.customerId}`)}`,
                 )
               ).data()?.uid;
           }
@@ -638,7 +649,7 @@ export async function lifecycleCleanup(
           )
             owner = (
               await get(
-                `${SERVER_ROOT}/billing_customers/${hash(`stripe:${v.customerId}`)}`,
+                `${root}/billing_customers/${hash(`stripe:${v.customerId}`)}`,
               )
             ).data()?.uid;
           if (
@@ -649,7 +660,7 @@ export async function lifecycleCleanup(
             reason = 'OWNER_REVIEW_REQUIRED';
           else {
             const sub = await get(
-                `camellia_users/${owner}/admin/billing_subscription`,
+                `camellia_users/${owner}/admin/${options.stripeTest ? 'billing_test_subscription' : 'billing_subscription'}`,
               ),
               legacy = await get(`camellia_users/${owner}/admin/subscription`);
             if (
@@ -723,9 +734,11 @@ export async function lifecycleCleanup(
     }
     const digest = hash(
       JSON.stringify({
+        scope: root,
         collection,
         cursor: options.after ?? '',
         config: stamp(config),
+        globalStop: globalStop ? stamp(globalStop) : null,
         rows: rows.docs.map((d) => [d.id, stamp(d)]),
         dependencies: [...deps].sort(([a], [b]) => a.localeCompare(b)),
         deletes: [...deletes].sort(),
@@ -745,7 +758,7 @@ export async function lifecycleCleanup(
     if (options.approvedDigest !== digest)
       throw new Error('RETENTION_PLAN_CHANGED');
     for (const path of deletes) tx.delete(db.doc(path));
-    tx.create(db.doc(`${SERVER_ROOT}/retention_audit/${digest}`), {
+    tx.create(db.doc(`${root}/retention_audit/${digest}`), {
       collection,
       cursor: options.after ?? '',
       count: eligible.length,
@@ -771,7 +784,16 @@ export async function reviewRetentionDisposition(
   collection: string,
   id: string,
   input: unknown,
+  stripeTest = false,
 ) {
+  if (
+    typeof stripeTest !== 'boolean' ||
+    (stripeTest &&
+      !collection.startsWith('billing_') &&
+      !collection.startsWith('retention_'))
+  )
+    throw new Error('INVALID_RETENTION_REVIEW');
+  const root = billingRoot(stripeTest ? 'test' : 'live');
   if (
     !Object.hasOwn(definitions, collection) ||
     !identifier(id) ||
@@ -809,11 +831,11 @@ export async function reviewRetentionDisposition(
     (v.ownerUid !== undefined && !uidValid(v.ownerUid))
   )
     throw new Error('INVALID_RETENTION_REVIEW');
-  const ref = db.doc(`${SERVER_ROOT}/${collection}/${id}`);
+  const ref = db.doc(`${root}/${collection}/${id}`);
   return db.runTransaction(async (tx) => {
     const row = await tx.get(ref);
     if (!row.exists) throw new Error('RETENTION_RECORD_NOT_FOUND');
-    tx.set(db.doc(`${SERVER_ROOT}/retention_dispositions/${hash(ref.path)}`), {
+    tx.set(db.doc(`${root}/retention_dispositions/${hash(ref.path)}`), {
       ...v,
       targetVersion: stamp(row),
       targetCollection: collection,

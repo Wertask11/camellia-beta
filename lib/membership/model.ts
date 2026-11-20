@@ -1,5 +1,5 @@
 export const PLUS_PRICE_YEN=500;
-export type Membership={plan:'free'|'plus';trial:boolean;paid:boolean;expiresAt?:string;sharingReady?:boolean;checkoutReady:false;priceYen:500};
+export type Membership={billingMode?:'test';plan:'free'|'plus';trial:boolean;paid:boolean;expiresAt?:string;sharingReady?:boolean;checkoutReady:false;priceYen:500};
 export function membershipFromRecord(value:Record<string,unknown>|undefined,now=Date.now()):Membership{
  const base:Membership={plan:'free',trial:false,paid:false,checkoutReady:false,priceYen:500};
  if(!value||value.plan!=='plus'||typeof value.expiresAt!=='string'||!Number.isFinite(Date.parse(value.expiresAt))||Date.parse(value.expiresAt)<=now)return base;
@@ -18,5 +18,5 @@ export function membershipFromResponse(value:unknown,now=Date.now()):Membership{
   return {plan:'free',paid:false,trial:false,checkoutReady:false,sharingReady:v.capabilitiesVersion==='partner_v1'&&v.sharingReady===true,priceYen:500};
  }
  if(v.paid===v.trial||typeof v.expiresAt!=='string'||!Number.isFinite(Date.parse(v.expiresAt))||Date.parse(v.expiresAt)<=now)throw new Error('INVALID_MEMBERSHIP');
- return {plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:false,sharingReady:v.capabilitiesVersion==='partner_v1'&&v.sharingReady===true,priceYen:500};
+ return {...(v.billingMode==='test'?{billingMode:'test' as const}:{}),plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:false,sharingReady:v.capabilitiesVersion==='partner_v1'&&v.sharingReady===true,priceYen:500};
 }

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 const [collection, ...args] = process.argv.slice(2),
   apply = args.includes('--apply'),
+  stripeTest = args.includes('--stripe-test'),
   review = args.find((a) => a.startsWith('--review=')),
   after = args.find((a) => a.startsWith('--after=')),
   digest = args.find((a) => !a.startsWith('--'));
@@ -13,13 +14,14 @@ if (
     (a) =>
       a.startsWith('--') &&
       a !== '--apply' &&
+      a !== '--stripe-test' &&
       !a.startsWith('--after=') &&
       !a.startsWith('--review=') &&
       !a.startsWith('--record='),
   )
 )
   throw Error(
-    'Usage: lifecycle-retention <fixed collection> [digest] [--apply] [--after=id] | --review=private.json --record=id',
+    'Usage: lifecycle-retention <fixed collection> [digest] [--apply] [--after=id] [--stripe-test] | --review=private.json --record=id',
   );
 if (
   (apply || review) &&
@@ -42,9 +44,11 @@ try {
         collection,
         args.find((a) => a.startsWith('--record='))?.slice(9),
         JSON.parse(await readFile(review.slice(9), 'utf8')),
+        stripeTest,
       )
     : await lifecycleCleanup(db, collection, {
         apply,
+        stripeTest,
         approvedDigest: digest,
         after: after?.slice(8),
       });
