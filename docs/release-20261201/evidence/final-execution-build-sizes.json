@@ -1,0 +1,57 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "kind": "Built asset/gzip estimate; not measured initial transfer or mobile speed",
+  "largestJS": [
+    {
+      "asset": "_next/static/chunks/page-_kOhv89r.js",
+      "bytes": 1410268,
+      "gzipBytes": 429314
+    },
+    {
+      "asset": "_next/static/chunks/index-DgULnYqB.js",
+      "bytes": 192606,
+      "gzipBytes": 55687
+    },
+    {
+      "asset": "_next/static/chunks/framework-CZYbymlE.js",
+      "bytes": 190033,
+      "gzipBytes": 58892
+    },
+    {
+      "asset": "_next/static/chunks/app-route-prefetch-policy-BD2hUXoC.js",
+      "bytes": 937,
+      "gzipBytes": 485
+    },
+    {
+      "asset": "_next/static/chunks/streamed-icons-8rDlDlHQ.js",
+      "bytes": 772,
+      "gzipBytes": 487
+    },
+    {
+      "asset": "_next/static/chunks/rolldown-runtime-XKyaHtl9.js",
+      "bytes": 726,
+      "gzipBytes": 431
+    },
+    {
+      "asset": "camellia-push-sw.js",
+      "bytes": 709,
+      "gzipBytes": 498
+    },
+    {
+      "asset": "_next/static/chunks/layout-segment-context-C3178faR.js",
+      "bytes": 494,
+      "gzipBytes": 341
+    },
+    {
+      "asset": "_next/static/4b87f9b0-fc9f-49cf-a135-dda25a0eb29b/_buildManifest.js",
+      "bytes": 159,
+      "gzipBytes": 121
+    },
+    {
+      "asset": "_next/static/4b87f9b0-fc9f-49cf-a135-dda25a0eb29b/_ssgManifest.js",
+      "bytes": 76,
+      "gzipBytes": 60
+    }
+  ],
+  "allJSBytes": 1796780
+}

@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-20",
+  "kind": "Local Chromium; Auth/referral/native-share are fixtures. Catalog remains unapproved. No actual referral, new user, reward or send.",
+  "results": [
+    {
+      "width": 375,
+      "explicit_issue": true,
+      "explicit_native_share": true,
+      "owner_history_and_revoke": true,
+      "no_automatic_send": true,
+      "no_overflow": true,
+      "draft_assets_loaded": 3
+    },
+    {
+      "width": 390,
+      "explicit_issue": true,
+      "explicit_native_share": true,
+      "owner_history_and_revoke": true,
+      "no_automatic_send": true,
+      "no_overflow": true,
+      "draft_assets_loaded": 3
+    },
+    {
+      "width": 412,
+      "explicit_issue": true,
+      "explicit_native_share": true,
+      "owner_history_and_revoke": true,
+      "no_automatic_send": true,
+      "no_overflow": true,
+      "draft_assets_loaded": 3
+    },
+    {
+      "width": 768,
+      "explicit_issue": true,
+      "explicit_native_share": true,
+      "owner_history_and_revoke": true,
+      "no_automatic_send": true,
+      "no_overflow": true,
+      "draft_assets_loaded": 3
+    },
+    {
+      "width": 1280,
+      "explicit_issue": true,
+      "explicit_native_share": true,
+      "owner_history_and_revoke": true,
+      "no_automatic_send": true,
+      "no_overflow": true,
+      "draft_assets_loaded": 3
+    }
+  ]
+}

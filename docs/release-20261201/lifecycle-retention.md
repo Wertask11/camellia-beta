@@ -2,6 +2,8 @@
 
 本番の期間・TTL・定期ジョブは設定/開始していない。法定保存や期間は運営承認が必要。既存の個人記録削除は別であり、支払い・永久装飾を削除しない。
 
+Stripe Sandboxは固定の別rootで、dry-run/レビュー/applyすべてに `--stripe-test` を付ける。本番のconfigをテスト値にしない。scope別の保持と本番global pauseを尊重。詳細 [stripe-mode-isolation.md](stripe-mode-isolation.md)。
+
 ## 実装
 
 `lib/server/lifecycle-retention.ts` と private CLI `scripts/lifecycle-retention.mjs`。固定コレクションだけ、20件のdocument IDページング、全readを同一transaction内で再確認、config/対象/関連記録の版と削除先をdigestへ含める。dry-runに本文やUIDを出さない。apply時にdigestが一致しなければ停止。成功auditの同digest再実行は再削除せず既存結果を返す。

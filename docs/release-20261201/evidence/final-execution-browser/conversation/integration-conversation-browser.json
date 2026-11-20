@@ -1,0 +1,61 @@
+{
+  "kind": "Local real Chromium UI/storage with injected Auth/provider; no actual Gemini or OS keyboard.",
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "results": [
+    {
+      "width": 375,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 390,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 412,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 768,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    },
+    {
+      "width": 1280,
+      "yura3_lactone3_yura": true,
+      "request_model_and_assistant_attribution": true,
+      "markers": 2,
+      "reload_search_reopen": true,
+      "keyboard_selector_escape_focus": true,
+      "reduced_viewport_composer_visible": true,
+      "no_overflow": true,
+      "page_errors": []
+    }
+  ]
+}

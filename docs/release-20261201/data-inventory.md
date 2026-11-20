@@ -26,3 +26,5 @@
 |削除審査・hold・実行監査|retention_dispositions / retention_holds / retention_audit|運営|Admin SDK/IAMのみ|未決定、active holdは保全|原本消失、hold解除、監査期間承認|lifecycle closed_review / released_hold / closed_audit|法的保全を優先、削除にも監査|通常本人削除と別、公開しない|旧形式の対象不明はhold、全件スキャンなし|lifecycle emulator（対象/依存版/digest/pause/retry）|
 
 実際のTTL設定・定期実行・クラウド削除・PostHogの既送信データ削除・共有Auth削除は未実施。運営が保存義務/範囲を決め、dry-run結果を確認してから実行する。
+
+Stripe Sandboxはbilling_sandboxes/stripe_test配下の専用台帳/config、本人admin/billing_test_subscription。本番台帳とmodeを混ぜず、既存path/旧権利を維持する。private cleanupの--stripe-testは固定範囲だけを扱い、本番global pauseも尊重。テスト権利で本番Plusへ昇格せず、テスト売上を本番Outboxへ送らない。保持の期間/義務/レビューはテスト側にも別途必要。

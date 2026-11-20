@@ -1,30 +1,18 @@
-# v3/v4原本保護と復旧
+# v3/v4保護と復旧（2026-11-20）
 
-## データ変更の範囲
+## 2026-11-20 最終候補
 
-個人記録のv4形式・read-time v3互換・同期CAS・tombstone・明示的引き継ぎを維持する。全件migration、本人データの上書き、認証ID統合、Firestore Rules/index deployは実施しない。新規の事業/運営台帳は既存の非公開server rootまたは既存ユーザーadmin領域を利用し、一般クライアントに書込権を付けない。
+最終候補でv4形式の破壊的変更・既存Firestore全件migrationは行わない。新規紹介grantにprivate ownerUid、コードにAuth作成世代、紹介の端末pendingにrandom analyticsIdを追加するだけで、旧形式は読取defaultまたは保守的なhold/レビューへ落とす。過去会話のmodelを付け替えない。
 
-新しいデータは個人記録のファイル復元から分離する。古いbackupを復元しても有料権利、紹介成立、quota、権限、通知配送先、掲載許可をクライアント値で復元しない。個別削除のtombstoneを古いbackupで復活させない。ID取得前の原本と他IDのcacheを混合しない。
+保持処理は通常のアプリdeployとは別のprivate CLI。source/依存lockをpinし、operator承認がない限りdry-run。削除前の復元可能なバックアップ/hold/対象件数/復元可否を運営が確認し、digestとcursorを記録する。成功auditの再実行はidempotent。実際に消したデータをロールバックのgit checkoutだけで復元できるとは言わない。
 
-## 公開前
+障害順序: (1)新しい受付/課金申込/配信/cleanupを停止（cleanupはconfig/retention.paused=true） (2)既存Free/支払い管理/個人原本を保護 (3)Webの前版へ戻す場合もv4・tombstone/CAS/記録削除後Portalとsecurity修正を維持 (4)必要なデータ復元は専用テスト環境で検証してから運営承認。旧expiryのhold/pause未対応版でジョブを再開しない (5)個人記録削除でStripe契約を消したり、紹介台帳整理で永久装飾を消さない。
 
-1. 対象SHA、各PR、CI、依存lock、デプロイ、フラグ状態を保存。旧版とは別にv4を読める安全な復旧候補をbuildする。
-2. 専用IDでPC↔Androidの同期、再ログイン、export/復元、競合、別UID拒否、削除tombstoneを新sourceで確認する。普段の記録を破壊する試験をしない。
-3. Rules/indexの必要差分と対象DBを確認し、別承認する。共有Firebase Authを丸ごと消す操作をCamellia個人記録削除と混同しない。
-4. 有料・紹介・共有・通知・掲載申請は新規受付OFFのままdeployの技術確認を行い、その後各運用の別承認を受ける。
-
-## 障害・ロールバック
-
-- 原本を消して解決しない。まず追加書込を止め、元の端末cache/復旧backup/クラウドrevision/tombstoneを保持して比較する。無条件の「最後に保存した方」で上書きしない。
-- 新規購入・共有作成・紹介新規受付・通知dispatch・店舗申請をそれぞれの入口で停止する。既存契約の解約/履歴、共有取消、既存の無料機能と装飾の所有権は止めない。緊急の公開停止では公開共有の閲覧も止める。
-- Webhookを停止した場合は未反映の支払い/取消があると仮定し、Stripeの正規イベントとprotected台帳を照合して同じevent IDで再処理する。checkout成功画面や利用者の自己申告で権利を付けない。計測イベントも決済の証明として使わない。
-- 通知の配信結果が不明なら重複再送しない。既送信通知を端末から回収できるとは案内しない。
-- ロールバック先もv4の読み書き・削除tombstoneを扱え、Reactのセキュリティ修正版を維持する必要がある。旧mainの脆弱なReactへそのまま戻さない。データをv3へ落として互換にしない。
-- コードの巻戻しでStripe・通知購読・公開共有・店舗権限の状態が自動で戻るとはみなさない。各事業台帳を保持し、正規処理で失効・取消・再審査する。安易なコレクション全削除は禁止。
-
-本番ロールバック・実復旧・Rules適用は未実施。ローカルの原本保護/復元/削除回帰の結果と本番運用受入を分ける。
+本番のバックアップ/restore、Rules適用、TTL、cleanup/通知cron、Stripe契約移行は未実行。ローカルemulatorで原本保護、同時更新、削除・復元、legal hold、依存版変更、同digest再実行を確認する。実データ復旧の成功へ読み替えない。
 
 
-## 新しいPlus契約との互換性
+### Stripe分離の追加（候補 38dd2be）
 
-billing_contracts・正規Invoiceの契約参照・billing_subscriptionのconversationPolicyRequired/conversationPolicyを理解するserverを維持する。新規契約発行後は、この条件を捨てる旧Webhook/日次上限実装へロールバックしない。通常無料・legacy Plusを保護する。受付停止はcheckoutEnabledを用い、paid権利・正規Webhook・Portalを止める操作と分離する。詳細はplus-conversation-policy.md。
+[模式分離の手順](stripe-mode-isolation.md)を優先する。PreviewのStripeテストはテスト専用rootのconfig/billing、retention、ai_observationを使い、本番のconfigをテスト値へ上書きしない。本番顧客/契約/権利/売上をテストで更新しない。テスト台帳の削除は--stripe-testが必要。旧unscoped台帳はmodeを推測して一括移行・削除しない。408073fより前のmode未分離版へ決済バックエンドを戻さない。現在の本番にStripe契約があること/本番設定済みであることは未確認。
+
+削除CLIの実行sourceは408073f以降にpinする。不明なusage/旧lease/親期限を保護する共通判定を含む（retention-runtime-shape.md）。Web/APIとCLIの復旧は分離し、古い削除処理を再開しない。

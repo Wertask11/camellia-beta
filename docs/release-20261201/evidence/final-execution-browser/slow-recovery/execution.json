@@ -1,0 +1,11 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "recordedAtUTC": "2026-11-20T05:00:34.327267+00:00",
+  "kind": "Actual local Chromium with injected Auth/API/provider/OS. Not real Preview or Production acceptance.",
+  "results": [
+    {
+      "file": "result.json",
+      "sha256": "77d37bc9e52f22700e09d29476bbdac3f002a32b02061f9f9130611206f39668"
+    }
+  ]
+}

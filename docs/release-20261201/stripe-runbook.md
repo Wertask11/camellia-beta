@@ -1,65 +1,67 @@
-# Stripe接続・受入手順
+# Stripe接続・受入・障害対応（最終候補）
 
-この変更は公開許可ではない。Productionの設定変更/課金/送信は別承認。担当者は秘密値をチャットやGitへ送らずVercelの対象環境へ直接保存する。
+本番の課金開始は運営の明示承認まで行わない。キー/カード/メール本文をチャットやgitへ送らない。ここに記載した未決定値を自動適用しない。
 
-## 現在の実装範囲
+## 1. 環境を分ける
 
-公式stripe 23.2.0、API 2026-11-18.endiveを固定。raw bytesにStripe-Signatureを検証。invoice.paidだけでも金額を信用せず、canonical invoice/単一500JPY月額price/paid InvoicePayment/succeeded PaymentIntentの同一customerを確認する。署名付きでもcheckout.session.completedだけではPlusを付けない。
+|環境|Vercel secret設定|専用Firestore root|権利|
+|---|---|---|---|
+|Preview / Stripe Sandbox|CAMELLIA_STRIPE_ENABLED、CAMELLIA_BILLING_MODE=test、sk_test_で始まるSTRIPE_SECRET_KEY、STRIPE_WEBHOOK_SECRET|camellia_admin/release_phase1/billing_sandboxes/stripe_test|本人admin/billing_test_subscription|
+|Production / 本番Stripe|別承認後にmode=liveとsk_live_、本番用Webhook secret|既存camellia_admin/release_phase1|本人admin/billing_subscription（旧path維持）|
 
-customer→UID→Auth作成日時のサーバー専用bindingで誤付与を防止。既存webhook台帳のtransaction/idempotency/旧期間/返金順序/有効期限/既存operator権利保護を再利用。ブラウザ申告やURLのsuccessは権利の根拠にしない。
+Preview/live・Production/testをコードで拒否。テストのconfigを本番rootへ書かない。販売者表示APIも環境に合うrootを使う。テスト権利を本番が読まず、返金/削除がlive権利へ影響しない。テストの売上は本番Outboxへ送らない。既存未分類台帳を推測で移行/削除しない。詳細stripe-mode-isolation.md。
 
-全額返金は該当期間のPlusを無効化。部分返金はreviewRequiredとして記録し、独自の権利按分規則を作らない。更新失敗で未払い期間を付けず、既に支払い済みの期間は消さない。解約予約後も支払済み期間の期限を維持。期間終了後の権利はread-timeでも失効。
+## 2. Stripe側の準備
 
-支払い通知の解析/Stripe通信/DB障害は503にしてStripe再送対象とする。秘密・本文をログへ出さない。署名不一致は400、重複同一イベントは200。公式署名テストは実際の鍵や決済の成功証明ではない。
+1. Sandboxを用意。JPY500/月・数量1・税込総額500の固定Priceを作る。税/割引で500円以外にならないよう確認。
+2. Customer Portalは有効、解約は期間末、支払い方法/請求履歴を管理可能にし、subscription_updateは無効。承認したPortal configuration IDを取得。
+3. CheckoutのTerms URLを承認済みの正確なoriginのterms.htmlへ設定。
+4. Webhook送信先は同じ固定Previewの `/api/camellia/billing-webhook`。invoice.paid、invoice.payment_failed、customer.subscription.updated/deleted、charge.refundedを登録。SDK/APIはStripe23.2.0 / 2026-11-18.endiveと合わせる。
+5. 署名secret等はVercel Previewへ直接保存し、同じ固定branchをredeploy。Productionや新しいLINE callbackを追加しない。
 
-## 準備項目（この作業では設定しない）
+## 3. テスト専用configの承認
 
-1. Stripeアカウント/本人・事業審査、入金口座、公開事業者表示、規約・返金/解約方針を運営確認。
-2. SandboxでJPY500/月/数量1の固定priceを作成。税込価格の扱いを確定し、別途税額を加算して500円を超えないよう確認。
-3. Previewにのみtest鍵、Productionにのみlive鍵。`CAMELLIA_STRIPE_ENABLED=true`、`CAMELLIA_BILLING_MODE=test|live`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`。Preview/live・Production/test混在はコードで拒否。キーはpublic prefixを絶対に付けない。
-4. サーバー専用 `camellia_admin/release_phase1/config/billing` にapproved/enabled/provider=stripe/mode/monthlyPriceId/priceYen=500/currency=JPY/interval=month/approvedBy/approvedAt。設定欠落では503。一般利用者は書けないRulesが必要。既存共有Firebase全体Rulesをテストfixtureで上書きしない。
-5. `/api/camellia/billing-webhook` を登録。対象invoice.paid、invoice.payment_failed、customer.subscription.updated/deleted、charge.refunded。WebhookのAPIバージョンを固定SDKと合わせる。raw body parser無効を実デプロイで確認。
-6. Checkout/Portalは後続PRで接続。ここまでのPR単独では購入UI/顧客bindingの自動作成はまだ提供しない。
+上記のテストroot/config/billingに設定。未確認のapprovedをtrueにしない。
 
-## Sandbox受入（未実施）
+- approved/enabled/provider=stripe/mode=test、monthlyPriceId、priceYen=500/currency=JPY/interval=month、approvedBy/approvedAt。
+- checkoutEnabledは新規受付だけのスイッチ。止めてもWebhookとPortalを保持する。
+- checkoutOriginは固定Previewの正確なhttps origin（末尾slashなし）。termsVersion/disclosureVersion/portalConfiguration。
+- disclosuresApprovedとdisclosure。version/approved/approvedBy/approvedAt、実際に公開してよいseller/representative/address/contact/paymentTiming/cancellation/refund。利用者の情報やキーを入れない。
+- benefitsApproved/conversationPolicyReviewed、承認済みconversationPolicy（version/dailyLimit/historyMessages/historyChars/approvedBy/approvedAt/approved）。Plusの数値は未決定なので、承認前は購入を開始しない。無料日30の仕様は変更しない。
+- テストroot/config/retentionでbilling_customers/contracts/checkouts/events/receipts/analytics_outboxの保持を承認。法的保存対象を仮の年数で削除しない。
+- 新しい有料枠を30回より増やす承認がある場合だけ、テストroot/config/ai_observationへpaidExpansionApprovedとprimary/fallbackの有効な承認単価を設定。設定不足で既存Free30を止めない。
 
-購入→署名付き実Webhook→500円/Plus付与→更新→支払失敗→解約予約→期限切れ→全額/部分返金→同じWebhookの再送→古いinvoiceの返金順序→障害復旧。テスト用アカウントだけを使用し、普段の利用者に請求しない。
+型とvalidationの正本はcheckout.ts / conversation-policy.ts / retention-policy.ts。設定だけで実Stripe受入PASSにしない。承認された表示はbilling.htmlから確認できる。Test表示があることと、本番の公開表示が混ざらないことも確認する。
 
-実行日時、source SHA、Stripe test event IDの非公開証拠、権利と台帳の結果、実操作者を残す。実カード番号/鍵/本文/メールを公開ドキュメントへ残さない。Checkout遷移/署名fixture/emulatorを実Stripe決済PASSに数えない。
+## 4. Sandbox受入（実接続は未確認）
 
-## 障害・復旧
+専用の消してよいテストIDで行う。実カード・普段の利用者の契約を使わない。
 
-- 新規購入を止める場合、まずcheckout受付を止める。既存権利と署名検証付きWebhookの処理は維持して更新/返金の取りこぼしを防ぐ。全面緊急停止はStripe側再送と未処理台帳の回収計画を伴う。
-- 成功URLから復帰しただけなら「確認中」と表示。ユーザーに連打/再購入を促さない。
-- 回復後はStripe Dashboardの未配達イベントを同一IDで再送し、台帳の重複防止を確認。任意の再署名/偽のpaidイベント作成で復旧しない。
-- 不明なcustomer/別Auth作成日時は409として運営調査。自動で別UIDへ結び直さない。
-- Plus完了イベントの送信先はpseudonymous UUIDがある場合のみ。Firebase UIDへのfallbackを禁止。UUID未設定の旧顧客も支払い済みの権利は正常に付与し、計測が欠けることを別に扱う。outboxを作っただけでPostHog着信済みとしない。
-- 既存v4対応mainをロールバック基点として維持。customer/receipt/idempotency台帳を消して旧コードへ戻さない。
+1. 同じIDでMyのPlus表示→条件/販売者情報/500円/月/自動更新/解約条件を確認→明示同意→Checkout。
+2. Stripe公式のテスト支払い→実署名Webhook→Previewで権利。return URLだけで権利を付けない。本番でそのtest権利が付かないことも確認。
+3. 同じeventをDashboardから再送し冪等。更新、支払い失敗、古いinvoice順序、解約予約、期限切れ、全額/部分返金を検証。部分返金はreviewRequiredで、勝手な按分をしない。
+4. 個人記録削除の前に専用テストIDと確認し、削除後も `/?open=billing` から同じ本人確認で履歴/Portalへ到達できることを確認。契約/台帳を個人記録削除で消さない。
+5. Testの顧客/契約/返金/cleanupが本番台帳/権利を変更しないこと、Test売上が本番PostHogへ入らないことを確認。
+6. 日時/source SHA/実操作者/非公開のtest event照合/権利・台帳結果を残す。公開資料に鍵・カード・メール・顧客IDを残さない。
 
-## Checkout/Portal接続（後続PR）
+実接続/購入前のSDK署名fixture、local HTTP、emulator、画面遷移は実Stripe成功に数えない。実キー/設定をこちらで確認できていない。
 
-購入は同じサーバー設定に加え、`checkoutEnabled=true`、`checkoutOrigin`（固定Previewまたは本番の正確なorigin）、`termsVersion`、`disclosureVersion`、`disclosuresApproved=true`、`portalConfiguration`が必要。
+## 5. 障害・停止・復旧
 
-`disclosure`にはversion/approved/approvedBy/approvedAtと、seller/representative/address/contact/paymentTiming/cancellation/refundの実際の公開表示文を設定する。秘密値や利用者の情報を入れない。未設定なら購入停止。`/billing.html` は承認済みの項目だけを公開APIから取得し、準備中なら購入できないことを表示。元のbilling設定や鍵・顧客IDは返さない。
+新規購入だけ止めるならcheckoutEnabled=false。処理中セッションが即取消になるわけではない。運営がStripe Dashboardで未完了sessionのexpire/処理中支払いを照合する。Webhook/Portalを止める全面停止は再送/未処理回収計画を伴う。
 
-Stripe DashboardでTerms URLを設定し、Portalは解約を期間末、支払い方法/請求履歴管理を許可、subscription_updateは無効の承認済み構成を用意する。コードは構成を再検証してからPortalへ移動する。解約は個人記録削除や利用停止後もverified identityから到達可能。
+ネットワーク切断後は同じprotected intent / Stripe idempotency keyを再利用。14分以上の未確定intentは運営照合へ。45分のsession期限前に別requestで二重購入しない。incompleteを含む既存subscription/Plus/試用があれば新規請求を拒否する。
 
-テスト用Priceは税込総額500円（exclusive税を追加するPriceは拒否）。Checkoutはカード/数量1/プロモーションコードなし/自動trialなし。顧客metadataにUID・メール・健康/会話記録を送らない。Stripe自身が決済に必要な情報を購入者から受け取ることは別途Privacyへ正確に記載する必要がある。
+署名不一致は400、同一重複は200、Stripe正規参照/DB障害は503で再送対象。customer/Auth作成世代の不一致は409として調査し、別UIDへ自動付替しない。任意にpaidイベントを偽造/再署名して復旧しない。
 
-通信が切れてもprotected intentとStripe idempotency keyで同じ手続きを再利用。Myで開き直した場合、本人の未期限切れpending requestを返して再開。古い未確定intent（14分以上）は新規発行で回避せず運営照合へ。Checkout作成後に応答だけ失われた場合、同じcustomerとopaque client_reference_idをStripe Dashboardで確認する。45分のsession期限前に新規requestで二重購入しない。既存subscription（incomplete含む）/有効Plus/試用があれば新規請求を拒否。
+500円/正規Invoice/InvoicePayment/PaymentIntent/Priceとcustomerを再確認して付与。更新失敗で未払期間を作らず、支払済期間は保持。解約予約で期間を消さず、全額返金は該当期間だけを無効化。旧権利を守る。
 
-新規受付停止は`checkoutEnabled=false`。既にStripeで開かれたセッションまで即時取消になるとは言わない。必要なら承認済み担当者がStripe Dashboardで未完了セッションをexpireし、処理中支払いを照合する。Webhook処理とPortalは新規受付と分離して維持する。
+削除はlifecycleの運営承認/終了レビュー/holdを経る。Sandboxは--stripe-test。Stripe自体の保存/顧客閉鎖は別操作。408073f以降のmode分離・v4対応・security修正を保った版をrollback下限とし、古い混在版へ戻さない。
 
-## 自動検証の再現
+## 6. 再現用のローカル検証
 
-- `npm run lint && npm run typecheck && npm test && npm run test:firestore`
-- `VERCEL_ENV=production npm run build`
-- `node tests/browser/stripe-checkout-server.mjs` （ローカル4181、認証/計測はfixture、実APIへの接続なし）
-- 別端末コマンドで `python tests/browser/stripe-checkout.py` （実Chromium、375/390/412/768/1280、支払いAPIもfixture）
+`npm run lint` / `npm run typecheck` / `npm test` / `npm run test:firestore` / `npm run build`。
 
-テスト用fixtureサーバーを一般公開しない。これは実ログイン/Stripe Sandbox/実機の代替PASSではない。実Stripe受入までは支払い公開不可。
+`python tests/run-final-release-browser.py` はinstalled Python Playwrightと/usr/bin/chromiumを使い、localhostにfixtureを起動して5幅を検証する。Auth/Stripe/Gemini/OSは合成。一般公開しない。実操作と合成結果を区別した証拠はtest-evidence.md。
 
-
-## 支払い管理の直接入口
-
-`/?open=billing` はプロフィール再作成・個人記録の引き継ぎを要求しない本人確認専用入口。販売者情報からも開ける。以前と同じメール・LINE・Googleを使い、別IDへ自動統合しない。ローカル合成検証と、Stripe Sandbox/実Authの受入を区別する。詳細は[billing-management.md](billing-management.md)。Stripe接続障害時の解約窓口と受付手順も、課金前に運営が確認する。
+計測には本人同意と独立したanalytics UUIDが必要。未設定の旧顧客へFirebase UIDを代用せず、正規支払いの権利は付与し、計測が欠けることを別に扱う。

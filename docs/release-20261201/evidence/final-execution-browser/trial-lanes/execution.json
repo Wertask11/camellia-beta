@@ -1,0 +1,11 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "recordedAtUTC": "2026-11-20T05:00:34.328049+00:00",
+  "kind": "Actual local Chromium with injected Auth/API/provider/OS. Not real Preview or Production acceptance.",
+  "results": [
+    {
+      "file": "referral-ai-lanes-browser.json",
+      "sha256": "6bf3c0420cbffbe9c36eda65a675e772ff50e864ebae9224deb19e431a9f0e7d"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "kind": "Local Chromium throttling only. No physical keyboard, real Auth or provider.",
+  "results": [
+    {
+      "width": 375,
+      "network": "150ms / down200kB/s / up75kB/s",
+      "cpuSlowdown": 4,
+      "api503ThenExplicitRetry": true,
+      "selectorEscapeFocus": true,
+      "height500ComposerVisible": true,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "network": "150ms / down200kB/s / up75kB/s",
+      "cpuSlowdown": 4,
+      "api503ThenExplicitRetry": true,
+      "selectorEscapeFocus": true,
+      "height500ComposerVisible": true,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 412,
+      "network": "150ms / down200kB/s / up75kB/s",
+      "cpuSlowdown": 4,
+      "api503ThenExplicitRetry": true,
+      "selectorEscapeFocus": true,
+      "height500ComposerVisible": true,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 768,
+      "network": "150ms / down200kB/s / up75kB/s",
+      "cpuSlowdown": 4,
+      "api503ThenExplicitRetry": true,
+      "selectorEscapeFocus": true,
+      "height500ComposerVisible": true,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 1280,
+      "network": "150ms / down200kB/s / up75kB/s",
+      "cpuSlowdown": 4,
+      "api503ThenExplicitRetry": true,
+      "selectorEscapeFocus": true,
+      "height500ComposerVisible": true,
+      "overflow": false,
+      "pageErrors": []
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "source": "408073f6f1a7b23d80b63b9f2487eb93b12f2a05",
+  "recordedAtUTC": "2026-11-20T05:00:34.321826+00:00",
+  "kind": "Actual local Chromium with injected Auth/API/provider/OS. Not real Preview or Production acceptance.",
+  "results": [
+    {
+      "file": "billing-analytics-browser.json",
+      "sha256": "cbf08c2a6edda02b1831691516da51d44cd7a49d11ff586e849ad972bf713694",
+      "legacyFixtureDateField": "2026-11-19"
+    }
+  ]
+}

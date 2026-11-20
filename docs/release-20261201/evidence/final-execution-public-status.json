@@ -1,0 +1,190 @@
+{
+  "atUTC": "2026-11-20T05:03:58.179543+00:00",
+  "kind": "Public GET only; old Production, not candidate acceptance",
+  "main": "fe7f85947a0799f9b4d4097e34c389839c3f7ec1",
+  "latestGithubProductionLabelDeployments": [
+    {
+      "url": "https://api.github.com/repos/Wertask11/camellia-beta/deployments/7876488496",
+      "id": 7876488496,
+      "node_id": "DE_kwDOUOEemc8AAAAB1XmtMA",
+      "task": "deploy",
+      "original_environment": "Production",
+      "environment": "Production",
+      "description": null,
+      "created_at": "2026-11-18T06:59:27Z",
+      "updated_at": "2026-11-18T06:59:27Z",
+      "statuses_url": "https://api.github.com/repos/Wertask11/camellia-beta/deployments/7876488496/statuses",
+      "repository_url": "https://api.github.com/repos/Wertask11/camellia-beta",
+      "creator": {
+        "login": "vercel[bot]",
+        "id": 35613825,
+        "node_id": "MDM6Qm90MzU2MTM4MjU=",
+        "avatar_url": "https://avatars.githubusercontent.com/in/8329?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/vercel%5Bbot%5D",
+        "html_url": "https://github.com/apps/vercel",
+        "followers_url": "https://api.github.com/users/vercel%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/vercel%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/vercel%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/vercel%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/vercel%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/vercel%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/vercel%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/vercel%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/vercel%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "sha": "fe7f85947a0799f9b4d4097e34c389839c3f7ec1",
+      "ref": "fe7f85947a0799f9b4d4097e34c389839c3f7ec1",
+      "payload": {},
+      "transient_environment": false,
+      "production_environment": false,
+      "performed_via_github_app": null
+    },
+    {
+      "url": "https://api.github.com/repos/Wertask11/camellia-beta/deployments/7875527317",
+      "id": 7875527317,
+      "node_id": "DE_kwDOUOEemc8AAAAB1WsClQ",
+      "task": "deploy",
+      "original_environment": "Production",
+      "environment": "Production",
+      "description": null,
+      "created_at": "2026-11-18T05:59:21Z",
+      "updated_at": "2026-11-18T05:59:22Z",
+      "statuses_url": "https://api.github.com/repos/Wertask11/camellia-beta/deployments/7875527317/statuses",
+      "repository_url": "https://api.github.com/repos/Wertask11/camellia-beta",
+      "creator": {
+        "login": "vercel[bot]",
+        "id": 35613825,
+        "node_id": "MDM6Qm90MzU2MTM4MjU=",
+        "avatar_url": "https://avatars.githubusercontent.com/in/8329?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/vercel%5Bbot%5D",
+        "html_url": "https://github.com/apps/vercel",
+        "followers_url": "https://api.github.com/users/vercel%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/vercel%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/vercel%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/vercel%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/vercel%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/vercel%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/vercel%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/vercel%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/vercel%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "sha": "40c5a837d442f7ed091a5026d9f8f3328925ce6f",
+      "ref": "40c5a837d442f7ed091a5026d9f8f3328925ce6f",
+      "payload": {},
+      "transient_environment": false,
+      "production_environment": false,
+      "performed_via_github_app": null
+    },
+    {
+      "url": "https://api.github.com/repos/Wertask11/camellia-beta/deployments/7875000024",
+      "id": 7875000024,
+      "node_id": "DE_kwDOUOEemc8AAAAB1WL22A",
+      "task": "deploy",
+      "original_environment": "Production",
+      "environment": "Production",
+      "description": null,
+      "created_at": "2026-11-18T05:22:49Z",
+      "updated_at": "2026-11-18T05:22:49Z",
+      "statuses_url": "https://api.github.com/repos/Wertask11/camellia-beta/deployments/7875000024/statuses",
+      "repository_url": "https://api.github.com/repos/Wertask11/camellia-beta",
+      "creator": {
+        "login": "vercel[bot]",
+        "id": 35613825,
+        "node_id": "MDM6Qm90MzU2MTM4MjU=",
+        "avatar_url": "https://avatars.githubusercontent.com/in/8329?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/vercel%5Bbot%5D",
+        "html_url": "https://github.com/apps/vercel",
+        "followers_url": "https://api.github.com/users/vercel%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/vercel%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/vercel%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/vercel%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/vercel%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/vercel%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/vercel%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/vercel%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/vercel%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "sha": "a6ff330acdbe3b130720989e1378fea2a81943c0",
+      "ref": "a6ff330acdbe3b130720989e1378fea2a81943c0",
+      "payload": {},
+      "transient_environment": false,
+      "production_environment": false,
+      "performed_via_github_app": null
+    }
+  ],
+  "production": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 13300
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "status": 200,
+      "bytes": 560
+    },
+    {
+      "path": "/api/camellia/chat",
+      "status": 200,
+      "bytes": 103,
+      "publicStatus": {
+        "enabled": true,
+        "dataPolicy": "unknown",
+        "serverAuthConfiguration": "present",
+        "rateLimitMode": "firestore"
+      }
+    },
+    {
+      "path": "/api/camellia/membership",
+      "status": 200,
+      "bytes": 79,
+      "publicStatus": {
+        "plan": "free",
+        "trial": false,
+        "paid": false,
+        "checkoutReady": false,
+        "priceYen": 500
+      }
+    },
+    {
+      "path": "/api/camellia/referral",
+      "status": 200,
+      "bytes": 83,
+      "publicStatus": {
+        "enabled": false
+      }
+    },
+    {
+      "path": "/api/camellia/place",
+      "status": 503,
+      "bytes": 29,
+      "publicStatus": {
+        "error": "PLACE_UNAVAILABLE"
+      }
+    },
+    {
+      "path": "/api/camellia/circle",
+      "status": 401,
+      "bytes": 26,
+      "publicStatus": {
+        "error": "LOGIN_REQUIRED"
+      }
+    }
+  ],
+  "fixedPreviewReachability": {
+    "reason": "HTTPS tunnel 403 from workspace; not bypassed"
+  },
+  "mutations": false
+}
