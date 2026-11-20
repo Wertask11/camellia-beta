@@ -11,6 +11,19 @@ const app = initializeApp(
   db = getFirestore(app),
   vite = await createServer({
     configFile: false,
+    plugins: [
+      {
+        name: 'mode-disclosure-fixture',
+        enforce: 'pre',
+        resolveId(id) {
+          if (id.endsWith('/server/admin.js')) return '\0mode-disclosure-admin';
+        },
+        load(id) {
+          if (id === '\0mode-disclosure-admin')
+            return 'export const SERVER_ROOT="camellia_admin/release_phase1";export const adminConfigured=()=>true;export const serverAdmin=()=>({db:globalThis[Symbol.for("mode-disclosure-db")]});';
+        },
+      },
+    ],
     root: process.cwd(),
     server: { middlewareMode: true, hmr: false },
   }),
@@ -19,6 +32,7 @@ const app = initializeApp(
   now = Date.now(),
   old = new Date(now - 30 * 86400000).toISOString(),
   envBefore = process.env.VERCEL_ENV;
+globalThis[Symbol.for('mode-disclosure-db')] = db;
 try {
   const {
       billingRoot,
@@ -172,19 +186,17 @@ try {
     for (const d of (await db.collection(`${billingRoot('test')}/${c}`).get())
       .docs)
       await d.ref.delete();
-  await db
-    .doc(billingConfigPath('retention', 'test'))
-    .set({
-      lifecycleVersion: 'lifecycle_v1',
-      collections: {
-        billing_customers: {
-          ...retention,
-          mode: 'closed_payment',
-          legalReviewApproved: true,
-          legalBasis: 'LOCAL TEST ACCOUNT CLOSED',
-        },
+  await db.doc(billingConfigPath('retention', 'test')).set({
+    lifecycleVersion: 'lifecycle_v1',
+    collections: {
+      billing_customers: {
+        ...retention,
+        mode: 'closed_payment',
+        legalReviewApproved: true,
+        legalBasis: 'LOCAL TEST ACCOUNT CLOSED',
       },
-    });
+    },
+  });
   const customer = billingCustomerPath('stripe', 'cus_same_fixture_id', 'test');
   await reviewRetentionDisposition(
     db,
@@ -223,12 +235,56 @@ try {
     (await db.doc(billingEntitlementPath(uid, 'live')).get()).data(),
     saved,
   );
+  const disclosure = (
+    await vite.ssrLoadModule('/api/camellia/billing-disclosure.ts')
+  ).default;
+  for (const mode of ['test', 'live']) {
+    await db
+      .doc(billingConfigPath('billing', mode))
+      .set({
+        disclosuresApproved: true,
+        disclosure: {
+          approved: true,
+          approvedBy: 'LOCAL',
+          approvedAt: old,
+          version: 'local',
+          seller: 'LOCAL ' + mode,
+          representative: 'LOCAL',
+          address: 'LOCAL',
+          contact: 'LOCAL',
+          paymentTiming: 'LOCAL',
+          cancellation: 'LOCAL',
+          refund: 'LOCAL',
+        },
+      });
+    process.env.VERCEL_ENV = mode === 'test' ? 'preview' : 'production';
+    let status, body;
+    await disclosure(
+      { method: 'GET' },
+      {
+        setHeader() {},
+        status(c) {
+          status = c;
+          return {
+            json(v) {
+              body = v;
+            },
+          };
+        },
+      },
+    );
+    assert.equal(status, 200);
+    assert.equal(body.seller, 'LOCAL ' + mode);
+    assert.equal(body.mode, mode);
+    assert.ok(!('monthlyPriceId' in body));
+  }
   console.log(
     'PASS isolated sandbox config/customer/contract ledger namespace and entitlement, production ignores test rights, test refunds/cleanup preserve live rights, shared legacy rights remain in Preview, sandbox revenue suppressed, scoped retention dry-run/apply. Firestore/provider/Auth fixtures only; no actual Stripe purchase.',
   );
 } finally {
   if (envBefore === undefined) delete process.env.VERCEL_ENV;
   else process.env.VERCEL_ENV = envBefore;
+  delete globalThis[Symbol.for('mode-disclosure-db')];
   await vite.close();
   await db.terminate();
   await deleteApp(app);
