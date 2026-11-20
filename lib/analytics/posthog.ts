@@ -14,6 +14,7 @@ import type {
 } from '@/types';
 
 const SAFE_PROPERTIES: Record<AnalyticsEventName, readonly string[]> = {
+  referral_view:[],referral_link_created:[],referral_link_revoked:[],referral_link_shared:['share_method'],referral_trial_granted:[],tree_decoration_claimed:[],tree_decoration_equipped:[],
   camellia_id_prompt_view:['entry_session'],camellia_id_start:['method','entry_session'],camellia_id_complete:['method','entry_session','id_operation'],camellia_id_error:['method','reason','entry_session'],record_transfer_complete:['entry_session'],record_transfer_error:['reason','entry_session'],reflection_saved:['catalog'],place_comparison_view:['catalog','personalized'],
   discover_action_selected:['actionId'],place_recommendation_view:['catalog','personalized'],place_selected:['place_id','catalog'],my_view:[],
   partner_share_view:['share_kind'],partner_share_created:['share_kind'],partner_share_sent:['share_kind','share_result'],partner_share_revoked:[],partner_share_open:[],
@@ -275,6 +276,7 @@ export function forwardEvent(event: AnalyticsEvent, state: CamelliaState, onDeli
 }
 
 const AUTH_EVENT_PROPERTIES = {
+  referral_trial_granted:[],
   camellia_id_prompt_view:['entry_session','experience_version','id_state','plan','id_operation'],camellia_id_start:['method','entry_session','experience_version','id_state','plan','id_operation'],camellia_id_complete:['method','entry_session','experience_version','id_state','plan','id_operation'],camellia_id_error:['method','reason','entry_session','experience_version','id_state','plan','id_operation'],
   login_view: ['authenticated', 'entry_flow', 'entry_session'],
   auth_method_selected: ['method', 'auth_method', 'entry_flow', 'entry_session'],
@@ -312,14 +314,20 @@ export function captureAuthEvent(
   name: keyof typeof AUTH_EVENT_PROPERTIES,
   properties: Record<string, string | number | boolean>,
   distinctId: string,
+  stableId?: string,
 ) {
   if (!initAnalytics(distinctId)) return false;
-  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  const id = stableId&&/^[a-f0-9-]{36}$/i.test(stableId)?stableId:globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
   const event: AnalyticsEvent = { id, name, createdAt: analyticsTimestamp() };
   return captureDurably(event, {
     ...sanitizeAuthEventProperties(name, properties), ...sanitizeAttribution(properties),
     $insert_id: id, event_schema: properties.experience_version==='free_id_v1'?2:1, app_version: 'beta-v3', $process_person_profile: false,
   });
+}
+
+/** Uses only the analytics profile already initialized by the app, never a Firebase UID or referral token. */
+export function captureReferralGrant(stableId:string){
+  return identifiedId&&/^[a-f0-9-]{36}$/i.test(stableId)?captureAuthEvent('referral_trial_granted',{},identifiedId,stableId):false;
 }
 
 const ENUMS: Record<string, readonly string[]> = {

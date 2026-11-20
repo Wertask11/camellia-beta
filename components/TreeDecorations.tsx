@@ -17,8 +17,12 @@ type State = {
 };
 export function TreeDecorations({
   onActive,
+  onTrack = () => {},
 }: {
   onActive: (value: TreeDecoration | null) => void;
+  onTrack?: (
+    name: 'tree_decoration_claimed' | 'tree_decoration_equipped',
+  ) => void;
 }) {
   const [value, setValue] = useState<State>(),
     [busy, setBusy] = useState(false),
@@ -67,6 +71,10 @@ export function TreeDecorations({
     setError('');
     try {
       const next = await request(body);
+      if (next && body.operation === 'claim')
+        onTrack('tree_decoration_claimed');
+      if (next && body.operation === 'equip')
+        onTrack('tree_decoration_equipped');
       setValue((old) =>
         body.operation === 'list' && old && next
           ? {

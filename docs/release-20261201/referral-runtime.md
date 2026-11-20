@@ -38,3 +38,8 @@ My「紹介とPlus体験」に本人の作成済みリンク一覧を追加。�
 紹介コードは20件＋cursor、装飾は100件＋cursor。100件を超えた永久権利も本人が続きを開け、別ページの装飾を装着/表示できる。上限到達で権利を失ったように見せない。紹介の新規受付は既存の予算/AI/期間/承認/保持gateを維持し、ONにしていない。
 
 新しい `tests/referral-history-firestore.mjs` はローカルemulatorで所有者境界、受付OFF中の取消、冪等、Auth世代、historyの秘密非混入、永久権利103件のページングを実行する。実際の紹介成立・本番特典の付与ではない。
+
+
+### 成立計測（2026-11-20）
+
+referral_view / referral_link_created / referral_link_revoked / referral_link_shared、referral_trial_granted、tree_decoration_claimed / tree_decoration_equippedをallowlistへ接続。UIは操作成功後だけ記録する。共有はOSへの受け渡し/コピーであり、受信者への配達を意味しない。成立イベントはserverのgranted=trueが必要で、503や別IDへの切替後は発行しない。capture時の独立したrandom UUIDを$insert_idとして再利用し、同じ成立の再試行を重複排除する。token/intent/UID/email/送り先/デザイン名/本文は渡さない。既に初期化済みの分析プロフィールだけを使い、Firebase UIDをdistinct_idにしない。opt-out/DNT/配送停止を既存の通り尊重する。実PostHog着信の証拠は別途必要。

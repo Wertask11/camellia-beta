@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
+import type { AnalyticsEventName } from '@/types';
 import {
   referralHistory,
   revokeReferral,
@@ -7,7 +8,14 @@ import {
   referralStatus,
   issueReferral,
 } from '@/lib/referral/request';
-export function ReferralPreparation() {
+export function ReferralPreparation({
+  onTrack = () => {},
+}: {
+  onTrack?: (
+    name: AnalyticsEventName,
+    p?: Record<string, string | number | boolean>,
+  ) => void;
+}) {
   const [ready, setReady] = useState(false),
     [busy, setBusy] = useState(false),
     [url, setUrl] = useState(''),
@@ -39,6 +47,7 @@ export function ReferralPreparation() {
     setBusy(true);
     try {
       await revokeReferral(id);
+      onTrack('referral_link_revoked');
       setHistory((old) =>
         old
           ? {
@@ -70,6 +79,7 @@ export function ReferralPreparation() {
     setNotice('');
     try {
       const created = await issueReferral();
+      onTrack('referral_link_created');
       setUrl(created);
       const token = new URL(created).searchParams.get('referral')!;
       issuedId.current = Array.from(
@@ -96,6 +106,9 @@ export function ReferralPreparation() {
       if (native)
         await navigator.share({ title: 'Camelliaで、自分のための選択を', url });
       else await navigator.clipboard.writeText(url);
+      onTrack('referral_link_shared', {
+        share_method: native ? 'share' : 'copy',
+      });
       setNotice(
         native
           ? '共有先の画面へ渡しました。'
@@ -110,6 +123,7 @@ export function ReferralPreparation() {
       className="my-feature-preferences"
       onToggle={(e) => {
         if (e.currentTarget.open) {
+          onTrack('referral_view');
           check();
           void load();
         }
