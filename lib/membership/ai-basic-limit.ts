@@ -4,6 +4,7 @@ import {SERVER_ROOT} from '../server/admin.js';
 import {FREE_DAILY_LIMIT,freeDay,freeDayEnd} from '../free/access.js';
 import {memberStatus} from './server.js';
 import type{ConversationRateDecision}from'./conversation-policy.js';
+import{billingConfigPath}from'../billing/scope.js';
 import{paidExpansionReady}from'./paid-expansion.js';
 /** The same approved Free daily ceiling applies after ID acquisition; style/thread switches cannot reset it. */
 export async function takeMemberFreeDaily(db:Firestore,uid:string,now=Date.now(),classify=false,lane:'basic'|'referral_extension'='basic',details=false):Promise<ConversationRateDecision>{
@@ -15,7 +16,7 @@ export async function takeMemberFreeDaily(db:Firestore,uid:string,now=Date.now()
   const referral='trialSource'in plan&&plan.trialSource==='referral';
   if(lane==='basic'&&plan.plan==='plus'&&!referral&&!plan.conversationPolicyRequired)return true;
   const policy=plan.conversationPolicyRequired?plan.conversationPolicy:undefined;
-  const expansion=policy&&policy.dailyLimit>FREE_DAILY_LIMIT?paidExpansionReady((await tx.get(db.doc(`${SERVER_ROOT}/config/ai_observation`))).data(),now):true;
+  const expansion=policy&&policy.dailyLimit>FREE_DAILY_LIMIT?paidExpansionReady((await tx.get(db.doc(billingConfigPath('ai_observation',plan.billingMode==='test'?'test':'live')))).data(),now):true;
   const limit=expansion?policy?.dailyLimit??FREE_DAILY_LIMIT:FREE_DAILY_LIMIT;
   if(!expansion)console.warn('camellia_plus_cost_unavailable',{stage:'expansion_pricing'});
   if(plan.conversationPolicyRequired&&!policy)console.warn('camellia_plus_policy_unavailable',{stage:'contract_snapshot'});

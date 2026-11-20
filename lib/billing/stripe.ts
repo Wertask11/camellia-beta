@@ -29,7 +29,7 @@ const iso = (seconds: number) => {
 };
 /** Only signed events are inspected. Their IDs select canonical Stripe resources, never client assertions. */
 export function stripeAdapter(stripe: Stripe, options: { secret: string; mode: StripeMode; priceId: string }): BillingAdapter {
-  return { id: 'stripe', async verify(raw, signature) {
+  return { id: 'stripe',mode:options.mode, async verify(raw, signature) {
     const event = stripe.webhooks.constructEvent(Buffer.from(raw), signature, options.secret);
     if (event.livemode !== (options.mode === 'live')) throw new Error('STRIPE_MODE_MISMATCH');
     const supported = ['invoice.paid', 'invoice.payment_failed', 'customer.subscription.updated', 'customer.subscription.deleted', 'charge.refunded'];

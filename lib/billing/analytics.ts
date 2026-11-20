@@ -1,12 +1,13 @@
 import{createHash}from'node:crypto';
 import{FieldPath,type Firestore}from'firebase-admin/firestore';
+import{billingRoot,type BillingMode}from'./scope.js';
 import{SERVER_ROOT}from'../server/admin.js';
 import{approvedRetention}from'../server/retention-policy.js';
 const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
 const uuid=(v:unknown)=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 export class BillingAnalyticsError extends Error{}
 const requireState=(v:unknown,code:string)=>{if(!v)throw new BillingAnalyticsError(code);};
-export const billingAnalyticsPreferencePath=(uid:string)=>`${SERVER_ROOT}/billing_analytics_preferences/${hash(uid)}`;
+export const billingAnalyticsPreferencePath=(uid:string,mode:BillingMode='live')=>`${billingRoot(mode)}/billing_analytics_preferences/${hash(uid)}`;
 /** A transport receipt is not proof of arrival in PostHog or of a payment. */
 export type BillingAnalyticsDriver=(payload:Record<string,unknown>)=>Promise<number>;
 export function billingAnalyticsPayload(v:Record<string,unknown>,now=Date.now()){
@@ -16,7 +17,7 @@ export function billingAnalyticsPayload(v:Record<string,unknown>,now=Date.now())
 }
 const approvedDestination=(v:Record<string,unknown>|undefined)=>v?.approved===true&&v.enabled===true&&v.privacyReviewed===true&&v.projectId===594848&&v.host==='https://us.i.posthog.com'&&typeof v.approvedBy==='string'&&v.approvedBy.length>0&&typeof v.approvedAt==='string'&&Number.isFinite(Date.parse(v.approvedAt));
 export async function billingAnalyticsReady(db:Firestore,env:Record<string,string|undefined>=process.env){
- if(env.CAMELLIA_BILLING_ANALYTICS_ENABLED!=='true'||!/^phc_[A-Za-z0-9]+$/.test(env.CAMELLIA_POSTHOG_PROJECT_TOKEN??''))return false;
+ if(env.VERCEL_ENV==='preview'||env.CAMELLIA_BILLING_ANALYTICS_ENABLED!=='true'||!/^phc_[A-Za-z0-9]+$/.test(env.CAMELLIA_POSTHOG_PROJECT_TOKEN??''))return false;
  const[c,r]=await Promise.all([db.doc(`${SERVER_ROOT}/config/billing_analytics`).get(),db.doc(`${SERVER_ROOT}/config/retention`).get()]);const v=c.data();
  return approvedDestination(v)&&approvedRetention(r.data(),['billing_analytics_outbox']);
 }

@@ -14,12 +14,12 @@ with sync_playwright()as p:
    req=r.request
    if '/api/camellia/billing' in req.url:
     b=req.post_data_json;calls.append(b['operation'])
-    if b['operation']=='status':return r.fulfill(json={'ready':False,'customer':True,'priceYen':500})
+    if b['operation']=='status':return r.fulfill(json={'mode':'test','ready':False,'customer':True,'priceYen':500})
     if b['operation']=='history':return r.fulfill(json={'invoices':[{'status':'paid','amountPaidYen':500,'createdAt':'2026-11-19T00:00:00Z'}],'more':False})
     return r.fulfill(status=503,json={'error':'BILLING_NOT_READY'})
    if req.url.startswith(origin):return r.continue_()
    return r.abort()
-  page.route('**/*',route);page.goto(origin+'/?open=billing');expect(page.get_by_role('heading',name='支払い履歴・解約',exact=True)).to_be_visible();expect(page.get_by_text('500円の支払い',exact=False)).to_be_visible();button=page.get_by_role('button',name='支払い方法・解約を確認する',exact=True);button.click();expect(page.get_by_role('alert')).to_be_visible();expect(button).to_be_enabled();assert calls.count('portal')==1 and 'checkout'not in calls
+  page.route('**/*',route);page.goto(origin+'/?open=billing');expect(page.get_by_role('heading',name='支払い履歴・解約',exact=True)).to_be_visible();expect(page.get_by_text('500円の支払い',exact=False)).to_be_visible();expect(page.get_by_text('Stripeのテストモードです。',exact=False)).to_be_visible();button=page.get_by_role('button',name='支払い方法・解約を確認する',exact=True);button.click();expect(page.get_by_role('alert')).to_be_visible();expect(button).to_be_enabled();assert calls.count('portal')==1 and 'checkout'not in calls
   assert page.evaluate("localStorage.getItem('camellia-prototype-v3')")=='PRIVATE ORIGINAL RECORD SENTINEL'
   assert not page.evaluate('document.documentElement.scrollWidth>innerWidth');assert not errors,errors
   page.screenshot(path=str(out/f'{width}.png'));page.get_by_role('button',name='支払い管理からログアウト',exact=True).click();expect(page.get_by_label('支払いに使ったメールアドレス',exact=True)).to_be_visible();assert page.evaluate("localStorage.getItem('camellia-prototype-v3')")=='PRIVATE ORIGINAL RECORD SENTINEL'

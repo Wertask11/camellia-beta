@@ -181,6 +181,11 @@ export function BillingManagementScreen() {
       <section className="screen identity-screen">
         <p className="eyebrow">Camellia Plus</p>
         <h1>支払い履歴・解約</h1>
+        {result?.status?.mode === 'test' && (
+          <p className="meta">
+            Stripeのテストモードです。ここでの購入・権利・履歴は本番とは別で、実際の請求はありません。
+          </p>
+        )}
         <p>
           支払いに使ったCamellia
           IDで確認できます。記録を削除した後や、プロフィール入力・利用再開の前でも開けます。

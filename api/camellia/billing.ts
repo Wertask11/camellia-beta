@@ -26,7 +26,7 @@ export default async function billing(req: Req, res: Res) {
   // Billing management remains reachable after suspension or personal-record deletion.
   const account = await deps.auth.getUser(user.uid), created = account.metadata.creationTime;
   const limit = createSharedRateLimiter(deps.db,{CAMELLIA_CHAT_RATE_USER:'20',CAMELLIA_CHAT_RATE_GLOBAL:'1000',CAMELLIA_CHAT_RATE_WINDOW_SECONDS:'300'}, Date.now, 'billing_rate_windows');
-  if (!await limit.take(`billing:${user.uid}`)) return res.status(429).json({error:'SLOW_DOWN'});
+  if (!await limit.take(`billing:${settings.mode==='test'?'test:':''}${user.uid}`)) return res.status(429).json({error:'SLOW_DOWN'});
   const service = new StripeCheckoutService(deps.db,stripeClient(settings.key),settings.mode), cfg = await service.configuration();
   if (body.operation === 'status') return res.status(200).json(await service.status(user.uid,created));
   // A token-authenticated read does not require new-intake configuration or a consumer profile.
