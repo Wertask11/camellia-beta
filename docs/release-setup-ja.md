@@ -22,12 +22,12 @@ Vercelの環境変数を変えたら、最後に **mainの最新Production deplo
   - UIDはFirebaseコンソールの Authentication で確認できます。
 - その後、Camelliaに入り直すと、Discover → Place → 掲載管理 から「紹介」を追加できます。
   - 候補一覧：/mnt/project-files/camellia/place-candidates-fukuoka.md
-- 福岡の26件（オーナー承認済み）は、下書きとしてまとめて入れられます（公開はされません）：
-  - 確認だけ：`node scripts/place-introductions.mjs data/place-introductions-fukuoka.json`
-  - 保存する：`node scripts/place-introductions.mjs data/place-introductions-fukuoka.json --apply`
-  - そのあと掲載管理で1件ずつ開き、**公式サイトで確かめた**「公式URL・住所・営業時間」を入れて「審査へ」→「公開」。審査欄に出典（公式サイトのURL）を書きます。
-  - 各件の「公開前に確かめること」は `data/place-introductions-fukuoka.json` の `check` にあります（例：休館日・料金・営業中か）。閉店・休館していたら公開しないでください。
-  - ルール：docs/place-mvp.md（一次情報のみ、医療系は載せない、出典を残す）
+- 福岡の26件（オーナー承認済み、`data/place-introductions-fukuoka.ts`）：
+  - Vercelに `CAMELLIA_PLACE_INTRODUCTION_BATCH=fukuoka-2026-11` を入れると、本番で最初にPlaceが開かれたときに1回だけ登録されます。
+  - 公的な観光サイト（クロスロードふくおか）と公式サイトで住所・営業時間を確かめた14件は公開されます。出典は審査記録に残ります。
+  - 残りの12件は下書きです。掲載管理で開き、公式サイトで確かめて公開してください。確かめることは各件の `check` に書いてあります。
+  - すでにある場所は上書きしません。一度登録したあと、運営が非公開や削除にした場所は戻りません。
+  - 手元から入れる場合：`node scripts/place-introductions.mjs`（確認だけ）／`--apply`（書き込み）
 
 ## 2. 決済（Camellia Plus 月500円）
 

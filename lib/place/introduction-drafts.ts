@@ -3,17 +3,21 @@ import { SERVER_ROOT } from '../server/admin.js';
 import { validatePlace } from './model.js';
 
 /**
- * Prepared "introduction" drafts (data/place-introductions-*.json). Each is saved as a DRAFT only:
- * the operator still adds the official URL, address and opening hours from the official site,
- * records the source, and publishes it in the app. Existing places are never overwritten.
+ * Prepared "introduction" listings (data/place-introductions-*.ts).
+ * - ready entries were checked against public, primary sources and are published with that source recorded.
+ * - the rest are saved as drafts for the operator to confirm and publish in the app.
+ * A place that already exists (any status, including suspended or edited by the operator) is never overwritten.
  */
 export type IntroductionDraftInput = {
   slug: string; name: string; category: string; area: string; recommendedFor: string[]; tags: string[];
   shortDescription: string; description: string; check?: string;
+  officialUrl?: string; address?: string; openingHours?: string; priceRange?: string;
+  sourceEvidence?: string; ready?: boolean;
 };
 export function introductionDraft(input: IntroductionDraftInput, region = '福岡') {
+  const { check: _check, ready: _ready, sourceEvidence: _source, ...place } = input;
   return validatePlace({
-    ...input,
+    ...place,
     region,
     listingType: 'introduction',
     imageUrls: [],
@@ -22,26 +26,47 @@ export function introductionDraft(input: IntroductionDraftInput, region = '福�
     specialOffer: '',
   });
 }
-export async function importIntroductionDrafts(db: Firestore, inputs: IntroductionDraftInput[], apply: boolean, now = new Date().toISOString()) {
-  const drafts = inputs.map((input) => introductionDraft(input)); // validate everything before writing anything
-  if (new Set(drafts.map((d) => d.slug)).size !== drafts.length) throw new Error('DUPLICATE_SLUG');
-  const created: string[] = [], skipped: string[] = [];
-  for (const draft of drafts) {
+/** Same conditions as publishing an introduction in the app (PlaceService.change 'publish'). */
+export function publishable(input: IntroductionDraftInput) {
+  const draft = introductionDraft(input), source = input.sourceEvidence?.trim() ?? '';
+  return input.ready === true && Boolean(draft.officialUrl && draft.address && draft.openingHours) && source.length > 0 && source.length <= 300;
+}
+export async function importIntroductions(db: Firestore, inputs: IntroductionDraftInput[], apply: boolean, now = new Date().toISOString()) {
+  const entries = inputs.map((input) => ({ draft: introductionDraft(input), publish: publishable(input), source: input.sourceEvidence?.trim() ?? '' })); // validate all first
+  if (new Set(entries.map((e) => e.draft.slug)).size !== entries.length) throw new Error('DUPLICATE_SLUG');
+  const published: string[] = [], drafted: string[] = [], skipped: string[] = [];
+  for (const { draft, publish, source } of entries) {
     const ref = db.doc(`${SERVER_ROOT}/places/${draft.slug}`);
     if (!apply) {
-      ((await ref.get()).exists ? skipped : created).push(draft.slug);
+      ((await ref.get()).exists ? skipped : publish ? published : drafted).push(draft.slug);
       continue;
     }
     const wrote = await db.runTransaction(async (tx) => {
       if ((await tx.get(ref)).exists) return false;
-      tx.create(ref, { ...draft, status: 'draft', createdAt: now, updatedAt: now });
+      const review = { listingType: 'introduction', realConfirmed: true, detailsConfirmed: true, sourceEvidence: source };
+      tx.create(ref, publish
+        ? { ...draft, status: 'published', createdAt: now, updatedAt: now, publishedAt: now, verifiedAt: now, reviewVersion: 2, review }
+        : { ...draft, status: 'draft', createdAt: now, updatedAt: now });
       tx.set(db.collection(`${SERVER_ROOT}/place_audit`).doc(), {
-        operatorUid: 'script:place-introductions', slug: draft.slug, operation: 'save', createdAt: now,
-        verified: false, partnerConfirmed: false, before: null, after: draft,
+        operatorUid: 'script:place-introductions', slug: draft.slug, operation: publish ? 'publish' : 'save', createdAt: now,
+        verified: publish, partnerConfirmed: false, before: null, ...(publish ? { review } : {}),
+        after: { ...draft, status: publish ? 'published' : 'draft' },
       });
       return true;
     });
-    (wrote ? created : skipped).push(draft.slug);
+    (wrote ? (publish ? published : drafted) : skipped).push(draft.slug);
   }
-  return { created, skipped };
+  return { published, drafted, skipped };
+}
+/**
+ * Runs a batch once on the server (Vercel has the Firebase credentials). Only when the operator names the batch in
+ * CAMELLIA_PLACE_INTRODUCTION_BATCH. A marker stops it from running again, so places the operator later
+ * suspends or deletes are not brought back.
+ */
+export async function ensureIntroductionBatch(db: Firestore, batch: string, inputs: IntroductionDraftInput[], now = new Date().toISOString()) {
+  const marker = db.doc(`${SERVER_ROOT}/config/place_introduction_batches`);
+  if ((await marker.get()).data()?.[batch]) return undefined;
+  const result = await importIntroductions(db, inputs, true, now);
+  await marker.set({ [batch]: { at: now, published: result.published.length, drafted: result.drafted.length, skipped: result.skipped.length } }, { merge: true });
+  return result;
 }
