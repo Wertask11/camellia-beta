@@ -7,6 +7,10 @@ import { PlaceError, PlaceService } from '../../lib/place/service.js';
 import {requireEligibleUser,EligibilityError} from '../../lib/server/eligibility.js';
 import {memberStatus} from '../../lib/membership/server.js';
 import {rankPlaces,type PlaceIntent} from '../../lib/place/recommendation.js';
+import {ensureIntroductionBatch} from '../../lib/place/introduction-drafts.js';
+import {PLACE_INTRODUCTION_BATCH,PLACE_INTRODUCTIONS_FUKUOKA} from '../../data/place-introductions-fukuoka.js';
+/** Once per server instance; the batch itself runs only once overall (marker in Firestore). */
+let introductionBatch: Promise<unknown> | undefined;
 type Request = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -33,6 +37,10 @@ export default async function place(req: Request, res: Response) {
   try {
     const { db, auth } = serverAdmin();
     const service = new PlaceService(db);
+    if(publicFlag&&process.env.CAMELLIA_PLACE_INTRODUCTION_BATCH===PLACE_INTRODUCTION_BATCH){
+      introductionBatch??=ensureIntroductionBatch(db,PLACE_INTRODUCTION_BATCH,PLACE_INTRODUCTIONS_FUKUOKA).catch((error:unknown)=>{introductionBatch=undefined;console.error('PLACE_INTRODUCTION_BATCH_FAILED',error instanceof Error?error.message:'unknown');});
+      await introductionBatch;
+    }
     const incoming=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body as Record<string,unknown>:{};
     if(Buffer.byteLength(JSON.stringify(incoming))>12000)throw new PlaceError(413,'INVALID_PLACE');
     if(req.method==='POST'&&incoming.operation==='metric'){
