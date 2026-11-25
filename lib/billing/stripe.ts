@@ -152,7 +152,11 @@ export function createStripeAdapter(config: StripeConfig, fetcher: typeof fetch 
     async verify(raw, signature) {
       if (!verifyStripeSignature(raw, signature, config.webhookSecret, Math.floor(now() / 1000))) throw new Error('INVALID_SIGNATURE');
       const event = obj(JSON.parse(Buffer.from(raw).toString('utf8')));
-      return normalizeStripeEvent(event, (id) => stripeCall(config, `/invoices/${encodeURIComponent(id)}`, undefined, fetcher));
+      const normalized = await normalizeStripeEvent(event, (id) => stripeCall(config, `/invoices/${encodeURIComponent(id)}`, undefined, fetcher));
+      // The Stripe account may also sell other products. Acknowledge their events without touching Camellia,
+      // so Stripe never sees errors and never disables the endpoint.
+      if (!('ignored' in normalized) && normalized.priceId !== config.priceId) return { ignored: true, type: text(event.type) };
+      return normalized;
     },
   };
 }

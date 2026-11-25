@@ -35,7 +35,8 @@ try {
   const send = (event) => { const raw = new TextEncoder().encode(JSON.stringify(event)); return handler(raw, `t=${t},v1=${createHmac('sha256', 'whsec_LOCAL').update(`${t}.`).update(raw).digest('hex')}`); };
   const invoice = { id: 'in_LOCAL1', customer: 'cus_LOCAL1', amount_paid: 500, currency: 'jpy', lines: { data: [{ price: { id: 'price_LOCAL' }, period: { start: t, end: t + 30 * 86400 } }] } };
   assert.deepEqual((await send({ id: 'evt_ignored', type: 'customer.created', created: t, data: { object: {} } })).body, { accepted: true, ignored: true });
-  assert.equal((await send({ id: 'evt_other_price', type: 'invoice.paid', created: t, data: { object: { ...invoice, lines: { data: [{ price: { id: 'price_OTHER' }, period: { start: t, end: t + 100 } }] } } } })).status, 503, 'unapproved price never grants Plus');
+  assert.deepEqual((await send({ id: 'evt_other_price', type: 'invoice.paid', created: t, data: { object: { ...invoice, lines: { data: [{ price: { id: 'price_OTHER' }, period: { start: t, end: t + 100 } }] } } } })).body, { accepted: true, ignored: true }, 'other prices are ignored, never grant Plus');
+  assert.equal((await memberStatus(db, uid, now + 1000)).plan, 'free');
   assert.equal((await send({ id: 'evt_paid', type: 'invoice.paid', created: t, data: { object: invoice } })).status, 200);
   let status = await memberStatus(db, uid, now + 1000);
   assert.equal(status.plan, 'plus'); assert.equal(status.paid, true);

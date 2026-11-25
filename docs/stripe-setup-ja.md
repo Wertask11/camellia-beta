@@ -47,3 +47,7 @@
 - 申し込み：`/api/camellia/checkout`がログイン中の本人にStripeの顧客を1つだけ結びつけ、承認済みの価格でCheckoutを開く。ブラウザからUIDや価格は受け付けない。
 - 反映：署名を確認したWebhookだけがPlusを付与する（既存の`lib/billing/webhook.ts`：重複・改変・返金順序・期間保護）。関係ないイベントは200で無視する。
 - 返金：`charge.refunded`に請求書IDがない新しいAPI形式の場合は自動反映せず、Stripe側で運営が対応する。部分返金は運営確認に回る。
+
+## 他の商品と同じStripeアカウントを使う場合
+
+Webhookは、Camellia Plusの価格（STRIPE_PLUS_PRICE_ID）以外のイベントを200で受け流し、何も保存しません。Emuなど同じアカウントの他の商品の支払いでエラーにならず、Stripe側でWebhookが止まることもありません。Camellia Plus用には必ず専用の価格を作ってください（他の500円の価格を流用しない）。

@@ -8,7 +8,7 @@ import {PLACE_SECTORS,availableBenefits,type PlaceSector} from '@/lib/place/deta
 import {requestMembership} from '@/lib/membership/client';
 import { useEffect, useState,useRef,type SetStateAction } from 'react';
 import { placeRequest } from '@/lib/place/client';
-import { INTRODUCTION_NOTICE, PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
+import { INTRODUCTION_NOTICE, PLACE_CATEGORIES, PLACE_INTENTS, placeCorrectionMailto, type Place } from '@/lib/place/model';
 import {CHOICE_ACTION_FLOW} from '@/lib/features';
 import {localPlaceIntents,rankPlaces,type PlaceIntent} from '@/lib/place/recommendation';
 import type { AnalyticsEventName,CamelliaState } from '@/types';
@@ -268,6 +268,7 @@ export function PlaceScreen({
           )}
           {selected.sponsored && <p>PR・広告</p>}
           {selected.listingType==='introduction' && <p className="meta" role="note">{INTRODUCTION_NOTICE}</p>}
+          {!isDemo && !operatorMode && <p className="meta"><a href={placeCorrectionMailto(selected)}>店舗・施設の方へ：掲載内容の訂正・削除のご依頼</a></p>}
           {selected.imageUrls.map((url) => (
             <img
               key={url}

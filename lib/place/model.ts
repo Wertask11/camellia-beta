@@ -28,6 +28,19 @@ export type PlaceStatus = 'draft' | 'review' | 'published' | 'suspended';
  * like a guidebook. No shop agreement, no photos, no partnership/ads/benefits.
  */
 export type PlaceListingType = 'listing' | 'introduction';
+/** Where shops and facilities ask Camellia to correct or remove a listing. Same contact as the Terms. */
+export const PLACE_CORRECTION_EMAIL = 'takakiasaka1@gmail.com';
+export function placeCorrectionMailto(place: { name: string; slug: string }) {
+  const subject = `【Camellia Place】掲載内容の訂正・削除のご依頼（${place.slug}）`;
+  const body = `掲載名：${place.name}\nご依頼の内容（訂正・削除）：\n正しい情報や理由：\nご連絡先（お名前・店舗との関係）：\n`;
+  return `mailto:${PLACE_CORRECTION_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+/**
+ * Medical institutions and medical/therapeutic claims are not listed (medical advertising rules apply to
+ * anyone who advertises). The operator review must also exclude them; this check is a safety net.
+ */
+export const MEDICAL_TERMS =
+  /クリニック|医院|病院|診療所|歯科|皮膚科|婦人科|産婦人科|心療内科|精神科|美容外科|美容皮膚科|形成外科|整形|整骨院|接骨院|鍼灸|はり・きゅう|薬局|処方|診療|診断|治療|治る|治ります|完治|効能|効果を保証|医学的に|clinic|hospital/i;
 export const INTRODUCTION_NOTICE =
   'Camelliaが公開情報をもとに紹介している場所です。提携・広告ではありません。最新の営業情報は公式サイトでご確認ください。';
 export type Place = PlaceDetails & {
@@ -113,6 +126,9 @@ export function validatePlace(value: Record<string, unknown>) {
     throw new Error('INVALID_PLACE');
   const description = text('description', 1500);
   if (/必ず(治る|改善)|治療効果を保証/.test(description))
+    throw new Error('INVALID_PLACE');
+  const listed = [value.name, value.shortDescription, description, value.experience, ...(Array.isArray(value.services) ? value.services : []), ...(Array.isArray(value.tags) ? value.tags : [])];
+  if (listed.some((v) => typeof v === 'string' && MEDICAL_TERMS.test(v)))
     throw new Error('INVALID_PLACE');
   const listingType: PlaceListingType =
     value.listingType === 'introduction' ? 'introduction' : 'listing';

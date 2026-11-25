@@ -40,6 +40,8 @@ try {
   const body = new TextEncoder().encode(JSON.stringify({ id: 'evt_paid', type: 'invoice.paid', created: t, data: { object: invoice() } }));
   assert.equal((await adapter.verify(body, sign('whsec_LOCAL', t, body))).kind, 'paid');
   await assert.rejects(adapter.verify(body, sign('whsec_OTHER', t, body)));
+  const otherProduct = new TextEncoder().encode(JSON.stringify({ id: 'evt_emu', type: 'invoice.paid', created: t, data: { object: invoice({ customer: 'cus_OTHER', lines: { data: [{ price: { id: 'price_OTHER_PRODUCT' }, period: { start: t, end: t + 10 } }] } }) } }));
+  assert.deepEqual(await adapter.verify(otherProduct, sign('whsec_LOCAL', t, otherProduct)), { ignored: true, type: 'invoice.paid' }, 'other products on the same Stripe account are acknowledged and ignored');
   console.log('PASS Stripe: off unless fully configured, signature/tolerance/altered-body checks, invoice paid/failed (old and new API shapes), cancel/expire/refund mapping, unrelated events ignored. No real Stripe call.');
 } finally {
   await server.close();
