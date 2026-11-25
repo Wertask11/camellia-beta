@@ -42,6 +42,7 @@ export function PlaceEditor({
         ? { ...place }
         : {
             category: '',
+            listingType: 'introduction',
             partnerStatus: 'none',
             sponsored: false,
             recommendedFor: [],
@@ -86,6 +87,30 @@ export function PlaceEditor({
       <p>
         保存すると下書きになります。公開中の内容を変更した場合も、再度運営が確認します。掲載許可・写真許可の証跡は運営が別に管理します。
       </p>
+      <fieldset>
+        <legend>掲載のかたち</legend>
+        <label className="privacy-choice">
+          <input
+            type="radio"
+            name="listingType"
+            checked={draft.listingType === 'introduction'}
+            onChange={() => {
+              setDraft((v) => ({ ...v, listingType: 'introduction', partnerStatus: 'none', sponsored: false, specialOffer: '', benefits: [] }));
+              setImages('');
+            }}
+          />
+          紹介（お店とのやりとりなし。公開情報だけで紹介し、写真は載せません）
+        </label>
+        <label className="privacy-choice">
+          <input
+            type="radio"
+            name="listingType"
+            checked={draft.listingType !== 'introduction'}
+            onChange={() => setDraft((v) => ({ ...v, listingType: 'listing' }))}
+          />
+          掲載（お店の許可と写真の利用許可をもらっている）
+        </label>
+      </fieldset>
       {fields.map(([key, label, max]) => (
         <label key={key}>
           {label}
@@ -123,14 +148,14 @@ export function PlaceEditor({
           onChange={(e) => setServices(e.target.value)}
         />
       </label>
-      <label>
+      {draft.listingType !== 'introduction' && <label>
         利用許可を確認する写真のURL（1行に1件・最大5件）
         <textarea
           rows={3}
           value={images}
           onChange={(e) => setImages(e.target.value)}
         />
-      </label>
+      </label>}
       <fieldset>
         <legend>合う過ごし方（最大4つ）</legend>
         {Object.entries(PLACE_INTENTS).map(([id, label]) => (

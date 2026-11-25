@@ -22,6 +22,14 @@ export const PLACE_INTENTS = {
   together: '誰かと過ごす',
 } as const;
 export type PlaceStatus = 'draft' | 'review' | 'published' | 'suspended';
+/**
+ * listing: the place agreed to be listed (permission + photo rights required).
+ * introduction: Camellia introduces the place from its own public information,
+ * like a guidebook. No shop agreement, no photos, no partnership/ads/benefits.
+ */
+export type PlaceListingType = 'listing' | 'introduction';
+export const INTRODUCTION_NOTICE =
+  'Camelliaが公開情報をもとに紹介している場所です。提携・広告ではありません。最新の営業情報は公式サイトでご確認ください。';
 export type Place = PlaceDetails & {
   saved?: boolean;
   id: string;
@@ -43,6 +51,7 @@ export type Place = PlaceDetails & {
   imageUrls: string[];
   tags: string[];
   recommendedFor: string[];
+  listingType: PlaceListingType;
   partnerStatus: 'none' | 'partner';
   sponsored: boolean;
   specialOffer: string;
@@ -105,11 +114,24 @@ export function validatePlace(value: Record<string, unknown>) {
   const description = text('description', 1500);
   if (/必ず(治る|改善)|治療効果を保証/.test(description))
     throw new Error('INVALID_PLACE');
+  const listingType: PlaceListingType =
+    value.listingType === 'introduction' ? 'introduction' : 'listing';
+  const details = validatePlaceDetails(value);
+  if (
+    listingType === 'introduction' &&
+    (imageUrls.length > 0 ||
+      value.partnerStatus === 'partner' ||
+      value.sponsored === true ||
+      (typeof value.specialOffer === 'string' && value.specialOffer.trim()) ||
+      (details.benefits?.length ?? 0) > 0)
+  )
+    throw new Error('INVALID_PLACE');
   const recommendedFor = list('recommendedFor', 4);
   if (recommendedFor.some((key) => !Object.hasOwn(PLACE_INTENTS, key)))
     throw new Error('INVALID_PLACE');
   return {
-    ...validatePlaceDetails(value),
+    ...details,
+    listingType,
     contactUrl:safePlaceUrl(value.contactUrl),
     slug,
     name: text('name', 100, true),

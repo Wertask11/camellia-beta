@@ -8,7 +8,7 @@ import {PLACE_SECTORS,availableBenefits,type PlaceSector} from '@/lib/place/deta
 import {requestMembership} from '@/lib/membership/client';
 import { useEffect, useState,useRef,type SetStateAction } from 'react';
 import { placeRequest } from '@/lib/place/client';
-import { PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
+import { INTRODUCTION_NOTICE, PLACE_CATEGORIES, PLACE_INTENTS, type Place } from '@/lib/place/model';
 import {CHOICE_ACTION_FLOW} from '@/lib/features';
 import {localPlaceIntents,rankPlaces,type PlaceIntent} from '@/lib/place/recommendation';
 import type { AnalyticsEventName,CamelliaState } from '@/types';
@@ -45,7 +45,7 @@ export function PlaceScreen({
   const [conditions,setConditions]=useState<PlaceConditions>({});
   const [compareIds,setCompareIds]=useState<string[]>([]),[comparison,setComparison]=useState<Place[]>(),[enhanced,setEnhanced]=useState(false),[plus,setPlus]=useState(false);
   const changeConditions=(value:SetStateAction<PlaceConditions>)=>{setConditions(value);setCompareIds([]);};
-  const emptyReview={realConfirmed:false,listingPermission:false,photoPermission:false,detailsConfirmed:false,listingEvidence:'',photoEvidence:''};
+  const emptyReview={realConfirmed:false,listingPermission:false,photoPermission:false,detailsConfirmed:false,listingEvidence:'',photoEvidence:'',sourceEvidence:''};
   const [review,setReview]=useState(emptyReview);
   useEffect(()=>{if(managementOnly)return;let active=true;void requestMembership().then(plan=>{if(active)setPlus(plan.plan==='plus');}).catch(()=>{});return()=>{active=false;};},[managementOnly]);
 
@@ -180,6 +180,7 @@ export function PlaceScreen({
       )}
       <span>
         {place.sponsored && <small>PR・広告</small>}
+        {place.listingType==='introduction' && <small>Camelliaの紹介</small>}
         <strong>{place.name}</strong>
         <small>
           {place.category} · {place.area}
@@ -266,6 +267,7 @@ export function PlaceScreen({
             <output>運営プレビュー・掲載状態：{selected.status}</output>
           )}
           {selected.sponsored && <p>PR・広告</p>}
+          {selected.listingType==='introduction' && <p className="meta" role="note">{INTRODUCTION_NOTICE}</p>}
           {selected.imageUrls.map((url) => (
             <img
               key={url}
@@ -380,15 +382,18 @@ export function PlaceScreen({
                   reviewへ送る
                 </button>
               )}
-              {selected.status==='review'&&canPublish&&<section aria-label="掲載前の確認"><p>実在・掲載許可・写真の利用権・営業情報を別々に確認します。証跡は運営だけが閲覧します。</p>{([['realConfirmed','実在を確認した'],['listingPermission','掲載許可を確認した'],['photoPermission','写真の利用許可を確認した'],['detailsConfirmed','料金・営業時間・体験・連絡先を確認した']] as const).map(([key,label])=><label className="privacy-choice" key={key}><input type="checkbox" checked={review[key]} onChange={e=>setReview(r=>({...r,[key]:e.target.checked}))}/>{label}</label>)}<label>掲載許可の確認記録<input maxLength={300} value={review.listingEvidence} onChange={e=>setReview(r=>({...r,listingEvidence:e.target.value}))}/></label><label>写真利用許可の確認記録<input maxLength={300} value={review.photoEvidence} onChange={e=>setReview(r=>({...r,photoEvidence:e.target.value}))}/></label></section>}
+              {selected.status==='review'&&canPublish&&selected.listingType==='introduction'&&<section aria-label="紹介掲載の確認"><p>お店の許可や写真は使わず、公開情報だけで紹介します。公式サイトなどで実在と内容を確認し、確認した出典を残してください。</p>{([['realConfirmed','公式サイトなどで、実在して営業中であることを確認した'],['detailsConfirmed','住所・営業時間・料金を公開情報と照らし合わせた']] as const).map(([key,label])=><label className="privacy-choice" key={key}><input type="checkbox" checked={review[key]} onChange={e=>setReview(r=>({...r,[key]:e.target.checked}))}/>{label}</label>)}<label>確認した公開情報の出典（URLなど）<input maxLength={300} value={review.sourceEvidence} onChange={e=>setReview(r=>({...r,sourceEvidence:e.target.value}))}/></label></section>}
+              {selected.status==='review'&&canPublish&&selected.listingType!=='introduction'&&<section aria-label="掲載前の確認"><p>実在・掲載許可・写真の利用権・営業情報を別々に確認します。証跡は運営だけが閲覧します。</p>{([['realConfirmed','実在を確認した'],['listingPermission','掲載許可を確認した'],['photoPermission','写真の利用許可を確認した'],['detailsConfirmed','料金・営業時間・体験・連絡先を確認した']] as const).map(([key,label])=><label className="privacy-choice" key={key}><input type="checkbox" checked={review[key]} onChange={e=>setReview(r=>({...r,[key]:e.target.checked}))}/>{label}</label>)}<label>掲載許可の確認記録<input maxLength={300} value={review.listingEvidence} onChange={e=>setReview(r=>({...r,listingEvidence:e.target.value}))}/></label><label>写真利用許可の確認記録<input maxLength={300} value={review.photoEvidence} onChange={e=>setReview(r=>({...r,photoEvidence:e.target.value}))}/></label></section>}
               {selected.status === 'review' && canPublish && (
                 <button
-                  disabled={busy||!review.realConfirmed||!review.listingPermission||!review.photoPermission||!review.detailsConfirmed||!review.listingEvidence.trim()||!review.photoEvidence.trim()}
+                  disabled={busy||(selected.listingType==='introduction'?!review.realConfirmed||!review.detailsConfirmed||!review.sourceEvidence.trim():!review.realConfirmed||!review.listingPermission||!review.photoPermission||!review.detailsConfirmed||!review.listingEvidence.trim()||!review.photoEvidence.trim())}
                   onClick={() =>
                     void run(async () => {
                       if (
                         !window.confirm(
-                          '実在・掲載許可・公式情報・写真の利用許可・提携表記を確認済みですか？確認した内容を公開します。',
+                          selected.listingType==='introduction'
+                            ? '公開情報で実在と内容を確認しましたか？「提携・広告ではない紹介」として公開します。'
+                            : '実在・掲載許可・公式情報・写真の利用許可・提携表記を確認済みですか？確認した内容を公開します。',
                         )
                       )
                         return;

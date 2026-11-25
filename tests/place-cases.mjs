@@ -25,6 +25,18 @@ try {
     validatePlace({ ...draft, status: 'published', uid: 'PRIVATE' }).status,
     undefined,
   );
+  // Introduction listings: public info only, so no photos, partnership, ads or benefits.
+  assert.equal(validatePlace(draft).listingType, 'listing');
+  assert.equal(validatePlace({ ...draft, listingType: 'introduction' }).listingType, 'introduction');
+  assert.equal(validatePlace({ ...draft, listingType: 'other' }).listingType, 'listing');
+  for (const extra of [
+    { imageUrls: ['https://example.com/photo.jpg'] },
+    { partnerStatus: 'partner' },
+    { sponsored: true },
+    { specialOffer: '10%オフ' },
+    { benefits: [{ id: 'b', title: '特典', conditions: '条件', eligible: 'all', validFrom: '2026-01-01', validUntil: '2027-01-01' }] },
+  ])
+    assert.throws(() => validatePlace({ ...draft, listingType: 'introduction', ...extra }), /INVALID_PLACE/);
   for (const url of [
     'javascript:alert(1)',
     'http://example.com/',
