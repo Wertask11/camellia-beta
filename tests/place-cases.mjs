@@ -37,6 +37,13 @@ try {
     { benefits: [{ id: 'b', title: '特典', conditions: '条件', eligible: 'all', validFrom: '2026-01-01', validUntil: '2027-01-01' }] },
   ])
     assert.throws(() => validatePlace({ ...draft, listingType: 'introduction', ...extra }), /INVALID_PLACE/);
+  // Medical institutions and therapeutic claims are never listed (legal review 2026-11-25).
+  for (const extra of [{ name: '〇〇美容クリニック' }, { name: '〇〇整骨院' }, { shortDescription: '肩こりが治る' }, { experience: '治療のような体験' }, { services: ['診断'] }, { tags: ['効能'] }])
+    assert.throws(() => validatePlace({ ...draft, ...extra }), /INVALID_PLACE/, JSON.stringify(extra));
+  assert.equal(validatePlace({ ...draft, shortDescription: '静かに本を選べる場所' }).shortDescription, '静かに本を選べる場所');
+  const { placeCorrectionMailto } = await server.ssrLoadModule('/lib/place/model.ts');
+  const mail = placeCorrectionMailto({ name: '掲載検証用', slug: 'fixture-only' });
+  assert.ok(mail.startsWith('mailto:') && decodeURIComponent(mail).includes('fixture-only'));
   for (const url of [
     'javascript:alert(1)',
     'http://example.com/',
