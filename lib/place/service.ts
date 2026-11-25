@@ -145,6 +145,16 @@ export class PlaceService {
           tx.update(ref, { status: 'review', updatedAt: now });
         else if (operation === 'publish' && data?.status === 'review') {
           const review=body.review&&typeof body.review==='object'?body.review as Record<string,unknown>:{};
+          if(data?.listingType==='introduction'){
+            // Introduction listings use only public information: confirm it exists, the details, and where they came from.
+            const source=typeof review.sourceEvidence==='string'?review.sourceEvidence.trim():'';
+            if(body.verified!==true||review.realConfirmed!==true||review.detailsConfirmed!==true||!source||source.length>300||!data?.officialUrl||!data?.address||!data?.openingHours||data?.imageUrls?.length||data?.partnerStatus==='partner'||data?.sponsored===true||data?.specialOffer||data?.benefits?.length)
+              throw new PlaceError(400,'REVIEW_REQUIRED');
+            const kept={listingType:'introduction',realConfirmed:true,detailsConfirmed:true,sourceEvidence:source};
+            tx.update(ref,{status:'published',publishedAt:now,updatedAt:now,verifiedAt:now,reviewVersion:2,review:kept});
+            tx.set(this.db.collection(`${SERVER_ROOT}/place_audit`).doc(),{operatorUid:identity.uid,slug,operation,createdAt:now,verified:true,partnerConfirmed:false,before:validatePlace(data),review:kept,after:{...validatePlace(data),status:'published'}});
+            return;
+          }
           if (
             body.verified !== true || !['realConfirmed','listingPermission','photoPermission','detailsConfirmed'].every(key=>review[key]===true) || !['listingEvidence','photoEvidence'].every(key=>typeof review[key]==='string'&&(review[key] as string).trim().length>0&&(review[key] as string).length<=300) || !data?.experience || !data?.services?.length || !data?.priceRange || !data?.openingHours || (!data?.bookingUrl&&!data?.contactUrl&&!data?.phone&&!data?.officialUrl) ||
             !data?.officialUrl ||
