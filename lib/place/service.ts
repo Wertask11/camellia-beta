@@ -1,4 +1,4 @@
-import type { Firestore } from 'firebase-admin/firestore';
+import { FieldPath, type Firestore } from 'firebase-admin/firestore';
 import { SERVER_ROOT } from '../server/admin.js';
 import { validatePlace, validSlug, type Place } from './model.js';
 export class PlaceError extends Error {
@@ -39,7 +39,8 @@ export class PlaceService {
     if(operator&&!operator.operator){const slugs=[...(operator.managedSlugs??[])].sort().filter(slug=>!cursor||slug>cursor);const records=slugs.length?await this.db.getAll(...slugs.slice(0,20).map(slug=>this.places().doc(slug))):[];return {places:records.filter(d=>d.exists).map(d=>this.project(d.id,d.data()!)),nextCursor:slugs.length>20?slugs[19]:undefined};}
     let query = operator
       ? this.places().orderBy('slug')
-      : this.places().where('status', '==', 'published').orderBy('slug');
+      // Document id == slug. Ordering by id needs no composite index (production has no places(status,slug) index).
+      : this.places().where('status', '==', 'published').orderBy(FieldPath.documentId());
     if (cursor) query = query.startAfter(cursor);
     const records = await query.limit(21).get();
     return {
@@ -75,7 +76,7 @@ export class PlaceService {
       throw new PlaceError(400, 'INVALID_PLACE');
     let query = this.saves(uid)
       .where('saved', '==', true)
-      .orderBy('slug')
+      .orderBy(FieldPath.documentId())
       .limit(21);
     if (cursor) query = query.startAfter(cursor);
     const records = await query.get();
