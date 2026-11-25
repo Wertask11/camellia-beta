@@ -42,6 +42,13 @@ try {
   assert.equal(status.plan, 'plus'); assert.equal(status.paid, true);
   assert.equal((await send({ id: 'evt_paid', type: 'invoice.paid', created: t, data: { object: invoice } })).body.duplicate, true);
   assert.equal(await openBillingPortal(db, uid, config, fakeStripe), 'https://billing.stripe.com/p/session/LOCAL');
+  assert.equal(status.sharingReady, true, 'partner sharing opens with payments for Plus');
+  const { PartnerShareService } = await server.ssrLoadModule('/lib/partner/service.ts');
+  await db.doc(`camellia_users/${uid}`).set({ profile: 'LOCAL' });
+  const shares = new PartnerShareService(db, () => now + 1000);
+  const shared = await shares.create(uid, { kind: 'feeling', feelingId: 'listen', recipient: 'partner', timing: 'today', days: 1, consent: true });
+  assert.equal(shared.token.length, 43, 'a Stripe-paid Plus member can create a share link');
+  await assert.rejects(new PartnerShareService(db, () => now + 1000).create('stripe-local-free', { kind: 'feeling', feelingId: 'listen', recipient: 'partner', timing: 'today', days: 1, consent: true }), (e) => ['PROFILE_REQUIRED', 'PLUS_REQUIRED'].includes(e.code));
   assert.equal((await send({ id: 'evt_cancel', type: 'customer.subscription.updated', created: t, data: { object: { customer: 'cus_LOCAL1', latest_invoice: 'in_LOCAL1', currency: 'jpy', cancel_at_period_end: true, items: { data: [{ price: { id: 'price_LOCAL' }, current_period_start: t, current_period_end: t + 30 * 86400 }] } }, previous_attributes: { cancel_at_period_end: false } } })).status, 200);
   status = await memberStatus(db, uid, now + 1000);
   assert.equal(status.plan, 'plus', 'cancelling keeps the paid period');
@@ -52,7 +59,7 @@ try {
 } finally {
   // Leave the shared emulator as found: later billing suites count these collections.
   const root = 'camellia_admin/release_phase1';
-  for (const name of ['billing_analytics_outbox', 'billing_events', 'billing_receipts', 'billing_customers']) await db.recursiveDelete(db.collection(`${root}/${name}`));
+  for (const name of ['partner_shares', 'billing_analytics_outbox', 'billing_events', 'billing_receipts', 'billing_customers']) await db.recursiveDelete(db.collection(`${root}/${name}`));
   await db.doc(`${root}/config/billing`).delete(); await db.recursiveDelete(db.doc('camellia_users/stripe-local-owner'));
   await server.close(); await db.terminate(); await deleteApp(app);
 }

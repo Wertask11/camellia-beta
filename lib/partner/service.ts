@@ -2,7 +2,7 @@ import {createHash,randomBytes} from 'node:crypto';
 import type {Firestore} from 'firebase-admin/firestore';
 import {SERVER_ROOT} from '../server/admin.js';
 import {membershipFromRecord} from '../membership/model.js';
-import {shareQuotaPath,subscriptionPath} from '../membership/server.js';
+import {memberStatus,shareQuotaPath,subscriptionPath} from '../membership/server.js';
 import {ACTIONS} from '../../data/actions.js';
 import {PLACE_DEMO_DATA} from '../../data/place-demo.js';
 import {PlaceService} from '../place/service.js';
@@ -25,12 +25,14 @@ export class PartnerShareService{
    const place=demo??await new PlaceService(this.db).detail(input.placeSlug!);
    content={...content,title:place.name,description:place.shortDescription,demo:Boolean(demo),placeSlug:place.slug};
   }
+  // Plus from Stripe, a referral trial or an operator grant; the legacy record is re-checked inside the transaction.
+  const current=await memberStatus(this.db,uid,at);
   const token=randomBytes(32).toString('base64url'),id=shareHash(token),ref=this.global().doc(id),own=this.own(uid).doc(id),quotaRef=this.db.doc(shareQuotaPath(uid));
   await this.db.runTransaction(async tx=>{
    const [sub,quota,owner]=await Promise.all([tx.get(this.db.doc(subscriptionPath(uid))),tx.get(quotaRef),tx.get(this.db.doc(`camellia_users/${uid}`))]);
    if(!owner.exists)throw new ShareError(403,'PROFILE_REQUIRED');
    const plan=membershipFromRecord(sub.data(),at);
-   if(plan.plan!=='plus')throw new ShareError(403,'PLUS_REQUIRED');
+   if(plan.plan!=='plus'&&current.plan!=='plus')throw new ShareError(403,'PLUS_REQUIRED');
    const q=quota.data()??{},day=Math.floor(at/86400000),count=q.day===day?Number(q.count??0):0;
    if(count>=10)throw new ShareError(429,'SHARE_LIMIT');
    tx.set(quotaRef,{day,count:count+1},{merge:true});
