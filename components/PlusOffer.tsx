@@ -1,16 +1,20 @@
 'use client';
 import {CAMELLIA_MESSAGE} from '@/lib/brand';
-import {useEffect,useRef} from 'react';
+import {useEffect,useRef,useState} from 'react';
+import {openBillingPage} from '@/lib/billing/client';
 import type {Membership} from '@/lib/membership/model';
 import type {AnalyticsEventName} from '@/types';
 export function PlusOffer({source,membership,onClose,onTrack}:{source:'place'|'partner'|'my';membership?:Membership|null;onClose:()=>void;onTrack:(name:AnalyticsEventName,props?:Record<string,string|number|boolean>)=>void}){
  const ref=useRef<HTMLDialogElement>(null),sent=useRef(false);
+ const [busy,setBusy]=useState(false),[error,setError]=useState('');
+ const go=(operation:'checkout'|'portal')=>{if(busy)return;setBusy(true);setError('');if(operation==='checkout')onTrack('plus_start',{source});void openBillingPage(operation).catch(e=>{setError(e instanceof Error?e.message:'今は手続きを開けませんでした。');setBusy(false);});};
+ const ready=membership?.checkoutReady===true;
  useEffect(()=>{const previous=document.activeElement;const node=ref.current;node?.showModal();return()=>{node?.close();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};},[]);
  useEffect(()=>{if(!sent.current){sent.current=true;onTrack('plus_offer_view',{source});}},[source,onTrack]);
  return <dialog ref={ref} className="commerce-dialog" aria-labelledby="plus-title" onCancel={e=>{e.preventDefault();onClose();}}><button className="close" onClick={onClose} aria-label="閉じる">×</button><p className="eyebrow">選択と行動を、もう少し自分らしく</p><h2 id="plus-title">Camellia Plus</h2><p className="plus-price">月額500円</p>
  <p className="meta">{CAMELLIA_MESSAGE}</p><section><h3>Free · 無料</h3><p>登録せずにToday・Check・今日の一枚・Camelliaの基本会話・Discover・Placeの基本提案と条件比較・Myを使えます。記録はこのブラウザへ保存します。Camellia IDでの引き継ぎも無料です。Circleへの参加には安全のためIDの確認が必要です。</p></section>
  <section><h3>Plusの中心は、あなたに合うパーソナル提案</h3><ul><li>本人が許可した希望を重ねたPlace提案・比較と、候補が合う理由の確認</li><li>気持ち・したいこと・行きたい場所のパートナー共有（現在は内容のプレビューのみ）</li><li>参加店舗が任意で提供する特典（未提供の特典は表示しません）</li></ul></section>
- {membership?.plan==='plus'?<output>{membership.trial?'Plus無料試用中です。自動課金はありません。':'Plusをご利用中です。'}</output>:<p className="meta">Freeでも基本の提案はそのまま利用できます。支払いの受け付けは準備中です。いま料金は発生せず、この画面から有料加入することもありません。既存のFree機能はそのまま使えます。</p>}
- <p className="meta">会話はFreeでもYURA・Lactoneの両方を使えます。Plusの会話拡張は準備中で、未提供の機能を利用できるとは案内しません。実店舗の掲載・特典は準備状況によって異なります。</p><button className="primary" disabled>支払い受付は準備中</button><button className="secondary-button" onClick={onClose}>いま使える機能に戻る</button>
+ {membership?.plan==='plus'?<output>{membership.trial?'Plus無料試用中です。自動課金はありません。':'Plusをご利用中です。'}</output>:ready?<p className="meta">月額500円（税込）。お支払いはStripeの画面で行います。いつでも解約でき、解約しても支払い済みの期間の終わりまでPlusを使えます（途中解約の返金はありません）。</p>:<p className="meta">Freeでも基本の提案はそのまま利用できます。支払いの受け付けは準備中です。いま料金は発生せず、この画面から有料加入することもありません。既存のFree機能はそのまま使えます。</p>}
+ <p className="meta">会話はFreeでもYURA・Lactoneの両方を使えます。Plusの会話拡張は準備中で、未提供の機能を利用できるとは案内しません。実店舗の掲載・特典は準備状況によって異なります。</p>{error&&<p role="alert">{error}</p>}{membership?.plan==='plus'&&membership.paid&&ready?<button className="secondary-button" disabled={busy} onClick={()=>go('portal')}>{busy?'開いています…':'お支払いの管理・解約'}</button>:membership?.plan==='plus'?null:ready?<button className="primary" disabled={busy} onClick={()=>go('checkout')}>{busy?'開いています…':'Plusにする · 月500円'}</button>:<button className="primary" disabled>支払い受付は準備中</button>}<button className="secondary-button" onClick={onClose}>いま使える機能に戻る</button>
  </dialog>;
 }

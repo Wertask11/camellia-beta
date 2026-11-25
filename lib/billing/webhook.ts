@@ -105,7 +105,11 @@ export function createBillingWebhook(options: {
         throw new BillingError(400);
       let event: BillingEvent;
       try {
-        event = normalize(await options.adapter.verify(raw, signature));
+        const verified = await options.adapter.verify(raw, signature);
+        // A verified event the service does not use (e.g. a Stripe event type outside Plus) is acknowledged, never stored.
+        if (verified && typeof verified === 'object' && (verified as Record<string, unknown>).ignored === true)
+          return { status: 200, body: { accepted: true, ignored: true } };
+        event = normalize(verified);
       } catch {
         throw new BillingError(400);
       }
