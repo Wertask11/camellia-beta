@@ -22,6 +22,11 @@ Vercelの環境変数を変えたら、最後に **mainの最新Production deplo
   - UIDはFirebaseコンソールの Authentication で確認できます。
 - その後、Camelliaに入り直すと、Discover → Place → 掲載管理 から「紹介」を追加できます。
   - 候補一覧：/mnt/project-files/camellia/place-candidates-fukuoka.md
+- 福岡の26件（オーナー承認済み）は、下書きとしてまとめて入れられます（公開はされません）：
+  - 確認だけ：`node scripts/place-introductions.mjs data/place-introductions-fukuoka.json`
+  - 保存する：`node scripts/place-introductions.mjs data/place-introductions-fukuoka.json --apply`
+  - そのあと掲載管理で1件ずつ開き、**公式サイトで確かめた**「公式URL・住所・営業時間」を入れて「審査へ」→「公開」。審査欄に出典（公式サイトのURL）を書きます。
+  - 各件の「公開前に確かめること」は `data/place-introductions-fukuoka.json` の `check` にあります（例：休館日・料金・営業中か）。閉店・休館していたら公開しないでください。
   - ルール：docs/place-mvp.md（一次情報のみ、医療系は載せない、出典を残す）
 
 ## 2. 決済（Camellia Plus 月500円）
