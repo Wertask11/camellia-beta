@@ -20,5 +20,5 @@ export function membershipFromResponse(value:unknown,now=Date.now()):Membership{
   return {plan:'free',paid:false,trial:false,checkoutReady:v.checkoutReady===true,sharingReady:false,priceYen:500};
  }
  if(v.paid===v.trial||typeof v.expiresAt!=='string'||!Number.isFinite(Date.parse(v.expiresAt))||Date.parse(v.expiresAt)<=now)throw new Error('INVALID_MEMBERSHIP');
- return {plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:v.checkoutReady===true,sharingReady:false,priceYen:500};
+ return {plan:'plus',paid:v.paid,trial:v.trial,expiresAt:v.expiresAt,checkoutReady:v.checkoutReady===true,sharingReady:v.sharingReady===true,priceYen:500};
 }

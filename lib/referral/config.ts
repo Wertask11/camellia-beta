@@ -1,5 +1,9 @@
-/** No campaign is launched by this implementation. Cost/quota and signup hooks need a separately reviewed release. */
-export const REFERRAL_INTEGRATION_READY = false;
+/**
+ * Server switch (CAMELLIA_REFERRAL_ENABLED=true). Even when on, nothing is accepted until the operator
+ * writes the approved config/referral document (scripts/referral-config.mjs). Always false in the browser.
+ */
+export const REFERRAL_INTEGRATION_READY =
+  typeof process !== 'undefined' && process.env?.CAMELLIA_REFERRAL_ENABLED === 'true';
 export const REFERRAL_TRIAL_DAYS = 7;
 export const REFERRER_MONTHLY_REWARDS = 3;
 export type ReferralConfig = {

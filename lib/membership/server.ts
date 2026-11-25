@@ -45,5 +45,7 @@ export async function memberStatus(
       : legacy;
   const referral =
     base.plan === 'free' ? await referralMembership(db, uid, now) : undefined;
-  return { ...base, ...referral, checkoutReady, sharingReady: false };
+  // Owner decision: partner sharing opens together with payments (Plus only).
+  const plusNow = (referral?.plan ?? base.plan) === 'plus';
+  return { ...base, ...referral, checkoutReady, sharingReady: checkoutReady && plusNow };
 }

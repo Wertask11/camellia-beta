@@ -1,4 +1,5 @@
-import { REFERRAL_INTEGRATION_READY } from './config';
+/** Public build switch; the server still decides whether a campaign is accepting. */
+const REFERRAL_INTEGRATION_READY = import.meta.env?.VITE_REFERRAL_ENABLED === 'true';
 import { schoolParkAuth } from '../schoolpark/firebase';
 const KEY = 'camellia-referral-registration';
 let completing = false;

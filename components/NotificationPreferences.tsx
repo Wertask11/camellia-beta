@@ -1,6 +1,7 @@
 'use client';
 import { saveServerNotificationPreferences } from '@/lib/notifications/client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { enablePushOnThisDevice, pushStatus, type PushStatus } from '@/lib/notifications/push-client';
 import {
   NOTIFICATION_TOPICS,
   safeNotificationPreview,
@@ -20,14 +21,26 @@ export function NotificationPreferences({
     ),
     [saved, setSaved] = useState(false),
     [serverSaved, setServerSaved] = useState<boolean | null>(null),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [push, setPush] = useState<PushStatus>({ deliveryReady: false }),
+    [pushMessage, setPushMessage] = useState('');
+  useEffect(() => {
+    let active = true;
+    void pushStatus().then((v) => active && setPush(v));
+    return () => {
+      active = false;
+    };
+  }, []);
+  const live = push.deliveryReady;
   const preview = safeNotificationPreview();
   return (
     <details className="my-feature-preferences">
-      <summary>通知の好み（配信は準備中）</summary>
+      <summary>{live ? '通知の設定' : '通知の好み（配信は準備中）'}</summary>
       <section className="panel">
         <p>
-          今は通知を配信しません。ここでは希望だけを保存します。開始前には改めて通知の許可を確認します。通知を希望しなくても基本機能は使えます。
+          {live
+            ? '通知は1日1回まで、週に3回までです。希望を保存したあと、この端末で「通知を受け取る」を押してください。いつでも止められます。通知を希望しなくても基本機能は使えます。'
+            : '今は通知を配信しません。ここでは希望だけを保存します。開始前には改めて通知の許可を確認します。通知を希望しなくても基本機能は使えます。'}
         </p>
         <label className="privacy-choice">
           <input
@@ -38,7 +51,7 @@ export function NotificationPreferences({
               setSaved(false);
             }}
           />
-          配信が始まったら通知を希望する
+          {live ? '通知を希望する' : '配信が始まったら通知を希望する'}
         </label>
         {Object.entries(NOTIFICATION_TOPICS).map(([id, label]) => (
           <label className="privacy-choice" key={id}>
@@ -68,7 +81,7 @@ export function NotificationPreferences({
             }}
           >
             <option value="">選んでください</option>
-            <option value="daily">1日に1回まで</option>
+            <option value="daily">1日に1回まで（週3回まで）</option>
             <option value="weekly">週に1回まで</option>
             <option value="monthly">月に1回まで</option>
           </select>
@@ -106,7 +119,7 @@ export function NotificationPreferences({
         </button>
         {saved && (
           <output>
-            希望を保存しました。通知配信は始まりません。
+            {live ? '希望を保存しました。' : '希望を保存しました。通知配信は始まりません。'}
             {serverSaved === true
               ? 'アカウントにも希望を保存しました。'
               : serverSaved === false
@@ -114,6 +127,27 @@ export function NotificationPreferences({
                 : ''}
           </output>
         )}
+        {live && requested && saved && serverSaved && (
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setPushMessage('');
+              try {
+                await enablePushOnThisDevice(push.vapidPublicKey!);
+                setPushMessage('この端末で通知を受け取れるようになりました。');
+              } catch (e) {
+                setPushMessage(e instanceof Error ? e.message : '通知を設定できませんでした。');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            この端末で通知を受け取る
+          </button>
+        )}
+        {pushMessage && <output>{pushMessage}</output>}
       </section>
     </details>
   );

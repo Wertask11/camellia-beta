@@ -53,6 +53,46 @@ export async function saveNotificationSettings(
     return { revision: revision + 1, deliveryReady: false };
   });
 }
+export const MAX_NOTIFICATIONS_PER_WEEK = 3;
+export const notificationRecipientsPath = `${SERVER_ROOT}/notification_recipients`;
+const ownerKey = (uid: string) => createHash('sha256').update(uid).digest('hex');
+/** Stores the browser's push endpoint after the owner explicitly allowed notifications on this device. */
+export async function registerPushRecipient(db: Firestore, uid: string, endpoint: string) {
+  const now = new Date().toISOString();
+  await db.runTransaction(async (tx) => {
+    const root = await tx.get(db.doc(`camellia_users/${uid}`));
+    if (!root.exists || root.data()?.personalDeleteInProgress) throw new Error('ACCOUNT_UNAVAILABLE');
+    tx.set(db.doc(`camellia_users/${uid}/admin/notification_registration`), { permission: 'granted', recipient: endpoint, updatedAt: now });
+    tx.set(db.doc(`${notificationRecipientsPath}/${ownerKey(uid)}`), { uid, updatedAt: now });
+  });
+}
+/** Daily job: try every registered owner once. send() re-checks consent, topic, frequency and the weekly cap. */
+export async function deliverDueNotifications(db: Firestore, driver: DeliveryDriver, now = Date.now) {
+  const delivery = new NotificationDelivery(db, driver, now), counts: Record<string, number> = {};
+  let cursor: string | undefined;
+  for (let page = 0; page < 50; page++) {
+    let query = db.collection(notificationRecipientsPath).orderBy('__name__').limit(200);
+    if (cursor) query = query.startAfter(cursor);
+    const rows = await query.get();
+    for (const row of rows.docs) {
+      const uid = row.data().uid;
+      if (typeof uid !== 'string') continue;
+      const prefs = (await db.doc(`camellia_users/${uid}/profile/notification_preferences`).get()).data()?.preferences;
+      if (!validNotificationPreferences(prefs) || !prefs.requested || !prefs.topics.length) {
+        counts.skipped = (counts.skipped ?? 0) + 1;
+        continue;
+      }
+      const result = await delivery.send(uid, prefs.topics[0]).catch(() => ({ state: 'error' }));
+      // Web Push answers 404/410 (rejected) when the browser ended the subscription: forget it so the
+      // owner can turn notifications on again. send() itself keeps the generic controlled-retry rule.
+      if (result.state === 'rejected') await db.doc(`camellia_users/${uid}/admin/notification_registration`).delete();
+      counts[result.state] = (counts[result.state] ?? 0) + 1;
+    }
+    if (rows.size < 200) break;
+    cursor = rows.docs[rows.size - 1].id;
+  }
+  return counts;
+}
 /** No driver is configured in production. A job must re-check consent before EVERY delivery/retry. */
 export class NotificationDelivery {
   constructor(
@@ -70,14 +110,16 @@ export class NotificationDelivery {
         `camellia_users/${uid}/admin/notification_registration`,
       ),
       root = this.db.doc(`camellia_users/${uid}`),
+      counter = this.db.doc(`camellia_users/${uid}/admin/notification_counter`),
       now = this.now(),
       attempt = randomUUID();
     const claim = await this.db.runTransaction(async (tx) => {
-      const [c, s, r, account] = await Promise.all([
+      const [c, s, r, account, weekly] = await Promise.all([
           tx.get(config),
           tx.get(settings),
           tx.get(registration),
           tx.get(root),
+          tx.get(counter),
         ]),
         prefs = s.data()?.preferences;
       if (
@@ -101,6 +143,11 @@ export class NotificationDelivery {
         old = await tx.get(ref),
         v = old.data();
       if (v && v.state !== 'rejected') return;
+      // Owner policy (2026-11-25): at most one a day (period key) and at most three per JST week.
+      const week = notificationPeriod('weekly', now),
+        sentThisWeek = weekly.data()?.week === week ? Number(weekly.data()?.count ?? 0) : 0;
+      if (!v && sentThisWeek >= MAX_NOTIFICATIONS_PER_WEEK) return;
+      if (!v) tx.set(counter, { week, count: sentThisWeek + 1 });
       // An explicit rejected result permits a controlled retry; unknown/dispatching never does.
       tx.set(ref, {
         owner: createHash('sha256').update(uid).digest('hex'),
