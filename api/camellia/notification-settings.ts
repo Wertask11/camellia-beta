@@ -8,16 +8,20 @@ import {
   saveNotificationSettings,
   stopNotificationSettings,
 } from '../../lib/notifications/delivery.js';
-import { allowedPushEndpoint, vapidConfig } from '../../lib/notifications/webpush.js';
+import { allowedPushEndpoint, vapidConfig, vapidProblem } from '../../lib/notifications/webpush.js';
 import { SERVER_ROOT } from '../../lib/server/admin.js';
 /** Delivery starts only with VAPID keys in Vercel AND the operator's approved config/notification_delivery. */
 async function deliveryStatus(db: ReturnType<typeof serverAdmin>['db']) {
   const vapid = vapidConfig();
-  if (!vapid) return { deliveryReady: false as const };
+  if (!vapid) {
+    console.warn('camellia_notification_not_ready', { reason: vapidProblem() ?? 'vapid_config' });
+    return { deliveryReady: false as const };
+  }
   const cfg = (await db.doc(`${SERVER_ROOT}/config/notification_delivery`).get()).data();
-  return cfg?.approved === true && cfg.enabled === true
-    ? { deliveryReady: true as const, vapidPublicKey: vapid.publicKey }
-    : { deliveryReady: false as const };
+  if (cfg?.approved === true && cfg.enabled === true)
+    return { deliveryReady: true as const, vapidPublicKey: vapid.publicKey };
+  console.warn('camellia_notification_not_ready', { reason: 'operator_config' });
+  return { deliveryReady: false as const };
 }
 type Req = {
   method?: string;
@@ -91,6 +95,9 @@ export default async function notificationSettings(req: Req, res: Res) {
         ),
       );
   } catch (e) {
+    console.warn('camellia_notification_settings_failed', {
+      reason: e instanceof EligibilityError ? e.code : e instanceof Error ? e.message.slice(0, 60) : 'unknown',
+    });
     if (e instanceof EligibilityError)
       return res.status(e.status).json({ error: e.code });
     return res
