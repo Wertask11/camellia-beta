@@ -32,6 +32,7 @@ import { CircleScreen } from '@/screens/CircleScreen';
 import { SecondaryScreen } from '@/screens/SecondaryScreen';
 import { PartnerShareDialog,type ShareDraft } from '@/components/PartnerShareDialog';
 import { PlusOffer } from '@/components/PlusOffer';
+import { PlusReturnNotice } from '@/components/PlusReturnNotice';
 import { PartnerShareScreen } from '@/screens/PartnerShareScreen';
 import { GuestExperience } from '@/screens/GuestExperience';
 import { TodayScreen } from '@/screens/TodayScreen';
@@ -279,7 +280,7 @@ function CamelliaPage() {
   };
   const onLoginFailure=(method:'line'|'google',reason:string,stage:string)=>{const draft=readGuestDraft(),properties=draft?guestEventProperties(draft):{};if(popupAuthReturned.current===method)captureAuthEvent('auth_returned',{method,auth_flow:'popup',...properties},store.state.profile.id);popupAuthReturned.current=undefined;captureAuthEvent('login_failure',{method,reason,stage,...properties},store.state.profile.id);if(draft)cancelGuestLogin();};
   const authHandlers={onSelect:onLoginSelect,onAuthReturned,onLoginSuccess,onLoginFailure,onContinue:()=>setEntry('app')};
-  const dialogs=<>{shareDraft&&<PartnerShareDialog draft={shareDraft} onClose={()=>setShareDraft(undefined)} onTrack={store.track}/>} {plusSource&&<PlusOffer source={plusSource} onClose={()=>setPlusSource(undefined)} onTrack={store.track}/>}</>;
+  const dialogs=<><PlusReturnNotice/>{shareDraft&&<PartnerShareDialog draft={shareDraft} onClose={()=>setShareDraft(undefined)} onTrack={store.track}/>} {plusSource&&<PlusOffer source={plusSource} onClose={()=>setPlusSource(undefined)} onTrack={store.track}/>}</>;
   if(publicShareToken!==null)return <div className="app-shell"><PartnerShareScreen token={publicShareToken} onTrack={store.track} onBack={()=>{setPublicShareToken(null);history.replaceState({},'',location.pathname);window.dispatchEvent(new Event('camellia-free-return'));}}/></div>;
   if(placeDemo)return <div className="app-shell"><PlaceScreen demoPlaces={PLACE_DEMO_DATA} initialSlug={placeDemo.slug} onTrack={CHOICE_ACTION_FLOW?store.track:ignoreDemoTrack} onBack={()=>{setPlaceDemo(null);setSecondary(undefined);setPlaceEntry(undefined);const url=new URL(location.href);url.searchParams.delete('open');url.searchParams.delete('place');history.replaceState({},'',url.pathname+url.search);}}/></div>;
   if(store.storageError)return <StorageRecovery state={store.state} error={store.storageError} onRetry={store.retryStorage}/>;

@@ -5,7 +5,7 @@ import { SERVER_ROOT } from '../server/admin.js';
 import { PLUS_PRICE_YEN } from '../membership/model.js';
 export type BillingEvent = {
   id: string;
-  kind: 'paid' | 'cancel' | 'expired' | 'refund' | 'payment_failed';
+  kind: 'paid' | 'cancel' | 'resume' | 'expired' | 'refund' | 'payment_failed';
   customerId: string;
   priceId: string;
   paymentReceipt: string;
@@ -55,7 +55,7 @@ function normalize(value: unknown): BillingEvent {
         typeof v[k] === 'string' &&
         /^[-a-zA-Z0-9_]{1,200}$/.test(v[k] as string),
     ) ||
-    !['paid', 'cancel', 'expired', 'refund', 'payment_failed'].includes(
+    !['paid', 'cancel', 'resume', 'expired', 'refund', 'payment_failed'].includes(
       String(v.kind),
     ) ||
     v.currency !== 'JPY' ||
@@ -277,6 +277,13 @@ export function createBillingWebhook(options: {
         ) {
           tx.update(subRef, { cancelAtPeriodEnd: true });
           effect = 'paid_rights_preserved';
+        } else if (
+          event.kind === 'resume' &&
+          sub?.paymentReceipt === event.paymentReceipt
+        ) {
+          // The member undid the cancellation in the portal: renewal continues.
+          tx.update(subRef, { cancelAtPeriodEnd: false });
+          effect = 'renewal_resumed';
         } else if (
           event.kind === 'expired' &&
           sub?.paymentReceipt === event.paymentReceipt &&

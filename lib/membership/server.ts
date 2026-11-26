@@ -1,7 +1,6 @@
 import { billingSubscriptionPath } from '../billing/webhook.js';
-import { STRIPE_PROVIDER, stripeConfig } from '../billing/stripe.js';
+import { billingApproved, stripeConfig } from '../billing/stripe.js';
 import { SERVER_ROOT } from '../server/admin.js';
-import { PLUS_PRICE_YEN } from './model.js';
 import { referralMembership } from '../referral/membership.js';
 import type { Firestore } from 'firebase-admin/firestore';
 import { membershipFromRecord } from './model.js';
@@ -22,10 +21,7 @@ export async function memberStatus(
   ]);
   // Checkout opens only when Stripe keys are set AND the operator approved the same price for the webhook.
   const cfg = billingConfig?.data();
-  const checkoutReady = Boolean(
-    stripe && cfg?.approved === true && cfg.enabled === true && cfg.provider === STRIPE_PROVIDER &&
-      cfg.priceYen === PLUS_PRICE_YEN && cfg.currency === 'JPY' && cfg.interval === 'month' && cfg.monthlyPriceId === stripe.priceId,
-  );
+  const checkoutReady = billingApproved(cfg, stripe);
   // Owner decision: previews only until real billing is configured. Never infer readiness from a URL or client state.
   const legacy = membershipFromRecord(sub.data(), now),
     paid = membershipFromRecord(

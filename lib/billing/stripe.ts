@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Firestore } from 'firebase-admin/firestore';
 import type { Auth } from 'firebase-admin/auth';
 import { PLUS_PRICE_YEN } from '../membership/model.js';
-import { billingCustomerPath, type BillingAdapter, type BillingEvent } from './webhook.js';
+import { billingCustomerPath, billingSubscriptionPath, type BillingAdapter, type BillingEvent } from './webhook.js';
 
 /**
  * Stripe connection for Camellia Plus (500 JPY / month).
@@ -94,12 +94,13 @@ export async function normalizeStripeEvent(event: Obj, fetchInvoice: (id: string
   }
   if (type === 'customer.subscription.updated' || type === 'customer.subscription.deleted') {
     const previous = obj(obj(event.data).previous_attributes);
-    if (type === 'customer.subscription.updated' && !(data.cancel_at_period_end === true && previous.cancel_at_period_end === false))
-      return { ignored: true, type };
+    const cancelled = data.cancel_at_period_end === true && previous.cancel_at_period_end === false,
+      resumed = data.cancel_at_period_end === false && previous.cancel_at_period_end === true;
+    if (type === 'customer.subscription.updated' && !cancelled && !resumed) return { ignored: true, type };
     const period = subscriptionPeriod(data);
     return {
       id,
-      kind: type === 'customer.subscription.deleted' ? 'expired' : 'cancel',
+      kind: type === 'customer.subscription.deleted' ? 'expired' : cancelled ? 'cancel' : 'resume',
       customerId: str(data.customer),
       paymentReceipt: str(data.latest_invoice),
       amount: PLUS_PRICE_YEN,
@@ -167,43 +168,77 @@ export class CheckoutError extends Error {
     super(code);
   }
 }
+/** The operator approval in config/billing (scripts/billing-config.mjs) for exactly this price. */
+export function billingApproved(cfg: Record<string, unknown> | undefined, config: Pick<StripeConfig, 'priceId'> | undefined) {
+  return Boolean(
+    config && cfg?.approved === true && cfg.enabled === true && cfg.provider === STRIPE_PROVIDER &&
+      cfg.priceYen === PLUS_PRICE_YEN && cfg.currency === 'JPY' && cfg.interval === 'month' && cfg.monthlyPriceId === config.priceId,
+  );
+}
+/** A paid period for this price that has not ended yet, from Stripe's own invoices (the webhook may still be on its way). */
+function hasPaidPeriod(invoices: Obj, priceId: string, now: number) {
+  return ((invoices.data as unknown[] | undefined) ?? []).some((value) => {
+    try {
+      const line = invoiceLine(obj(value));
+      return line.priceId === priceId && Date.parse(line.periodEnd) > now;
+    } catch {
+      return false;
+    }
+  });
+}
 /**
  * Bind (or reuse) one Stripe customer for the verified Firebase user and open a
  * Checkout session for the approved monthly price. The browser never sends a UID or price.
+ * Never opens a second subscription: someone who already pays (even before the webhook arrives)
+ * gets ALREADY_PLUS, and an unfinished Checkout page is reused instead of creating another.
  */
-export async function startCheckout(deps: { db: Firestore; auth: Pick<Auth, 'getUser'> }, uid: string, config: StripeConfig, fetcher: typeof fetch = fetch) {
+export async function startCheckout(deps: { db: Firestore; auth: Pick<Auth, 'getUser'> }, uid: string, config: StripeConfig, fetcher: typeof fetch = fetch, now = Date.now()) {
   const account = await deps.auth.getUser(uid),
     accountRef = deps.db.doc(billingAccountPath(uid));
-  let customerId = text((await accountRef.get()).data()?.customerId);
+  const [accountSnapshot, subscription] = await Promise.all([accountRef.get(), deps.db.doc(billingSubscriptionPath(uid)).get()]);
+  const current = subscription.data();
+  if (current?.source === 'verified_payment' && current.status === 'active' && Date.parse(String(current.expiresAt)) > now)
+    throw new CheckoutError(409, 'ALREADY_PLUS');
+  let customerId = text(accountSnapshot.data()?.customerId);
+  if (customerId) {
+    const query = (path: string) => stripeCall(config, `${path}${path.includes('?') ? '&' : '?'}customer=${encodeURIComponent(customerId)}`, undefined, fetcher);
+    const [open, paid] = await Promise.all([query('/checkout/sessions?status=open&limit=10'), query('/invoices?status=paid&limit=10')]);
+    if (hasPaidPeriod(paid, config.priceId, now)) throw new CheckoutError(409, 'ALREADY_PLUS');
+    const reusable = ((open.data as unknown[] | undefined) ?? []).map(obj).find((s) => s.mode === 'subscription' && obj(s.metadata).camellia === 'plus' && text(s.url).startsWith('https://checkout.stripe.com/'));
+    if (reusable) return text(reusable.url);
+  }
   if (!customerId) {
     const customer = await stripeCall(config, '/customers', { 'metadata[camellia]': 'plus' }, fetcher, `camellia-customer-${uid}`);
     customerId = str(customer);
     if (!/^cus_[A-Za-z0-9]+$/.test(customerId)) throw new CheckoutError(503, 'BILLING_UNAVAILABLE');
-    const now = new Date().toISOString();
+    const createdAt = new Date(now).toISOString();
     await deps.db.runTransaction(async (tx) => {
       const existing = await tx.get(accountRef);
       if (existing.data()?.customerId) {
         customerId = text(existing.data()!.customerId);
         return;
       }
-      tx.set(accountRef, { provider: STRIPE_PROVIDER, customerId, createdAt: now });
+      tx.set(accountRef, { provider: STRIPE_PROVIDER, customerId, createdAt });
       tx.set(deps.db.doc(billingCustomerPath(STRIPE_PROVIDER, customerId)), {
         provider: STRIPE_PROVIDER,
         uid,
         identityCreatedAt: account.metadata.creationTime,
-        createdAt: now,
+        createdAt,
       });
     });
   }
+  // Same key within a minute: a double tap or two tabs get the same Checkout page, not two.
   const session = await stripeCall(config, '/checkout/sessions', {
     mode: 'subscription',
     customer: customerId,
     'line_items[0][price]': config.priceId,
     'line_items[0][quantity]': '1',
+    'metadata[camellia]': 'plus',
+    'subscription_data[metadata][camellia]': 'plus',
     locale: 'ja',
     success_url: `${config.appUrl}/?plus=success`,
     cancel_url: `${config.appUrl}/?plus=cancel`,
-  }, fetcher);
+  }, fetcher, `camellia-checkout-${uid}-${Math.floor(now / 60000)}`);
   const url = text(session.url);
   if (!url.startsWith('https://checkout.stripe.com/')) throw new CheckoutError(503, 'BILLING_UNAVAILABLE');
   return url;
