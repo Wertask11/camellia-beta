@@ -15,6 +15,8 @@ export type BillingEvent = {
   periodEnd: string;
   occurredAt: string;
   refundedYen?: number;
+  /** Stripe's livemode: records from sandbox tests are never used with live keys. */
+  livemode?: boolean;
 };
 /** Selected processor must verify the raw signed payload and normalize canonical invoice/subscription state. */
 export type BillingAdapter = {
@@ -47,6 +49,7 @@ function normalize(value: unknown): BillingEvent {
     'periodEnd',
     'occurredAt',
     'refundedYen',
+    'livemode',
   ];
   if (
     Object.keys(v).some((k) => !allowed.includes(k)) ||
@@ -78,6 +81,8 @@ function normalize(value: unknown): BillingEvent {
     throw new BillingError(400);
   if (v.kind !== 'refund' && v.refundedYen !== undefined)
     throw new BillingError(400);
+  if (v.livemode !== undefined && typeof v.livemode !== 'boolean')
+    throw new BillingError(400);
   return {
     id: String(v.id),
     kind: v.kind as BillingEvent['kind'],
@@ -90,6 +95,7 @@ function normalize(value: unknown): BillingEvent {
     periodEnd: new Date(String(v.periodEnd)).toISOString(),
     occurredAt: new Date(String(v.occurredAt)).toISOString(),
     ...(v.kind === 'refund' ? { refundedYen: Number(v.refundedYen) } : {}),
+    ...(typeof v.livemode === 'boolean' ? { livemode: v.livemode } : {}),
   };
 }
 export function createBillingWebhook(options: {
@@ -188,6 +194,8 @@ export function createBillingWebhook(options: {
             effect = 'already_refunded';
           else if (
             sub &&
+            // A period recorded in the other Stripe mode (a sandbox test) never hides a real payment.
+            (event.livemode === undefined || sub.livemode === event.livemode) &&
             Date.parse(sub.expiresAt) > Date.parse(event.periodEnd)
           )
             effect = 'older_period';
@@ -234,6 +242,7 @@ export function createBillingWebhook(options: {
               cancelAtPeriodEnd:
                 sub?.paymentReceipt === event.paymentReceipt &&
                 sub.cancelAtPeriodEnd === true,
+              ...(event.livemode === undefined ? {} : { livemode: event.livemode }),
               verifiedAt: new Date(now).toISOString(),
             });
             effect = 'paid_period_recorded';

@@ -22,9 +22,10 @@ try {
   const invoice = (extra = {}) => ({ id: 'in_1', customer: 'cus_1', amount_paid: 500, amount_due: 500, currency: 'jpy', lines: { data: [{ price: { id: 'price_LOCAL' }, period: { start: t, end: t + 2592000 } }] }, ...extra });
   const noFetch = async () => { throw new Error('no fetch'); };
   const paid = await normalizeStripeEvent({ id: 'evt_paid', type: 'invoice.paid', created: t, data: { object: invoice() } }, noFetch);
-  assert.deepEqual(paid, { id: 'evt_paid', kind: 'paid', customerId: 'cus_1', paymentReceipt: 'in_1', amount: 500, currency: 'JPY', occurredAt: new Date(t * 1000).toISOString(), priceId: 'price_LOCAL', periodStart: new Date(t * 1000).toISOString(), periodEnd: new Date((t + 2592000) * 1000).toISOString() });
+  assert.deepEqual(paid, { id: 'evt_paid', kind: 'paid', customerId: 'cus_1', paymentReceipt: 'in_1', amount: 500, currency: 'JPY', occurredAt: new Date(t * 1000).toISOString(), livemode: false, priceId: 'price_LOCAL', periodStart: new Date(t * 1000).toISOString(), periodEnd: new Date((t + 2592000) * 1000).toISOString() });
   const newer = await normalizeStripeEvent({ id: 'evt_new', type: 'invoice.paid', created: t, data: { object: invoice({ lines: { data: [{ pricing: { price_details: { price: 'price_LOCAL' } }, period: { start: t, end: t + 10 } }] } }) } }, noFetch);
   assert.equal(newer.priceId, 'price_LOCAL', 'newer API line shape');
+  assert.equal((await normalizeStripeEvent({ id: 'evt_live', type: 'invoice.paid', created: t, livemode: true, data: { object: invoice() } }, noFetch)).livemode, true, 'the Stripe mode travels with the event');
   assert.equal((await normalizeStripeEvent({ id: 'evt_f', type: 'invoice.payment_failed', created: t, data: { object: invoice({ amount_paid: 0 }) } }, noFetch)).kind, 'payment_failed');
   await assert.rejects(normalizeStripeEvent({ id: 'evt_usd', type: 'invoice.paid', created: t, data: { object: invoice({ currency: 'usd' }) } }, noFetch));
   const sub = (extra = {}) => ({ id: 'sub_1', customer: 'cus_1', latest_invoice: 'in_1', currency: 'jpy', cancel_at_period_end: true, items: { data: [{ price: { id: 'price_LOCAL' }, current_period_start: t, current_period_end: t + 100 }] }, ...extra });

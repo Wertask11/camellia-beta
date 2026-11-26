@@ -72,6 +72,33 @@ try {
   assert.equal((await subUpdate('evt_resume', false)).status, 200);
   assert.equal((await memberStatus(db, uid, now + 1000)).cancelAtPeriodEnd, false, 'undoing the cancellation shows renewal again');
   assert.equal((await memberStatus(db, uid, now + 31 * 86400000)).plan, 'free', 'Plus ends with the paid period');
+  // Sandbox records must not count once live keys are in use (2026-11-26: a sandbox purchase showed as live Plus).
+  const liveConfig = { ...config, secretKey: 'rk_live_LOCAL' }, liveCalls = [];
+  const liveStripe = async (url, init) => {
+    liveCalls.push({ url, body: init.body ?? '' });
+    if (/\/(customers|invoices)\/(cus|in)_LOCAL1$/.test(url)) return { ok: false, status: 404, json: async () => ({ error: { code: 'resource_missing' } }) };
+    const json = url.endsWith('/customers') ? { id: 'cus_LIVE1', livemode: true } : url.endsWith('/checkout/sessions') ? { url: 'https://checkout.stripe.com/c/pay/LIVE' } : url.endsWith('/billing_portal/sessions') ? { url: 'https://billing.stripe.com/p/session/LIVE' } : url.includes('?') ? { data: [] } : { livemode: true };
+    return { ok: true, status: 200, json: async () => json };
+  };
+  const { paidRecordInMode } = await server.ssrLoadModule('/lib/billing/stripe.ts');
+  assert.equal(await paidRecordInMode(db, uid, liveConfig, liveStripe), undefined, 'a period recorded in test mode is not Plus with live keys');
+  assert.ok(await paidRecordInMode(db, uid, config, liveStripe), 'still valid with test keys');
+  const { FieldValue } = await import('firebase-admin/firestore');
+  await db.doc(`camellia_users/${uid}/admin/billing_subscription`).update({ livemode: FieldValue.delete() });
+  await db.doc(billingAccountPath(uid)).update({ livemode: FieldValue.delete() });
+  assert.equal(await paidRecordInMode(db, uid, liveConfig, liveStripe), undefined, 'a record without a mode (written before 2026-11-26) is looked up: the live key cannot see the sandbox invoice');
+  assert.equal((await db.doc(`camellia_users/${uid}/admin/billing_subscription`).get()).data().livemode, false, 'the answer is saved, so Stripe is asked once');
+  await assert.rejects(openBillingPortal(db, uid, liveConfig, liveStripe), { code: 'NO_SUBSCRIPTION' }, 'a sandbox customer is never sent to live Stripe');
+  assert.equal(await startCheckout({ db, auth }, uid, liveConfig, liveStripe, now + 1000), 'https://checkout.stripe.com/c/pay/LIVE', 'the sandbox purchase does not block a real one');
+  assert.equal(new URLSearchParams(liveCalls.filter((c) => c.url.endsWith('/checkout/sessions')).at(-1).body).get('customer'), 'cus_LIVE1', 'a new live customer replaces the sandbox one');
+  assert.deepEqual((({ customerId, livemode }) => ({ customerId, livemode }))((await db.doc(billingAccountPath(uid)).get()).data()), { customerId: 'cus_LIVE1', livemode: true });
+  assert.equal(await openBillingPortal(db, uid, liveConfig, liveStripe), 'https://billing.stripe.com/p/session/LIVE');
+  const liveHandler = createBillingWebhook({ adapter: createStripeAdapter(liveConfig, liveStripe, () => now), dependencies: () => ({ db, auth }), now: () => now });
+  const liveInvoice = { ...invoice, id: 'in_LIVE1', customer: 'cus_LIVE1', lines: { data: [{ price: { id: 'price_LOCAL' }, period: { start: t, end: t + 20 * 86400 } }] } };
+  const liveRaw = new TextEncoder().encode(JSON.stringify({ id: 'evt_live_paid', type: 'invoice.paid', created: t, livemode: true, data: { object: liveInvoice } }));
+  assert.equal((await liveHandler(liveRaw, `t=${t},v1=${createHmac('sha256', 'whsec_LOCAL').update(`${t}.`).update(liveRaw).digest('hex')}`)).body.effect, 'paid_period_recorded', 'a longer sandbox period does not hide a real payment');
+  const liveSub = (await db.doc(`camellia_users/${uid}/admin/billing_subscription`).get()).data();
+  assert.equal(liveSub.paymentReceipt, 'in_LIVE1'); assert.equal(liveSub.livemode, true);
   const forged = new TextEncoder().encode(JSON.stringify({ id: 'evt_forged', type: 'invoice.paid', created: t, data: { object: { ...invoice, id: 'in_FORGED' } } }));
   assert.equal((await handler(forged, `t=${t},v1=${'0'.repeat(64)}`)).status, 400, 'unsigned event rejected');
   console.log('PASS Stripe on emulator: checkout waits for operator approval, one customer bound to the verified user, approved price only, signed invoice.paid grants Plus once, cancel keeps paid period, forged events rejected. Fake Stripe API only; no real payment.');
