@@ -103,6 +103,14 @@ export function PlaceOperatorScreen() {
           掲載は基本無料です。公開は運営の確認後に行います。
         </p>
         {error && <p role="alert">{error}</p>}
+        {ready && user && !user.isAnonymous && !allowed && (
+          <p className="meta">
+            このログインのID（運営の権限設定に使います）:{' '}
+            <code style={{ userSelect: 'all', wordBreak: 'break-all' }}>
+              {user.uid}
+            </code>
+          </p>
+        )}
         {!ready ? (
           <output>ログイン状態を確認しています…</output>
         ) : !user || user.isAnonymous ? (
