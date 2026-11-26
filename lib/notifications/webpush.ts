@@ -20,6 +20,16 @@ export function vapidConfig(env: Record<string, string | undefined> = process.en
   if (!/^(mailto:[^\s@]+@[^\s@]+|https:\/\/\S+)$/.test(subject)) return undefined;
   return { publicKey, privateKey, subject };
 }
+/** Names which VAPID check fails, for server logs only; never includes the values. */
+export function vapidProblem(env: Record<string, string | undefined> = process.env): string | undefined {
+  if (env.CAMELLIA_NOTIFICATIONS_ENABLED !== 'true') return 'notifications_disabled';
+  const size = (v: string | undefined) => { try { return Buffer.from(v ?? '', 'base64url'); } catch { return Buffer.alloc(0); } };
+  const pub = size(env.VAPID_PUBLIC_KEY);
+  if (pub.length !== 65 || pub[0] !== 4) return 'public_key_format';
+  if (size(env.VAPID_PRIVATE_KEY).length !== 32) return 'private_key_format';
+  if (!/^(mailto:[^\s@]+@[^\s@]+|https:\/\/\S+)$/.test(env.VAPID_SUBJECT ?? '')) return 'subject_format';
+  return undefined;
+}
 /** Push services browsers actually use. Anything else is refused so a stored endpoint cannot redirect our requests. */
 export function allowedPushEndpoint(endpoint: unknown): endpoint is string {
   if (typeof endpoint !== 'string' || endpoint.length > 1000) return false;
