@@ -14,9 +14,9 @@ try {
     assert.equal(d.sponsored, false);
     assert.ok(!('check' in d) && !('ready' in d) && !('sourceEvidence' in d), 'operator notes are not stored on the place');
     assert.equal(publishable(p), p.ready === true, `${p.slug}: only checked places are published`);
-    if (p.ready) assert.match(p.sourceEvidence, /crossroadfukuoka\.jp/, `${p.slug}: source recorded`);
+    if (p.ready) assert.match(p.sourceEvidence, /https:\/\/\S+/, `${p.slug}: source recorded`);
   }
-  assert.equal(places.filter(publishable).length, 14);
+  assert.ok(places.filter(publishable).length >= 14, 'the first 14 stay published');
   assert.equal(publishable({ ...places.find((p) => p.ready), address: '' }), false, 'no address, no publishing');
   assert.throws(() => introductionDraft({ ...places[0], name: '〇〇クリニック' }), /INVALID_PLACE/, 'medical places are refused');
   console.log('place introductions: ok');

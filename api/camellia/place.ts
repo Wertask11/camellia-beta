@@ -8,7 +8,7 @@ import {requireEligibleUser,EligibilityError} from '../../lib/server/eligibility
 import {memberStatus} from '../../lib/membership/server.js';
 import {rankPlaces,type PlaceIntent} from '../../lib/place/recommendation.js';
 import {ensureIntroductionBatch} from '../../lib/place/introduction-drafts.js';
-import {PLACE_INTRODUCTION_BATCH,PLACE_INTRODUCTIONS_FUKUOKA} from '../../data/place-introductions-fukuoka.js';
+import {PLACE_INTRODUCTION_BATCH,PLACE_INTRODUCTION_DRAFTS_BATCH,PLACE_INTRODUCTIONS_FUKUOKA} from '../../data/place-introductions-fukuoka.js';
 /** Once per server instance; the batch itself runs only once overall (marker in Firestore). */
 let introductionBatch: Promise<unknown> | undefined;
 type Request = {
@@ -37,8 +37,10 @@ export default async function place(req: Request, res: Response) {
   try {
     const { db, auth } = serverAdmin();
     const service = new PlaceService(db);
-    if(publicFlag&&process.env.CAMELLIA_PLACE_INTRODUCTION_BATCH===PLACE_INTRODUCTION_BATCH){
-      introductionBatch??=ensureIntroductionBatch(db,PLACE_INTRODUCTION_BATCH,PLACE_INTRODUCTIONS_FUKUOKA).catch((error:unknown)=>{introductionBatch=undefined;console.error('PLACE_INTRODUCTION_BATCH_FAILED',error instanceof Error?error.message:'unknown');});
+    const batchName=process.env.CAMELLIA_PLACE_INTRODUCTION_BATCH;
+    if(publicFlag&&(batchName===PLACE_INTRODUCTION_BATCH||batchName===PLACE_INTRODUCTION_DRAFTS_BATCH)){
+      // The second batch publishes the drafts of the first one once their official information was checked.
+      introductionBatch??=ensureIntroductionBatch(db,batchName,PLACE_INTRODUCTIONS_FUKUOKA,undefined,batchName===PLACE_INTRODUCTION_DRAFTS_BATCH).catch((error:unknown)=>{introductionBatch=undefined;console.error('PLACE_INTRODUCTION_BATCH_FAILED',error instanceof Error?error.message:'unknown');});
       await introductionBatch;
     }
     const incoming=req.body&&typeof req.body==='object'&&!Array.isArray(req.body)?req.body as Record<string,unknown>:{};
