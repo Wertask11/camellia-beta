@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { Firestore } from 'firebase-admin/firestore';
+import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 import type { Auth } from 'firebase-admin/auth';
 import { PLUS_PRICE_YEN } from '../membership/model.js';
 import { billingCustomerPath, billingSubscriptionPath, type BillingAdapter, type BillingEvent } from './webhook.js';
@@ -74,7 +74,8 @@ export async function normalizeStripeEvent(event: Obj, fetchInvoice: (id: string
   const type = text(event.type),
     data = obj(obj(event.data).object),
     id = text(event.id),
-    occurredAt = iso(event.created);
+    occurredAt = iso(event.created),
+    livemode = event.livemode === true;
   const currency = (c: unknown) => {
     if (String(c).toLowerCase() !== 'jpy') throw new Error('INVALID_STRIPE_EVENT');
     return 'JPY' as const;
@@ -89,6 +90,7 @@ export async function normalizeStripeEvent(event: Obj, fetchInvoice: (id: string
       amount: Number(type === 'invoice.paid' ? data.amount_paid : data.amount_due),
       currency: currency(data.currency),
       occurredAt,
+      livemode,
       ...line,
     };
   }
@@ -106,6 +108,7 @@ export async function normalizeStripeEvent(event: Obj, fetchInvoice: (id: string
       amount: PLUS_PRICE_YEN,
       currency: currency(data.currency ?? 'jpy'),
       occurredAt,
+      livemode,
       ...period,
     };
   }
@@ -123,6 +126,7 @@ export async function normalizeStripeEvent(event: Obj, fetchInvoice: (id: string
       amount: Number(data.amount),
       currency: currency(data.currency),
       occurredAt,
+      livemode,
       refundedYen: Math.min(Number(data.amount_refunded), PLUS_PRICE_YEN),
       ...line,
     };
@@ -143,8 +147,51 @@ async function stripeCall(config: Pick<StripeConfig, 'secretKey'>, path: string,
     signal: AbortSignal.timeout(15000),
   });
   const body = obj(await response.json().catch(() => ({})));
-  if (!response.ok) throw new Error(`STRIPE_${response.status}`);
+  if (!response.ok) throw new StripeError(response.status, text(obj(body.error).code));
   return body;
+}
+class StripeError extends Error {
+  constructor(readonly status: number, readonly stripeCode: string) {
+    super(`STRIPE_${status}${stripeCode ? `_${stripeCode}` : ''}`.slice(0, 60));
+  }
+}
+/** True for live keys (sk_live_/rk_live_). Test (sandbox) and live objects never mix. */
+export const stripeLive = (config: Pick<StripeConfig, 'secretKey'>) => /^(sk|rk)_live_/.test(config.secretKey);
+/**
+ * Whether a stored Stripe record (customer binding or paid period) belongs to the current key's mode.
+ * Records written before modes were stored (sandbox tests on 2026-11-26) are looked up once in Stripe:
+ * an object the current key cannot see belongs to the other mode. The answer is saved on the record.
+ * Returns undefined only when Stripe could not be asked; callers keep the record in that case.
+ */
+async function recordInMode(ref: DocumentReference, field: 'customerId' | 'paymentReceipt', path: (id: string) => string, config: StripeConfig, fetcher: typeof fetch) {
+  const live = stripeLive(config),
+    data = (await ref.get()).data(),
+    id = text(data?.[field]);
+  if (!data || !id) return undefined;
+  if (typeof data.livemode === 'boolean') return data.livemode === live;
+  let livemode: boolean;
+  try {
+    livemode = (await stripeCall(config, path(id), undefined, fetcher)).livemode === true;
+  } catch (e) {
+    if (!(e instanceof StripeError && (e.status === 404 || e.stripeCode === 'resource_missing'))) return undefined;
+    livemode = !live;
+  }
+  await ref.firestore.runTransaction(async (tx) => {
+    const current = (await tx.get(ref)).data();
+    if (current && text(current[field]) === id && typeof current.livemode !== 'boolean') tx.update(ref, { livemode });
+  });
+  return livemode === live;
+}
+/** The verified paid-period record, or undefined when it was made in the other Stripe mode (e.g. a sandbox test). */
+export async function paidRecordInMode(db: Firestore, uid: string, config: StripeConfig, fetcher: typeof fetch = fetch) {
+  const ref = db.doc(billingSubscriptionPath(uid));
+  const matches = await recordInMode(ref, 'paymentReceipt', (id) => `/invoices/${encodeURIComponent(id)}`, config, fetcher);
+  return matches === false ? undefined : (await ref.get()).data();
+}
+async function customerInMode(db: Firestore, uid: string, config: StripeConfig, fetcher: typeof fetch) {
+  const ref = db.doc(billingAccountPath(uid));
+  const matches = await recordInMode(ref, 'customerId', (id) => `/customers/${encodeURIComponent(id)}`, config, fetcher);
+  return matches === false ? '' : text((await ref.get()).data()?.customerId);
 }
 
 export function createStripeAdapter(config: StripeConfig, fetcher: typeof fetch = fetch, now = () => Date.now()): BillingAdapter {
@@ -195,11 +242,11 @@ function hasPaidPeriod(invoices: Obj, priceId: string, now: number) {
 export async function startCheckout(deps: { db: Firestore; auth: Pick<Auth, 'getUser'> }, uid: string, config: StripeConfig, fetcher: typeof fetch = fetch, now = Date.now()) {
   const account = await deps.auth.getUser(uid),
     accountRef = deps.db.doc(billingAccountPath(uid));
-  const [accountSnapshot, subscription] = await Promise.all([accountRef.get(), deps.db.doc(billingSubscriptionPath(uid)).get()]);
-  const current = subscription.data();
+  const live = stripeLive(config);
+  const [current, existingCustomer] = await Promise.all([paidRecordInMode(deps.db, uid, config, fetcher), customerInMode(deps.db, uid, config, fetcher)]);
   if (current?.source === 'verified_payment' && current.status === 'active' && Date.parse(String(current.expiresAt)) > now)
     throw new CheckoutError(409, 'ALREADY_PLUS');
-  let customerId = text(accountSnapshot.data()?.customerId);
+  let customerId = existingCustomer;
   if (customerId) {
     const query = (path: string) => stripeCall(config, `${path}${path.includes('?') ? '&' : '?'}customer=${encodeURIComponent(customerId)}`, undefined, fetcher);
     const [open, paid] = await Promise.all([query('/checkout/sessions?status=open&limit=10'), query('/invoices?status=paid&limit=10')]);
@@ -208,17 +255,18 @@ export async function startCheckout(deps: { db: Firestore; auth: Pick<Auth, 'get
     if (reusable) return text(reusable.url);
   }
   if (!customerId) {
-    const customer = await stripeCall(config, '/customers', { 'metadata[camellia]': 'plus' }, fetcher, `camellia-customer-${uid}`);
+    const customer = await stripeCall(config, '/customers', { 'metadata[camellia]': 'plus' }, fetcher, `camellia-customer-${live ? 'live' : 'test'}-${uid}`);
     customerId = str(customer);
     if (!/^cus_[A-Za-z0-9]+$/.test(customerId)) throw new CheckoutError(503, 'BILLING_UNAVAILABLE');
     const createdAt = new Date(now).toISOString();
     await deps.db.runTransaction(async (tx) => {
-      const existing = await tx.get(accountRef);
-      if (existing.data()?.customerId) {
-        customerId = text(existing.data()!.customerId);
+      const existing = (await tx.get(accountRef)).data();
+      // Reuse a customer bound meanwhile in this mode; a customer from the other mode is replaced.
+      if (existing?.customerId && existing.livemode === live) {
+        customerId = text(existing.customerId);
         return;
       }
-      tx.set(accountRef, { provider: STRIPE_PROVIDER, customerId, createdAt });
+      tx.set(accountRef, { provider: STRIPE_PROVIDER, customerId, livemode: live, createdAt });
       tx.set(deps.db.doc(billingCustomerPath(STRIPE_PROVIDER, customerId)), {
         provider: STRIPE_PROVIDER,
         uid,
@@ -245,7 +293,7 @@ export async function startCheckout(deps: { db: Firestore; auth: Pick<Auth, 'get
 }
 /** Stripe's hosted page for cancelling the subscription or changing the card. */
 export async function openBillingPortal(db: Firestore, uid: string, config: StripeConfig, fetcher: typeof fetch = fetch) {
-  const customerId = text((await db.doc(billingAccountPath(uid)).get()).data()?.customerId);
+  const customerId = await customerInMode(db, uid, config, fetcher);
   if (!customerId) throw new CheckoutError(404, 'NO_SUBSCRIPTION');
   const session = await stripeCall(config, '/billing_portal/sessions', { customer: customerId, return_url: `${config.appUrl}/` }, fetcher);
   const url = text(session.url);
