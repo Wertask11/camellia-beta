@@ -107,3 +107,19 @@ export async function completePendingReferral(uid: string) {
     completing = false;
   }
 }
+export const referralLinksReady = REFERRAL_INTEGRATION_READY;
+/** Issues a new personal invite link. The token is the only secret; nothing personal goes into the URL. */
+export async function issueReferralLink(): Promise<string> {
+  const user = schoolParkAuth.currentUser;
+  if (!user || user.isAnonymous) throw new Error('LOGIN_REQUIRED');
+  const response = await fetch('/api/camellia/referral', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user.getIdToken()}` },
+    body: JSON.stringify({ operation: 'issue' }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const data = (await response.json().catch(() => ({}))) as { token?: unknown; error?: unknown };
+  if (!response.ok || typeof data.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(data.token))
+    throw new Error(typeof data.error === 'string' ? data.error : 'REFERRAL_NOT_AVAILABLE');
+  return `${location.origin}/?referral=${data.token}`;
+}
