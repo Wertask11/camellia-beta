@@ -21,7 +21,7 @@ return async(request:Request,response:ChatApiResponse,receivedAt=Date.now())=>{
  const handler=createGeminiChatHandler({env:deps.env,rateLimitMode:'firestore',verifyToken:async()=>({uid:identity.uid}),
   getTodayMood:async()=>undefined,loadContext:async()=>({context:''}),
   claimRequest:(uid,id)=>claimAiRequest(deps.db,uid,id),
-  limiter:{take:async uid=>await createSharedRateLimiter(deps.db,deps.env).take(uid)&&await takeFreeDaily(deps.db,identity,quotaRequestId)},
+  limiter:{take:async uid=>await createSharedRateLimiter(deps.db,deps.env).take(uid)&&await takeFreeDaily(deps.db,identity,quotaRequestId,Date.now(),true)},
   generate:deps.generate,generateStream:deps.generateStream});
  return handler({...request,headers:{...request.headers,authorization:'Bearer server-scoped-free-capability'}},response,receivedAt);
 };

@@ -11,7 +11,7 @@ import { CONVERSATION_MODEL_PROMPTS, modelAllowsAction } from './model-server.js
 export { immediateSafetyReply } from './safety.js';
 
 export type SafeHistoryMessage = { role: 'user' | 'assistant'; text: string };
-export type ChatErrorCategory = 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
+export type ChatErrorCategory = 'daily_limited' | 'rate_limited' | 'timeout' | 'network' | 'provider_error' | 'disabled' | 'invalid_request' | 'safety_block' | 'invalid_response';
 
 export const CAMELLIA_SYSTEM_PROMPT = `あなたは「Camellia」です。女性の日常のウェルビーイングを支える会話相手です。診断や正解を与えるのではなく、本人が今の気持ちや今日どうしたいかに気づき、小さな選択をできるように支えます。
 
@@ -232,7 +232,7 @@ export function createGeminiChatHandler(deps: {
    const requestId=typeof body.requestId==='string'?body.requestId:randomUUID();
    try{requestLease=await deps.claimRequest?.(identity.uid,requestId);}catch(error){return res.status(error&&typeof error==='object'&&'code'in error&&error.code==='DUPLICATE_REQUEST'?409:503).json({error:'temporarily_unavailable',category:'provider_error'});}
    const limitStart=clock();let allowed;
-   try{allowed=await limiter.take(identity.uid);}catch{return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
+   try{allowed=await limiter.take(identity.uid);}catch(error){if(error&&typeof error==='object'&&'code'in error&&error.code==='FREE_DAILY_LIMIT')return res.status(429).json({error:'daily_limit_reached',category:'daily_limited'});return res.status(503).json({error:'temporarily_unavailable',category:'provider_error'});}
    timeline.T4=clock();timing.server_rate_limit_ms=Math.max(0,timeline.T4-limitStart);
    if(!allowed)return res.status(429).json({error:'temporarily_unavailable',category:'rate_limited'});
    controller.signal.throwIfAborted();
