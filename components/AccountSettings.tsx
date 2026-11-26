@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { inAppBrowser, IN_APP_GOOGLE_NOTE } from '@/lib/auth/in-app-browser';
 import {
   GoogleAuthProvider,
   linkWithPopup,
@@ -71,8 +72,15 @@ export function AccountSettings({ distinctId }: { distinctId: string }) {
         setError('ポップアップがブロックされました。このサイトのポップアップを許可して再度お試しください。');
       } else if (code === 'auth/operation-not-allowed') {
         setError('Google連携は現在準備中です。');
+      } else if (code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/web-storage-unsupported') {
+        setError('このアプリ内ブラウザではGoogle連携を開けません。右上のメニューから「Safari（ブラウザ）で開く」を選んで、もう一度お試しください。');
+      } else if (code === 'auth/provider-already-linked') {
+        setGoogleLinked(true);
+        setError('このアカウントには、すでにGoogleが連携されています。');
+      } else if (code === 'auth/requires-recent-login' || code === 'auth/user-token-expired') {
+        setError('安全のため、いったんログアウトしてもう一度ログインしてから、連携してください。');
       } else {
-        setError('Googleを連携できませんでした。通信を確認して再度お試しください。');
+        setError(`Googleを連携できませんでした。通信を確認して再度お試しください。${code ? `（${code}）` : ''}`);
       }
     } finally {
       setBusy(false);
@@ -100,7 +108,7 @@ export function AccountSettings({ distinctId }: { distinctId: string }) {
       {account && <ul className="linked-methods"><li><span>LINE</span><b>{state(linked?.line)}</b></li><li><span>SchoolPark Passport</span><b>{state(linked?.schoolpark)}</b></li></ul>}
       {account && (googleLinked
         ? <p className="account-provider-state">✓ Google連携済み</p>
-        : <button className="settings-link" disabled={busy || directId} onClick={() => void connectGoogle()}>{busy ? 'Googleに接続しています…' : 'Googleアカウントもつなぐ'}</button>)}
+        : <><button className="settings-link" disabled={busy || directId} onClick={() => void connectGoogle()}>{busy ? 'Googleに接続しています…' : 'Googleアカウントもつなぐ'}</button>{inAppBrowser() && <p className="meta">{IN_APP_GOOGLE_NOTE}</p>}</>)}
       {account && (unknown || linked && !linked.schoolpark) && <button className="settings-link" disabled={directId} onClick={() => connect('schoolpark')}>SchoolPark Passportもつなぐ</button>}
       {account && (unknown || linked && !linked.line) && <button className="settings-link" disabled={directId} onClick={() => connect('line')}>LINEもつなぐ</button>}
       {directId && <small className="account-link-limit">Googleだけで作成したアカウントでは、LINE / Passportを同じ記録へつなぐ操作は未対応です。以前LINEを使っていた方は、LINEでログインしてからGoogleをつないでください。</small>}
