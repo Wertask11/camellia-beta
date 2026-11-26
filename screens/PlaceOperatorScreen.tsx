@@ -93,7 +93,7 @@ export function PlaceOperatorScreen() {
   };
   return (
     <div className="app-shell">
-      <header className="screen">
+      <header className="screen place-operator-head">
         <p className="eyebrow">Camellia Place</p>
         <h1>店舗・施設の掲載管理</h1>
         <p>
