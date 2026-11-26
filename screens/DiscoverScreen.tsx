@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionCard } from '@/components/ActionCard';
 import { CATEGORY_LABELS } from '@/data/actions';
 import { recommend } from '@/lib/recommendation';
@@ -9,6 +9,7 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { todayPlans } from '@/lib/today/flow';
 import type { AnalyticsEventName, CamelliaState, Category, Recommendation } from '@/types';
 const cats=(Object.keys(CATEGORY_LABELS) as Category[]);
+const DISCOVER_PAGE=12;
 /* Discover is where Today continues: categories first, and never the same three plans Today already showed. */
 export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSecondary,onTrack}:{onTrack?:(name:AnalyticsEventName)=>void;state:CamelliaState;category?:Category;onCategory:(c?:Category)=>void;onOpenAction:(r:Recommendation)=>void;onOpenSecondary:(x:'circle'|'place')=>void}) {
   const viewed=useRef(false);
@@ -19,6 +20,9 @@ export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSec
   // The three Today shows (the same engine, the same order); existing actions, not generated articles.
   const todayIds=useMemo(()=>checked?todayPlans(state,now).map(item=>item.action.id):[],[state,now,checked]);
   const rest=list.filter(r=>!todayIds.includes(r.action.id));
+  // Show a short list first; the rest is one tap away (the full list was 100+ cards in one column).
+  const [more,setMore]=useState<{category?:Category;count:number}>({count:DISCOVER_PAGE});
+  const shown=more.category===category?more.count:DISCOVER_PAGE;
   const liveSecondary=(['circle','place'] as const).filter(x=>LIVE_DESTINATIONS.has(x));
   return <main className="screen discover"><header><div><p className="eyebrow">今日の私に関係するものと出会う</p><h1>Discover</h1></div></header>
     <p className="gentle-copy explain">{CHOICE_ACTION_FLOW?'今日の自分に合う選択肢を見つけて、「これしたい」につなげる場所です。':'自分のための、小さな過ごし方を探す場所です。'}</p>
@@ -29,7 +33,8 @@ export function DiscoverScreen({state,category,onCategory,onOpenAction,onOpenSec
     {checked?<section className="discover-rest" aria-labelledby="discover-rest-title"><h2 id="discover-rest-title">Todayの提案とは別に</h2><p className="meta">今日のCheckに近い順。Todayに出した{todayIds.length}件は除いています。</p></section>
       :<p className="meta discover-hint">気になるものから、自由に見てみてください。</p>}
     {CHOICE_ACTION_FLOW&&<button className="secondary-button circle-secondary" onClick={()=>onOpenSecondary('circle')}>Circle · 同じテーマや関心を持つ人とつながる →</button>}
-    <div className="action-list">{rest.map(r=><ActionCard key={r.action.id} item={r} detail="description" whole onOpen={()=>onOpenAction(r)}/>)}</div>
+    <div className="action-list">{rest.slice(0,shown).map(r=><ActionCard key={r.action.id} item={r} detail="description" whole onOpen={()=>onOpenAction(r)}/>)}</div>
+    {rest.length>shown&&<button className="secondary-button discover-more" onClick={()=>setMore({category,count:shown+DISCOVER_PAGE})}>もっと見る（あと{rest.length-shown}件）</button>}
     {!rest.length&&<p className="empty">このカテゴリは、Todayに出したものだけでした。ほかのカテゴリも見てみてください。</p>}
     {liveSecondary.length?<section className="secondary-links">{liveSecondary.map(x=><button key={x} onClick={()=>onOpenSecondary(x)}>{x==='circle'?'同じ気持ちの人とつながる':'近くで体験する'} <b>{x==='circle'?'Circle':'Place'} →</b></button>)}</section>
       :<p className="coming-places"><b>Circleは公開準備中です</b><span>同じ気持ちの人と、安心してつながれる場所を準備しています。</span></p>}

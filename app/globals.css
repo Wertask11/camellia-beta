@@ -1375,3 +1375,4 @@ details {
 .screen.place-operator-head{min-height:0;padding-bottom:0}
 .plan-badge{display:inline-block;margin:4px 0 2px;padding:4px 10px;border-radius:999px;border:1px solid #dbc6d0;background:#fff;color:#6b5560;font-size:13px}.plan-badge-plus{background:#8b4e73;border-color:#8b4e73;color:#fff}.plan-card-plus{border-color:#c99ab4}
 .referral-link{display:block;margin:12px 0;padding:10px 12px;border:1px solid #ead7df;border-radius:12px;background:#fff;font-size:13px;word-break:break-all;user-select:all}.referral-actions{display:flex;flex-wrap:wrap;gap:8px}
+.discover-more{display:block;width:100%;margin:12px 0 4px}
