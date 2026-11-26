@@ -187,8 +187,8 @@ export function PlaceScreen({
         </small>
         <span>{place.shortDescription}</span>
         <small>
-          {place.priceRange || '価格は公式情報をご確認ください'} ·{' '}
-          {place.duration || '時間は自由に'}
+          {place.priceRange || '価格は公式情報をご確認ください'}
+          {place.duration ? ` · ${place.duration}` : ''}
         </small>
         <small>{reason(place)}</small>
       </span>
@@ -294,7 +294,7 @@ export function PlaceScreen({
             <dt>価格帯</dt>
             <dd>{selected.priceRange || '公式情報をご確認ください'}</dd>
             <dt>所要時間</dt>
-            <dd>{selected.duration || '時間は自由に'}</dd>
+            <dd>{selected.duration || '目安はありません'}</dd>
           </dl>
           {selected.partnerStatus === 'partner' && (
             <p>掲載内容を確認した提携先です。</p>
