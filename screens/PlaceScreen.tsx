@@ -51,6 +51,7 @@ export function PlaceScreen({
 
   const [personalized,setPersonalized]=useState(contextState?.profile.placePersonalization===true);
   const [places, setPlaces] = useState<Place[]>([]),
+    [loaded, setLoaded] = useState(false),
     [selected, setSelected] = useState<Place>(),
     [cursor, setCursor] = useState<string>(),
     [error, setError] = useState(''),
@@ -85,6 +86,7 @@ export function PlaceScreen({
       queueMicrotask(() => {
         if (active) {
           setPlaces(demoPlaces);
+          setLoaded(true);
           setSelected(demoPlaces.find((place) => place.slug === initialSlug));
         }
       });
@@ -97,10 +99,14 @@ export function PlaceScreen({
         if (active) {
           setPlaces(data.places);
           setCursor(data.nextCursor);
+          setLoaded(true);
         }
       })
       .catch((e) => {
-        if (active) setError(e.message);
+        if (active) {
+          setError(e.message);
+          setLoaded(true);
+        }
       });
     void placeRequest('?operatorStatus=1', undefined, true)
       .then((data) => {
@@ -507,8 +513,10 @@ export function PlaceScreen({
             </section>
           )}
           {!filtered.length && (
-            <p className="empty">
-              {operatorMode
+            <p className="empty" aria-live="polite">
+              {!loaded
+                ? '場所を読み込んでいます…'
+                : operatorMode
                 ? '掲載候補はまだありません。'
                 : cursor?'読み込んだ候補には条件に合う場所がありません。「さらに場所を見る」で続きも確認できます。':'この条件で公開されている場所はまだありません。条件は自動では緩めません。'}
             </p>
