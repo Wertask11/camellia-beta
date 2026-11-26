@@ -286,8 +286,8 @@ function TodayOneFlow({
       )}
 
       {!checked&&<button className="secondary-button" onClick={()=>{setBrowseWithoutCheck(true);setEditingCheck(false);onSkipCheck?.();}}>Checkをせずに選択肢を見る</button>}
-      {(checked||browseWithoutCheck)&&<RecommendationControls value={filter} onChange={setFilter}/>}
-      {!checked&&browseWithoutCheck&&<section className="flow-section" aria-label="Checkなしの提案"><p className="eyebrow">Checkなしでも、自分で選べます</p><h2>今日の過ごし方</h2>{plans.map((r,index)=><article key={r.action.id} className={index===0?'plan-main':'panel'}>{index===0&&<img src={r.action.image} alt="" loading="lazy"/>}<div><p className="eyebrow">{index===0?'今日のひとつの提案':'別の候補'} · {r.action.minutes}分</p><h3>{r.action.title}</h3><p>{r.reasons.join('、')}。</p><button className={index===0?'plan-cta':'text-button'} onClick={()=>onOpenAction(r)}>{index===0?'この過ごし方を見る':'別の候補を開く'}</button></div></article>)}{!plans.length&&<output>選んだ条件に合う過ごし方がありません。条件を変えるか、今日は選ばなくても大丈夫です。</output>}<div className="quick-inputs"><button onClick={()=>onIntent('探す')}>Discoverでほかの選択肢を見る</button>{onPlace&&<button onClick={onPlace}>Placeで場所・体験を見る →</button>}</div></section>}
+      {!checked&&browseWithoutCheck&&<RecommendationControls value={filter} onChange={setFilter}/>}
+      {!checked&&browseWithoutCheck&&<section className="flow-section" aria-label="Checkなしの提案"><p className="eyebrow">Checkなしでも、自分で選べます</p><h2>今日の過ごし方</h2>{plans.map((r,index)=><article key={r.action.id} className={index===0?'plan-main':'panel'}>{index===0&&<img src={r.action.image} alt="" onError={e=>{e.currentTarget.style.display='none';}} loading="lazy"/>}<div><p className="eyebrow">{index===0?'今日のひとつの提案':'別の候補'} · {r.action.minutes}分</p><h3>{r.action.title}</h3><p>{r.reasons.join('、')}。</p><button className={index===0?'plan-cta':'text-button'} onClick={()=>onOpenAction(r)}>{index===0?'この過ごし方を見る':'別の候補を開く'}</button></div></article>)}{!plans.length&&<output>選んだ条件に合う過ごし方がありません。条件を変えるか、今日は選ばなくても大丈夫です。</output>}<div className="quick-inputs"><button onClick={()=>onIntent('探す')}>Discoverでほかの選択肢を見る</button>{onPlace&&<button onClick={onPlace}>Placeで場所・体験を見る →</button>}</div></section>}
       {!checked&&!browseWithoutCheck && (
         <section className="flow-preview" aria-label="Checkのあとに返ってくるもの">
           <p>Checkすると、ここに返ってきます</p>
@@ -321,9 +321,11 @@ function TodayOneFlow({
         <section className="flow-section" id="today-plans">
           <Step n={2} label="今日の過ごし方" state={chose ? 'done' : 'now'} />
           <p className="gentle-copy explain">今日のCheckを手がかりに、ひとつだけ。選ばなくても大丈夫。</p>
+          {/* Filters sit with the plans they change, after the result, so the result is read first. */}
+          <RecommendationControls value={filter} onChange={setFilter}/>
           {main ? <>
             <article className="plan-main">
-              <img src={main.action.image} alt="" />
+              <img src={main.action.image} alt="" onError={e=>{e.currentTarget.style.display='none';}} />
               <div>
                 <p className="eyebrow">{main.action.discoverCategory} ・ {main.action.minutes ? `${main.action.minutes}分` : '時間を決めない'}</p>
                 <h3>{main.action.title}</h3>
