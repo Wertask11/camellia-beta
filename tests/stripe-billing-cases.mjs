@@ -30,6 +30,7 @@ try {
   const sub = (extra = {}) => ({ id: 'sub_1', customer: 'cus_1', latest_invoice: 'in_1', currency: 'jpy', cancel_at_period_end: true, items: { data: [{ price: { id: 'price_LOCAL' }, current_period_start: t, current_period_end: t + 100 }] }, ...extra });
   assert.equal((await normalizeStripeEvent({ id: 'evt_c', type: 'customer.subscription.updated', created: t, data: { object: sub(), previous_attributes: { cancel_at_period_end: false } } }, noFetch)).kind, 'cancel');
   assert.deepEqual(await normalizeStripeEvent({ id: 'evt_u', type: 'customer.subscription.updated', created: t, data: { object: sub(), previous_attributes: { metadata: {} } } }, noFetch), { ignored: true, type: 'customer.subscription.updated' });
+  assert.equal((await normalizeStripeEvent({ id: 'evt_resume', type: 'customer.subscription.updated', created: t, data: { object: sub({ cancel_at_period_end: false }), previous_attributes: { cancel_at_period_end: true } } }, noFetch)).kind, 'resume', 'undoing a cancellation is recorded');
   assert.equal((await normalizeStripeEvent({ id: 'evt_d', type: 'customer.subscription.deleted', created: t, data: { object: sub() } }, noFetch)).kind, 'expired');
   const refund = await normalizeStripeEvent({ id: 'evt_r', type: 'charge.refunded', created: t, data: { object: { customer: 'cus_1', invoice: 'in_1', amount: 500, amount_refunded: 500, currency: 'jpy' } } }, async (id) => (assert.equal(id, 'in_1'), invoice()));
   assert.equal(refund.kind, 'refund'); assert.equal(refund.refundedYen, 500); assert.equal(refund.priceId, 'price_LOCAL');

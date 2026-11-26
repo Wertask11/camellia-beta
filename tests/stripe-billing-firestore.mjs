@@ -12,10 +12,11 @@ try {
   const { createBillingWebhook } = await server.ssrLoadModule('/lib/billing/webhook.ts');
   const { memberStatus } = await server.ssrLoadModule('/lib/membership/server.ts');
   const config = stripeConfig(), uid = 'stripe-local-owner', auth = { getUser: async (id) => ({ uid: id, metadata: { creationTime: '2026-11-01T00:00:00Z' } }) };
-  const calls = [];
+  const calls = [], stripeLists = { open: [], paid: [] };
   const fakeStripe = async (url, init) => {
-    calls.push({ url, body: init.body ?? '' });
-    const json = url.endsWith('/customers') ? { id: 'cus_LOCAL1' } : url.endsWith('/checkout/sessions') ? { url: 'https://checkout.stripe.com/c/pay/LOCAL' } : url.endsWith('/billing_portal/sessions') ? { url: 'https://billing.stripe.com/p/session/LOCAL' } : {};
+    calls.push({ url, body: init.body ?? '', key: init.headers['Idempotency-Key'] });
+    const json = url.endsWith('/customers') ? { id: 'cus_LOCAL1' } : url.endsWith('/checkout/sessions') ? { url: 'https://checkout.stripe.com/c/pay/LOCAL' } : url.endsWith('/billing_portal/sessions') ? { url: 'https://billing.stripe.com/p/session/LOCAL' }
+      : url.includes('/checkout/sessions?') ? { data: stripeLists.open } : url.includes('/invoices?') ? { data: stripeLists.paid } : {};
     return { ok: true, status: 200, json: async () => json };
   };
   assert.equal((await memberStatus(db, uid)).checkoutReady, false, 'keys alone do not open checkout without operator approval');
@@ -26,8 +27,20 @@ try {
   assert.equal(await startCheckout({ db, auth }, uid, config, fakeStripe), 'https://checkout.stripe.com/c/pay/LOCAL');
   const session = new URLSearchParams(calls.find((c) => c.url.endsWith('/checkout/sessions')).body);
   assert.equal(session.get('customer'), 'cus_LOCAL1'); assert.equal(session.get('line_items[0][price]'), 'price_LOCAL'); assert.equal(session.get('mode'), 'subscription');
+  assert.equal(session.get('metadata[camellia]'), 'plus');
+  assert.match(calls.find((c) => c.url.endsWith('/checkout/sessions')).key, /^camellia-checkout-stripe-local-owner-\d+$/, 'a double tap within a minute reuses the same Checkout session');
   await startCheckout({ db, auth }, uid, config, fakeStripe);
   assert.equal(calls.filter((c) => c.url.endsWith('/customers')).length, 1, 'customer is reused');
+  assert.ok(calls.some((c) => c.url.includes('/invoices?status=paid') && c.url.includes('customer=cus_LOCAL1')), 'paid invoices are checked before a new Checkout');
+  stripeLists.open = [{ mode: 'subscription', metadata: { camellia: 'plus' }, url: 'https://checkout.stripe.com/c/pay/OPEN' }, { mode: 'payment', metadata: {}, url: 'https://checkout.stripe.com/c/pay/OTHER' }];
+  assert.equal(await startCheckout({ db, auth }, uid, config, fakeStripe), 'https://checkout.stripe.com/c/pay/OPEN', 'an unfinished Camellia Checkout is reused, not duplicated');
+  stripeLists.open = [];
+  const nowSec = Math.floor(Date.now() / 1000);
+  stripeLists.paid = [{ id: 'in_OTHER', lines: { data: [{ price: { id: 'price_OTHER_PRODUCT' }, period: { start: nowSec, end: nowSec + 86400 } }] } }];
+  assert.ok((await startCheckout({ db, auth }, uid, config, fakeStripe)).startsWith('https://checkout.stripe.com/'), 'other products on the account do not block Plus');
+  stripeLists.paid = [{ id: 'in_EARLY', lines: { data: [{ price: { id: 'price_LOCAL' }, period: { start: nowSec, end: nowSec + 86400 } }] } }];
+  await assert.rejects(startCheckout({ db, auth }, uid, config, fakeStripe), { code: 'ALREADY_PLUS' }, 'paid in Stripe but webhook not yet arrived: no second subscription');
+  stripeLists.paid = [];
   assert.equal((await db.doc(billingAccountPath(uid)).get()).data().customerId, 'cus_LOCAL1');
 
   const now = Date.parse('2026-11-25T00:00:00Z'), t = Math.floor(now / 1000);
@@ -42,6 +55,8 @@ try {
   assert.equal(status.plan, 'plus'); assert.equal(status.paid, true);
   assert.equal((await send({ id: 'evt_paid', type: 'invoice.paid', created: t, data: { object: invoice } })).body.duplicate, true);
   assert.equal(await openBillingPortal(db, uid, config, fakeStripe), 'https://billing.stripe.com/p/session/LOCAL');
+  await assert.rejects(startCheckout({ db, auth }, uid, config, fakeStripe, now + 1000), { code: 'ALREADY_PLUS' }, 'a paying member cannot start a second subscription');
+  assert.equal(status.cancelAtPeriodEnd, false, 'renews by default');
   assert.equal(status.sharingReady, true, 'partner sharing opens with payments for Plus');
   const { PartnerShareService } = await server.ssrLoadModule('/lib/partner/service.ts');
   await db.doc(`camellia_users/${uid}`).set({ profile: 'LOCAL' });
@@ -52,6 +67,10 @@ try {
   assert.equal((await send({ id: 'evt_cancel', type: 'customer.subscription.updated', created: t, data: { object: { customer: 'cus_LOCAL1', latest_invoice: 'in_LOCAL1', currency: 'jpy', cancel_at_period_end: true, items: { data: [{ price: { id: 'price_LOCAL' }, current_period_start: t, current_period_end: t + 30 * 86400 }] } }, previous_attributes: { cancel_at_period_end: false } } })).status, 200);
   status = await memberStatus(db, uid, now + 1000);
   assert.equal(status.plan, 'plus', 'cancelling keeps the paid period');
+  assert.equal(status.cancelAtPeriodEnd, true, 'a scheduled cancellation is not shown as auto-renew');
+  const subUpdate = (id, cancel) => send({ id, type: 'customer.subscription.updated', created: t, data: { object: { customer: 'cus_LOCAL1', latest_invoice: 'in_LOCAL1', currency: 'jpy', cancel_at_period_end: cancel, items: { data: [{ price: { id: 'price_LOCAL' }, current_period_start: t, current_period_end: t + 30 * 86400 }] } }, previous_attributes: { cancel_at_period_end: !cancel } } });
+  assert.equal((await subUpdate('evt_resume', false)).status, 200);
+  assert.equal((await memberStatus(db, uid, now + 1000)).cancelAtPeriodEnd, false, 'undoing the cancellation shows renewal again');
   assert.equal((await memberStatus(db, uid, now + 31 * 86400000)).plan, 'free', 'Plus ends with the paid period');
   const forged = new TextEncoder().encode(JSON.stringify({ id: 'evt_forged', type: 'invoice.paid', created: t, data: { object: { ...invoice, id: 'in_FORGED' } } }));
   assert.equal((await handler(forged, `t=${t},v1=${'0'.repeat(64)}`)).status, 400, 'unsigned event rejected');
